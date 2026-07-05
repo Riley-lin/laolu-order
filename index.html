@@ -2619,12 +2619,81 @@ function saveOrderToHistory(orderNo, name, phone, total, ordersToShow, mode) {
   } catch(e) {}
 }
 
-function submitOrder() {
+/* ================================================================
+   ☁️ 雲端訂單簿（Supabase）
+   觀念：以前訂單只存在客人手機（localStorage）＝老闆收不到（假按鈕）。
+   現在送出時多做一步：把訂單 POST 到雲端的 orders 資料表。
+   SUPABASE_KEY 是「訪客證」（官方設計成可公開放前端的 publishable key），
+   真正的安全靠資料庫端的 RLS 三道門：匿名只能投單，不能偷看別人資料。
+   ================================================================ */
+const SUPABASE_URL = 'https://wwirnzsbqrqafyjrvgkn.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_eJLYMZhDGmE5dlYb4G5XbQ_DapXnnra';
+
+// 把訂單寫上雲端；失敗會丟出錯誤，由 submitOrder 決定怎麼善後
+async function sendOrderToCloud(records) {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/orders', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY
+    },
+    body: JSON.stringify(records)
+  });
+  if (!res.ok) throw new Error('雲端回應 HTTP ' + res.status);
+}
+
+// 把畫面上的訂單整理成資料表格式（回傳一筆或多筆的陣列）
+function buildCloudRecords(orderNo, name, phone, total, ordersToShow, mode) {
+  // 單張訂單的內容物：品項、小計、口味偏好（存成 JSON 進 items 欄位）
+  const pack = o => ({
+    name: o.name,
+    items: Object.values(o.cart).map(v => ({ name: v.name, qty: v.qty, price: v.price })),
+    total: o.total,
+    prefs: o.prefs
+  });
+  if (mode === 'split' && ordersToShow.length > 1) {
+    // 分開結帳：一人一筆，編號加 B、C… 後綴（跟本機紀錄同一套規則）
+    return ordersToShow.map((o, i) => ({
+      order_no: orderNo + (i > 0 ? String.fromCharCode(65 + i) : ''),
+      customer_name: name,
+      customer_phone: phone,
+      mode: 'single',
+      items: [pack(o)],
+      total: o.total
+    }));
+  }
+  // 合併結帳或個人單：整包存一筆
+  return [{
+    order_no: orderNo,
+    customer_name: name,
+    customer_phone: phone,
+    mode: mode,
+    items: ordersToShow.map(pack),
+    total: total
+  }];
+}
+
+async function submitOrder() {
   if (!_pendingOrder) return;
   const { total, mode, ordersToShow, name, phone, note } = _pendingOrder;
+
+  // 防手滑連點：上傳期間先鎖住送出鈕，避免同一單送兩次
+  const btn = document.querySelector('#modalBox .btn-order');
+  if (btn) { btn.disabled = true; btn.textContent = '傳送中…'; }
+
   const orderNo = genOrderNo();
 
-  // 儲存訂單
+  // ☁️ 關鍵一步：訂單先飛上雲端（老闆才收得到）；失敗就不算送出
+  try {
+    await sendOrderToCloud(buildCloudRecords(orderNo, name, phone, total, ordersToShow, mode));
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '送 出 訂 單'; }
+    alert('⚠️ 訂單傳送失敗（可能是網路不穩），請再按一次「送出訂單」。\n若一直失敗，請直接致電 0939-955-888 訂購。');
+    return;
+  }
+
+  // 儲存訂單（本機備份，給下面「查詢我的訂單」功能用）
   saveOrderToHistory(orderNo, name, phone, total, ordersToShow, mode);
 
   // 顯示成功畫面
