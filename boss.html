@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>老滷仙・老闆看單</title>
+<!-- supabase-js：Supabase 官方的前端工具包（從 CDN 載入，不用安裝） -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  /* ====== 版面：深色金字，跟點餐頁同一家店的氣質 ====== */
+  :root{
+    --bg:#141210; --card:#1f1b17; --line:rgba(212,165,32,0.25);
+    --gold:#d4a520; --gold2:#e8c358; --goldlight:#f3dfa5;
+    --text:rgba(255,255,255,0.85); --dim:rgba(255,255,255,0.45);
+    --green:#7fc97f; --red:#e07a5f;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:"Noto Sans TC",system-ui,sans-serif;min-height:100vh;}
+  .wrap{max-width:720px;margin:0 auto;padding:16px;}
+  h1{font-family:"Noto Serif TC",serif;color:var(--gold2);font-size:22px;letter-spacing:4px;text-align:center;padding:14px 0 4px;}
+  .sub{text-align:center;color:var(--dim);font-size:12px;letter-spacing:2px;margin-bottom:16px;}
+
+  /* ====== 登入卡 ====== */
+  .login-card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:24px;max-width:360px;margin:40px auto;}
+  .login-card input{width:100%;padding:12px;margin-bottom:10px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);font-size:15px;}
+  .login-card button{width:100%;padding:12px;border:none;border-radius:6px;background:var(--gold);color:#1a1611;font-weight:900;font-size:15px;letter-spacing:3px;cursor:pointer;}
+  .login-card button:disabled{opacity:0.5;}
+  .login-err{color:var(--red);font-size:13px;text-align:center;margin-top:10px;min-height:18px;}
+
+  /* ====== 工具列 ====== */
+  .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+  .tab{padding:8px 14px;border-radius:20px;border:1px solid var(--line);background:none;color:var(--dim);font-size:13px;cursor:pointer;letter-spacing:1px;}
+  .tab.active{background:var(--gold);color:#1a1611;font-weight:900;border-color:var(--gold);}
+  .toolbar .spacer{flex:1;}
+  .btn-plain{padding:8px 14px;border-radius:6px;border:1px solid var(--line);background:none;color:var(--dim);font-size:13px;cursor:pointer;}
+
+  /* ====== 訂單卡 ====== */
+  .order-card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:12px;}
+  .order-card.is-new{border-color:var(--gold);box-shadow:0 0 12px rgba(212,165,32,0.15);}
+  .oc-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+  .oc-no{font-family:"Noto Serif TC",serif;font-size:20px;font-weight:900;color:var(--gold2);letter-spacing:2px;}
+  .oc-time{color:var(--dim);font-size:12px;}
+  .oc-cust{font-size:14px;margin-bottom:8px;}
+  .oc-cust a{color:var(--goldlight);text-decoration:none;}
+  .oc-sub{border-top:1px dashed var(--line);padding-top:8px;margin-top:8px;}
+  .oc-sub-name{color:var(--gold2);font-size:13px;font-weight:700;margin-bottom:4px;}
+  .oc-item{display:flex;justify-content:space-between;font-size:14px;padding:2px 0;}
+  .oc-item span:last-child{color:var(--gold2);font-weight:700;}
+  .oc-pref{color:var(--dim);font-size:12.5px;margin-top:4px;}
+  .oc-foot{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);margin-top:10px;padding-top:10px;}
+  .oc-total{font-size:16px;font-weight:900;color:var(--gold2);}
+  .oc-actions{display:flex;gap:8px;}
+  .btn-done{padding:8px 16px;border:none;border-radius:6px;background:var(--green);color:#10240f;font-weight:900;font-size:13px;cursor:pointer;letter-spacing:1px;}
+  .btn-cancel{padding:8px 12px;border:1px solid var(--red);border-radius:6px;background:none;color:var(--red);font-size:13px;cursor:pointer;}
+  .badge{font-size:11px;padding:3px 10px;border-radius:12px;letter-spacing:1px;}
+  .badge.new{background:rgba(212,165,32,0.18);color:var(--gold2);}
+  .badge.done{background:rgba(127,201,127,0.15);color:var(--green);}
+  .badge.cancelled{background:rgba(224,122,95,0.15);color:var(--red);}
+  .empty{text-align:center;color:var(--dim);padding:50px 0;font-size:14px;letter-spacing:2px;}
+  .hidden{display:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🍢 老滷仙・看單台</h1>
+  <div class="sub">BOSS ONLY・訂單即時瀏覽</div>
+
+  <!-- ========== 登入區：老闆專用門禁 ========== -->
+  <div id="loginView" class="login-card">
+    <input id="email" type="email" placeholder="老闆帳號（email）" autocomplete="username">
+    <input id="password" type="password" placeholder="密碼" autocomplete="current-password">
+    <button id="loginBtn" onclick="doLogin()">登 入</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+
+  <!-- ========== 看單區：登入後才出現 ========== -->
+  <div id="boardView" class="hidden">
+    <div class="toolbar">
+      <button class="tab active" data-f="new" onclick="setFilter('new',this)">🆕 新單</button>
+      <button class="tab" data-f="done" onclick="setFilter('done',this)">✅ 已完成</button>
+      <button class="tab" data-f="all" onclick="setFilter('all',this)">全部</button>
+      <span class="spacer"></span>
+      <button class="btn-plain" onclick="loadOrders()">↻ 重新整理</button>
+      <button class="btn-plain" onclick="doLogout()">登出</button>
+    </div>
+    <div id="orderList"><div class="empty">載入中…</div></div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   ☁️ 連上同一本雲端訂單簿（跟 index.html 同一組地址＋訪客證）
+   老闆多一道門禁：要先登入（Supabase Auth），RLS 才放行「看單／改單」。
+   ================================================================ */
+const SUPABASE_URL = 'https://wwirnzsbqrqafyjrvgkn.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_eJLYMZhDGmE5dlYb4G5XbQ_DapXnnra';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentFilter = 'new';   // 目前的分頁：new＝新單 / done＝已完成 / all＝全部
+let pollTimer = null;        // 自動刷新的計時器
+
+/* ---------- 登入／登出 ---------- */
+async function doLogin() {
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  document.getElementById('loginErr').textContent = '';
+  // 拿 email＋密碼去門禁室換通行證（之後每次讀資料都會自動帶著）
+  const { error } = await db.auth.signInWithPassword({
+    email: document.getElementById('email').value.trim(),
+    password: document.getElementById('password').value
+  });
+  btn.disabled = false;
+  if (error) {
+    document.getElementById('loginErr').textContent = '登入失敗：帳號或密碼不對';
+    return;
+  }
+  showBoard();
+}
+
+async function doLogout() {
+  await db.auth.signOut();
+  clearInterval(pollTimer);
+  document.getElementById('boardView').classList.add('hidden');
+  document.getElementById('loginView').classList.remove('hidden');
+}
+
+/* 進入看單模式：顯示列表＋每 15 秒自動抓一次新單 */
+function showBoard() {
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('boardView').classList.remove('hidden');
+  loadOrders();
+  clearInterval(pollTimer);
+  pollTimer = setInterval(loadOrders, 15000);
+}
+
+/* 打開頁面時：如果之前登入過還沒過期，直接進看單台 */
+db.auth.getSession().then(({ data }) => { if (data.session) showBoard(); });
+
+/* ---------- 讀訂單 ---------- */
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  loadOrders();
+}
+
+async function loadOrders() {
+  // 跟資料庫要最近 100 筆，最新的排最上面
+  let query = db.from('orders').select('*').order('created_at', { ascending: false }).limit(100);
+  if (currentFilter === 'new')  query = query.eq('status', 'new');
+  if (currentFilter === 'done') query = query.eq('status', 'done');
+
+  const { data, error } = await query;
+  const list = document.getElementById('orderList');
+  if (error) { list.innerHTML = '<div class="empty">讀取失敗，請按「重新整理」再試</div>'; return; }
+  if (!data.length) { list.innerHTML = '<div class="empty">目前沒有訂單 🍃</div>'; return; }
+  list.innerHTML = data.map(renderCard).join('');
+}
+
+/* 把一筆訂單畫成一張卡片 */
+function renderCard(r) {
+  // 資料庫存的是世界標準時間，顯示時轉成台北時間
+  const t = new Date(r.created_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
+
+  // items 欄位裡是一包 JSON：每張子訂單的品項＋偏好
+  let body = '';
+  (r.items || []).forEach(o => {
+    const rows = (o.items || []).map(v =>
+      '<div class="oc-item"><span>' + esc(v.name) + ' × ' + v.qty + '</span><span>$' + (v.price * v.qty) + '</span></div>'
+    ).join('');
+    const prefs = formatPrefs(o.prefs);
+    body += '<div class="oc-sub">'
+      + (o.name ? '<div class="oc-sub-name">' + esc(o.name) + '</div>' : '')
+      + rows
+      + (prefs ? '<div class="oc-pref">🌿 ' + prefs + '</div>' : '')
+      + '</div>';
+  });
+
+  const badge = r.status === 'new' ? '<span class="badge new">新單</span>'
+              : r.status === 'done' ? '<span class="badge done">已完成</span>'
+              : '<span class="badge cancelled">已取消</span>';
+
+  const actions = r.status === 'new'
+    ? '<div class="oc-actions">'
+      + '<button class="btn-cancel" onclick="setStatus(\'' + r.id + '\',\'cancelled\')">取消</button>'
+      + '<button class="btn-done" onclick="setStatus(\'' + r.id + '\',\'done\')">完 成</button>'
+      + '</div>'
+    : badge;
+
+  return '<div class="order-card' + (r.status === 'new' ? ' is-new' : '') + '">'
+    + '<div class="oc-head"><span class="oc-no">#' + esc(r.order_no) + '</span><span class="oc-time">' + t + '</span></div>'
+    + '<div class="oc-cust">👤 ' + esc(r.customer_name) + '　📞 <a href="tel:' + esc(r.customer_phone) + '">' + esc(r.customer_phone) + '</a></div>'
+    + body
+    + '<div class="oc-foot"><span class="oc-total">合計 $' + r.total + '</span>' + actions + '</div>'
+    + '</div>';
+}
+
+/* 口味偏好 JSON → 中文一行字（跟點餐頁的顯示規則一致） */
+function formatPrefs(p) {
+  if (!p) return '';
+  const out = [];
+  if (p.scallion === 'yes') out.push('加蔥'); else if (p.scallion === 'no') out.push('不要蔥');
+  if (p.garlic === 'yes') out.push('加蒜'); else if (p.garlic === 'no') out.push('不要蒜');
+  if (p.pepper === 'yes') out.push('加胡椒'); else if (p.pepper === 'no') out.push('不要胡椒');
+  if (p.spicy === 'yes' && p.spiceLevel) out.push('辣度：' + p.spiceLevel); else if (p.spicy === 'no') out.push('不加辣');
+  if (p.utensils === 'yes') out.push('要餐具🥢'); else if (p.utensils === 'no') out.push('不用餐具');
+  if (p.note) out.push('備註：' + esc(p.note));
+  return out.join('、');
+}
+
+/* ---------- 改訂單狀態（完成／取消） ---------- */
+async function setStatus(id, status) {
+  if (status === 'cancelled' && !confirm('確定要取消這張訂單嗎？')) return;
+  const { error } = await db.from('orders').update({ status }).eq('id', id);
+  if (error) { alert('更新失敗，請重試'); return; }
+  loadOrders();
+}
+
+/* 防範惡意輸入：把客人填的文字裡的特殊符號變無害（資安基本功）*/
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+</script>
+</body>
+</html>
