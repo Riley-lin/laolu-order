@@ -1829,7 +1829,17 @@ function showOrderPage(){
   updateWaitDisplay();
 }
 
+/* ⚙️ 揪團點餐開關（2026-07-11 老闆決定只開放個人點餐）
+   老闆的理由：不要合單，客人要多單就點好再送一次。
+   以後想開回揪團 → 把下面的 false 改成 true 就好，其他程式都還在。 */
+const ENABLE_GROUP_MODE = false;
+
 function openModeSelect() {
+  if (!ENABLE_GROUP_MODE) {
+    // 揪團關閉中：跳過「選擇點餐方式」，直接以個人模式進點餐頁
+    selectOrderMode('personal');
+    return;
+  }
   document.getElementById('modeSelectBg').classList.add('open');
 }
 
@@ -2731,8 +2741,9 @@ async function submitOrder() {
       </div>
 
       <div class="success-msg">
-        <strong>${name}</strong> 您好，訂單已確認！<br>
-        等待時間約 <strong>${waitMinutes} 分鐘</strong>，請稍候取餐。<br>
+        <strong>${name}</strong> 您好，訂單已送出！<br>
+        店家確認接單後開始現滷，<br>
+        可在下方「查詢我的訂單」看到<strong>取餐時間</strong>。<br>
         合計金額：<strong>$${total}</strong><br>
         如有問題請致電 <strong>0939-955-888</strong>
       </div>
@@ -2853,6 +2864,7 @@ function queryOrder() {
         + '<span class="query-card-no">取餐編號 ' + r.orderNo + subLabel + '</span>'
         + '<span class="query-card-time">' + r.time + '</span>'
         + '</div>'
+        + '<div class="query-status" data-ono="' + r.orderNo + '" style="font-size:12px;letter-spacing:1px;margin:6px 0 2px;color:var(--gold3);">⏳ 查詢狀態中…</div>'
         + '<div class="query-card-body">' + ordersHtml + '</div>'
         + '<div class="query-card-footer">'
         + '<span class="query-card-total">合計 $' + r.total + '</span>'
@@ -2862,6 +2874,7 @@ function queryOrder() {
     });
 
     el.innerHTML = resultHtml;
+    refreshQueryStatuses(el); // 補查每張單的雲端最新狀態（確認了沒？幾點取餐？）
   } catch(e) {
     document.getElementById('queryResult').innerHTML = '<div class="query-result-empty">查詢失敗，請重試</div>';
   }
@@ -2869,6 +2882,49 @@ function queryOrder() {
 
 // （confirmOrder() 死碼已於 2026-07-11 移除：舊版送單流程遺留，無任何地方呼叫，
 //   功能已被 submitOrder() 完全取代）
+
+/* ────────────────────────────────
+   查詢卡片的雲端狀態補查（M0.75 新增）
+   本機紀錄只知道「我點過什麼」，狀態（老闆確認了沒、幾點取餐）要問雲端。
+   透過 get_order_status 函式查：只回狀態＋取餐時間、只查當天、不含任何個資。
+   ──────────────────────────────── */
+async function refreshQueryStatuses(container) {
+  const nodes = container.querySelectorAll('.query-status[data-ono]');
+  for (const node of nodes) {
+    try {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_order_status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY
+        },
+        body: JSON.stringify({ p_order_no: node.dataset.ono })
+      });
+      if (!res.ok) { node.remove(); continue; }
+      const rows = await res.json();
+      // 查不到＝不是今天的單（編號每天重數，只查當天避免撈到舊單）→ 不顯示狀態列
+      if (!rows || !rows.length) { node.remove(); continue; }
+      const { status, pickup_at } = rows[0];
+      if (status === 'confirmed' && pickup_at) {
+        const hm = new Date(pickup_at).toLocaleTimeString('zh-TW',
+          { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
+        node.textContent = '🔥 店家製作中，請於 ' + hm + ' 前往取餐';
+        node.style.color = '#ff9d5c';
+      } else if (status === 'new') {
+        node.textContent = '⏳ 等待店家確認中';
+      } else if (status === 'done') {
+        node.textContent = '✅ 餐點已完成';
+        node.style.color = '#7fc97f';
+      } else if (status === 'cancelled') {
+        node.textContent = '❌ 訂單已取消（有疑問請致電 0939-955-888）';
+        node.style.color = '#e07a5f';
+      } else {
+        node.remove();
+      }
+    } catch (e) { node.remove(); }
+  }
+}
 
 function finishOrder(){
   // 清空所有訂單，重設
@@ -2989,6 +3045,7 @@ function doCoverQuery() {
         + '<span class="query-card-no">取餐編號 ' + r.orderNo + subLabel + '</span>'
         + '<span class="query-card-time">' + r.time + '</span>'
         + '</div>'
+        + '<div class="query-status" data-ono="' + r.orderNo + '" style="font-size:12px;letter-spacing:1px;margin:6px 0 2px;color:var(--gold3);">⏳ 查詢狀態中…</div>'
         + '<div class="query-card-body">' + ordersHtml + '</div>'
         + '<div class="query-card-footer">'
         + '<span class="query-card-total">合計 $' + r.total + '</span>'
@@ -2997,6 +3054,7 @@ function doCoverQuery() {
         + '</div>';
     });
     el.innerHTML = resultHtml;
+    refreshQueryStatuses(el); // 補查每張單的雲端最新狀態（確認了沒？幾點取餐？）
   } catch(e) {
     document.getElementById('coverQueryResult').innerHTML = '<div class="query-result-empty">查詢失敗，請重試</div>';
   }

@@ -54,8 +54,32 @@
   .btn-cancel{padding:8px 12px;border:1px solid var(--red);border-radius:6px;background:none;color:var(--red);font-size:13px;cursor:pointer;}
   .badge{font-size:11px;padding:3px 10px;border-radius:12px;letter-spacing:1px;}
   .badge.new{background:rgba(212,165,32,0.18);color:var(--gold2);}
+  .badge.cooking{background:rgba(255,140,66,0.18);color:#ff9d5c;}
   .badge.done{background:rgba(127,201,127,0.15);color:var(--green);}
   .badge.cancelled{background:rgba(224,122,95,0.15);color:var(--red);}
+  .btn-accept{padding:8px 16px;border:none;border-radius:6px;background:var(--gold);color:#1a1611;font-weight:900;font-size:13px;cursor:pointer;letter-spacing:1px;}
+  .btn-wait{padding:8px 14px;border:1px solid var(--gold);border-radius:6px;background:rgba(212,165,32,0.12);color:var(--gold2);font-weight:900;font-size:13px;cursor:pointer;}
+  .oc-pickup{font-size:12px;color:#ff9d5c;margin-left:10px;letter-spacing:1px;}
+
+  /* ====== 📱 LINE 訊息模擬預覽 ====== */
+  .line-preview-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;z-index:99;padding:16px;}
+  .line-preview{background:var(--card);border:1px solid var(--line);border-radius:10px;max-width:400px;width:100%;padding:18px;}
+  .lp-title{font-size:14px;font-weight:900;color:var(--gold2);letter-spacing:1px;margin-bottom:12px;text-align:center;}
+  .lp-chat{background:#7494c0;border-radius:8px;padding:16px 14px;}
+  .lp-bubble{background:#fff;color:#222;border-radius:14px;border-top-left-radius:4px;padding:12px 14px;font-size:14px;line-height:1.7;max-width:90%;box-shadow:0 1px 2px rgba(0,0,0,0.2);}
+  .lp-note{font-size:12px;color:var(--dim);margin-top:12px;line-height:1.6;text-align:center;}
+  .lp-close{display:block;margin:14px auto 0;padding:9px 32px;border:none;border-radius:6px;background:var(--gold);color:#1a1611;font-weight:900;font-size:14px;letter-spacing:2px;cursor:pointer;}
+
+  /* ====== ✅ 確認接單彈窗 ====== */
+  .cm-label{font-size:12px;color:var(--dim);letter-spacing:2px;margin-bottom:8px;text-align:center;}
+  .cm-presets{display:flex;gap:8px;justify-content:center;margin-bottom:12px;}
+  .cm-preset{flex:1;padding:12px 0;font-size:15px;}
+  .cm-preset.active{background:var(--gold);color:#1a1611;}
+  .cm-stepper{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:12px;}
+  .cm-step{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:none;color:var(--gold2);font-size:22px;font-weight:900;cursor:pointer;}
+  .cm-mins{font-family:"Noto Serif TC",serif;font-size:28px;font-weight:900;color:var(--gold2);min-width:52px;text-align:center;}
+  .cm-pickup{text-align:center;font-size:14px;color:#ff9d5c;letter-spacing:1px;margin-bottom:14px;min-height:20px;}
+  .cm-actions{display:flex;gap:10px;}
   .empty{text-align:center;color:var(--dim);padding:50px 0;font-size:14px;letter-spacing:2px;}
   .hidden{display:none;}
 </style>
@@ -77,6 +101,7 @@
   <div id="boardView" class="hidden">
     <div class="toolbar">
       <button class="tab active" data-f="new" onclick="setFilter('new',this)">🆕 新單</button>
+      <button class="tab" data-f="confirmed" onclick="setFilter('confirmed',this)">🔥 製作中</button>
       <button class="tab" data-f="done" onclick="setFilter('done',this)">✅ 已完成</button>
       <button class="tab" data-f="all" onclick="setFilter('all',this)">全部</button>
       <span class="spacer"></span>
@@ -147,8 +172,9 @@ function setFilter(f, el) {
 async function loadOrders() {
   // 跟資料庫要最近 100 筆，最新的排最上面
   let query = db.from('orders').select('*').order('created_at', { ascending: false }).limit(100);
-  if (currentFilter === 'new')  query = query.eq('status', 'new');
-  if (currentFilter === 'done') query = query.eq('status', 'done');
+  if (currentFilter === 'new')       query = query.eq('status', 'new');
+  if (currentFilter === 'confirmed') query = query.eq('status', 'confirmed');
+  if (currentFilter === 'done')      query = query.eq('status', 'done');
 
   const { data, error } = await query;
   const list = document.getElementById('orderList');
@@ -177,18 +203,33 @@ function renderCard(r) {
   });
 
   const badge = r.status === 'new' ? '<span class="badge new">新單</span>'
+              : r.status === 'confirmed' ? '<span class="badge cooking">製作中</span>'
               : r.status === 'done' ? '<span class="badge done">已完成</span>'
               : '<span class="badge cancelled">已取消</span>';
 
-  const actions = r.status === 'new'
-    ? '<div class="oc-actions">'
+  // 新單 → 確認接單（先選等候時間）；製作中 → 完成
+  let actions;
+  if (r.status === 'new') {
+    actions = '<div class="oc-actions">'
       + '<button class="btn-cancel" onclick="setStatus(\'' + r.id + '\',\'cancelled\')">取消</button>'
+      + '<button class="btn-accept" onclick="openConfirmModal(\'' + r.id + '\',\'' + esc(r.order_no) + '\')">✅ 確認接單</button>'
+      + '</div>';
+  } else if (r.status === 'confirmed') {
+    actions = '<div class="oc-actions">'
+      + '<button class="btn-cancel" onclick="setStatus(\'' + r.id + '\',\'cancelled\')">取消</button>'
+      + '<button class="btn-wait" onclick="openConfirmModal(\'' + r.id + '\',\'' + esc(r.order_no) + '\',true)">⏰ 改時間</button>'
       + '<button class="btn-done" onclick="setStatus(\'' + r.id + '\',\'done\')">完 成</button>'
-      + '</div>'
-    : badge;
+      + '</div>';
+  } else {
+    actions = badge;
+  }
+
+  // 已確認的單：標題列顯示取餐時間，老闆一眼知道哪張快到期
+  const pickupTag = (r.status === 'confirmed' && r.pickup_at)
+    ? '<span class="oc-pickup">⏰ ' + fmtHM(r.pickup_at) + ' 取餐</span>' : '';
 
   return '<div class="order-card' + (r.status === 'new' ? ' is-new' : '') + '">'
-    + '<div class="oc-head"><span class="oc-no">#' + esc(r.order_no) + '</span><span class="oc-time">' + t + '</span></div>'
+    + '<div class="oc-head"><span class="oc-no">#' + esc(r.order_no) + pickupTag + '</span><span class="oc-time">' + t + '</span></div>'
     + '<div class="oc-cust">👤 ' + esc(r.customer_name) + '　📞 <a href="tel:' + esc(r.customer_phone) + '">' + esc(r.customer_phone) + '</a></div>'
     + body
     + '<div class="oc-foot"><span class="oc-total">合計 $' + r.total + '</span>' + actions + '</div>'
@@ -214,6 +255,123 @@ async function setStatus(id, status) {
   const { error } = await db.from('orders').update({ status }).eq('id', id);
   if (error) { alert('更新失敗，請重試'); return; }
   loadOrders();
+}
+
+/* ---------- 確認接單流程 ---------- */
+
+/* 按「確認接單」→ 彈出獨立小視窗選等候時間
+   （做成彈窗有兩個理由：①15 秒自動刷新洗不掉它 ②有明確的返回、點背景＝取消，不會誤觸）*/
+let _cmMins = 30;        // 彈窗目前選的分鐘數
+let _cmUpdate = false;   // false＝首次確認接單／true＝已確認後修改取餐時間
+
+function openConfirmModal(id, orderNo, isUpdate, keepMins) {
+  if (!keepMins) _cmMins = 30; // 從預覽按「返回」回來時保留剛選的分鐘數，其餘情況重設
+  _cmUpdate = !!isUpdate;
+  const overlay = document.createElement('div');
+  overlay.className = 'line-preview-overlay';
+  overlay.id = 'confirmModal';
+  overlay.innerHTML =
+    '<div class="line-preview">'
+    + '<div class="lp-title">' + (_cmUpdate ? '⏰ 修改取餐時間 #' : '✅ 確認接單 #') + orderNo + '</div>'
+    + '<div class="cm-label">等候時間</div>'
+    + '<div class="cm-presets">'
+    +   [25, 30, 35].map(m => '<button class="btn-wait cm-preset" data-m="' + m + '" onclick="cmSetMins(' + m + ')">' + m + '分</button>').join('')
+    + '</div>'
+    + '<div class="cm-stepper">'
+    +   '<button class="cm-step" onclick="cmStep(-5)">−</button>'
+    +   '<span class="cm-mins" id="cmMins">30</span><span style="color:var(--dim);font-size:13px;">分鐘</span>'
+    +   '<button class="cm-step" onclick="cmStep(5)">＋</button>'
+    + '</div>'
+    + '<div class="cm-pickup" id="cmPickup"></div>'
+    + '<div class="cm-actions">'
+    +   '<button class="btn-plain" style="flex:1;padding:11px;" onclick="document.getElementById(\'confirmModal\').remove()">↩ 返回</button>'
+    +   '<button class="btn-accept" style="flex:2;padding:11px;" onclick="cmSubmit(\'' + id + '\')">' + (_cmUpdate ? '更新時間' : '確認送出') + '</button>'
+    + '</div>'
+    + '</div>';
+  // 點背景＝取消（什麼都不會發生，不會誤選）
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+  cmRefresh();
+}
+
+function cmSetMins(m) { _cmMins = m; cmRefresh(); }
+function cmStep(d) {
+  _cmMins = Math.min(180, Math.max(5, _cmMins + d)); // 5 分鐘一格，5～180 分之間
+  cmRefresh();
+}
+function cmRefresh() {
+  document.getElementById('cmMins').textContent = _cmMins;
+  // 即時預覽取餐時間，老闆按下去前就知道會告訴客人幾點
+  const pickup = new Date(Date.now() + _cmMins * 60000);
+  document.getElementById('cmPickup').textContent = '客人取餐時間 → ' + fmtHM(pickup.toISOString());
+  // 快選鍵高亮目前選中的
+  document.querySelectorAll('.cm-preset').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.m) === _cmMins));
+}
+/* 選完時間按「確認送出」→ 先跳訊息預覽（⚠️ 此時什麼都還沒生效！）
+   預覽視窗按「知道了」才真正寫入資料庫（未來＝才真正發 LINE）；按「返回」可回來重選 */
+async function cmSubmit(id) {
+  document.getElementById('confirmModal')?.remove();
+  // 撈這張單的內容，用「目前選的分鐘數」算出預覽用的取餐時間
+  const { data: r, error } = await db.from('orders').select('*').eq('id', id).single();
+  if (error || !r) { alert('讀取訂單失敗，請重試'); return; }
+  const preview = Object.assign({}, r, {
+    wait_minutes: _cmMins,
+    pickup_at: new Date(Date.now() + _cmMins * 60000).toISOString()
+  });
+  showLinePreview(preview);
+}
+
+/* 預覽按「知道了」→ 真正生效：寫入確認狀態＋時間（送出後就不再改時間） */
+async function commitConfirm(id) {
+  const now = new Date();
+  const pickup = new Date(now.getTime() + _cmMins * 60000); // 以按下知道了的時刻起算，最準
+  const patch = _cmUpdate
+    ? { wait_minutes: _cmMins, pickup_at: pickup.toISOString() }  // 改時間模式：不動狀態與首次確認時間
+    : { status: 'confirmed', confirmed_at: now.toISOString(), wait_minutes: _cmMins, pickup_at: pickup.toISOString() };
+  const { error } = await db.from('orders').update(patch).eq('id', id);
+  if (error) { alert('送出失敗，請重試'); return; }
+  loadOrders();
+}
+
+/* 世界標準時間 → 台北時間 HH:MM */
+function fmtHM(iso) {
+  return new Date(iso).toLocaleTimeString('zh-TW',
+    { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+/* ---------- 📱 通知訊息模擬預覽（假測試平台） ----------
+   這裡就是未來 LINE 推播的「插座」：
+   現在＝把訊息畫在螢幕上看樣子；M2/M3 串接後＝同一段訊息改成真的發進客人 LINE */
+function buildCustomerMessage(r) {
+  const items = (r.items || []).flatMap(o => (o.items || []).map(v => v.name + ' ×' + v.qty)).join('、');
+  return '🍢 老滷仙\n'
+    + '✅ 訂單確認！（取餐編號 #' + r.order_no + '）\n\n'
+    + '食材新鮮現滷，等候時間約 ' + r.wait_minutes + ' 分鐘，\n'
+    + '請於 ' + fmtHM(r.pickup_at) + ' 前往現場取餐。\n\n'
+    + '📋 ' + items + '\n'
+    + '💰 合計 $' + r.total;
+}
+
+/* 送出前的最後把關：看到訊息長相才決定要不要放行
+   ↩ 返回＝回時間選擇（保留剛選的分鐘）；知道了＝真正送出生效 */
+function showLinePreview(r) {
+  const msg = buildCustomerMessage(r);
+  const overlay = document.createElement('div');
+  overlay.className = 'line-preview-overlay';
+  overlay.innerHTML =
+    '<div class="line-preview">'
+    + '<div class="lp-title">📱 客人將收到的訊息（送出前預覽）</div>'
+    + '<div class="lp-chat"><div class="lp-bubble">' + esc(msg).replace(/\n/g, '<br>') + '</div></div>'
+    + '<div class="lp-note">按「知道了」才會生效送出；⏳ LINE 串接完成後，這則訊息會自動傳到客人的 LINE</div>'
+    + '<div class="cm-actions" style="margin-top:14px;">'
+    +   '<button class="btn-plain" style="flex:1;padding:10px;" onclick="this.closest(\'.line-preview-overlay\').remove();openConfirmModal(\'' + r.id + '\',\'' + esc(r.order_no) + '\',' + _cmUpdate + ',true)">↩ 返回</button>'
+    +   '<button class="lp-close" style="flex:1;margin:0;" onclick="this.closest(\'.line-preview-overlay\').remove();commitConfirm(\'' + r.id + '\')">知道了</button>'
+    + '</div>'
+    + '</div>';
+  // 點背景＝取消（不生效，跟按返回一樣安全）
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
 }
 
 /* 防範惡意輸入：把客人填的文字裡的特殊符號變無害（資安基本功）*/
