@@ -1765,8 +1765,31 @@ try {
   if (saved) waitMinutes = parseInt(saved);
 } catch(e) {}
 
-// 訂單序號（年月日+三碼流水，存 localStorage 跨頁持續）
-function genOrderNo(){
+// 訂單序號：改由資料庫統一發號（2026-07-11 修撞號 bug）
+// 舊版是每支手機自己數（localStorage），兩支手機互不知道，實測撞出兩張 #001。
+// 新版＝跟雲端的「發號櫃檯」領號（見 setup-order-counter.sql），保證不重複、每天從 001 重數。
+async function genOrderNo(){
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/next_order_no', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      },
+      body: '{}'
+    });
+    if (res.ok) {
+      const no = await res.json(); // 函式直接回傳字串，如 "001"
+      if (typeof no === 'string' && no.length >= 3) return no;
+    }
+  } catch(e) {}
+  // 領不到號（網路瞬斷等）→ 退回本機發號保底：單子照送，寧可冒撞號險也不能讓客人點不了餐
+  return genOrderNoLocal();
+}
+
+// 保底用的本機發號（舊邏輯，只在雲端領號失敗時上場）
+function genOrderNoLocal(){
   const now = new Date();
   const dateStr = now.getFullYear().toString()
     + String(now.getMonth()+1).padStart(2,'0')
@@ -2682,7 +2705,7 @@ async function submitOrder() {
   const btn = document.querySelector('#modalBox .btn-order');
   if (btn) { btn.disabled = true; btn.textContent = '傳送中…'; }
 
-  const orderNo = genOrderNo();
+  const orderNo = await genOrderNo(); // 跟雲端發號櫃檯領號（await：要等號碼拿到手才往下走）
 
   // ☁️ 關鍵一步：訂單先飛上雲端（老闆才收得到）；失敗就不算送出
   try {
@@ -2844,48 +2867,8 @@ function queryOrder() {
   }
 }
 
-function confirmOrder(total, mode){
-  const name=document.getElementById('fName').value.trim();
-  const phone=document.getElementById('fPhone').value.trim();
-  const note=document.getElementById('fNote')?.value.trim()||'';
-  if(!name){alert('請輸入姓名');return;}
-  if(!phone){alert('請輸入電話');return;}
-
-  const orderNo=genOrderNo();
-
-  // 組合偏好文字
-  const prefLines=[];
-  if(prefs.scallion==='yes') prefLines.push('加蔥');
-  else if(prefs.scallion==='no') prefLines.push('不要蔥');
-  if(prefs.garlic==='yes') prefLines.push('加蒜');
-  else if(prefs.garlic==='no') prefLines.push('不要蒜');
-  if(prefs.pepper==='yes') prefLines.push('加胡椒');
-  else if(prefs.pepper==='no') prefLines.push('不要胡椒');
-  if(prefs.spicy==='yes'&&prefs.spiceLevel) prefLines.push(`辣度：${prefs.spiceLevel}`);
-  else if(prefs.spicy==='no') prefLines.push('不加辣');
-  const prefStr=prefLines.length?prefLines.join('、'):'未指定';
-
-  document.getElementById('modalBox').innerHTML=`
-    <div class="success-wrap">
-      <span class="success-emoji">🎉</span>
-      <div class="success-title">訂單已送出！</div>
-      <div style="background:rgba(212,165,32,0.1);border:1px solid rgba(212,165,32,0.35);border-radius:4px;padding:8px 14px;margin-bottom:14px;text-align:center;">
-        <div style="font-size:11px;letter-spacing:3px;color:var(--gold3);margin-bottom:2px">取 餐 編 號</div>
-        <div style="font-family:'Noto Serif TC',serif;font-size:20px;font-weight:900;color:var(--gold2);letter-spacing:2px">${orderNo}</div>
-      </div>
-      <div class="success-msg">
-        <strong>${name}</strong> 您好，<br>
-        訂單已確認，<br>
-        等待時間約 <strong>${waitMinutes} 分鐘</strong>，<br>
-        請稍候再前來取餐。<br><br>
-        口味偏好：<strong>${prefStr}</strong><br>
-        ${note?`備註：<strong>${note}</strong><br>`:''}
-        合計金額：<strong>$${total}</strong><br><br>
-        如有問題請致電 <strong>0939-955-888</strong>
-      </div>
-      <button class="btn-done" onclick="finishOrder()">完 成</button>
-    </div>`;
-}
+// （confirmOrder() 死碼已於 2026-07-11 移除：舊版送單流程遺留，無任何地方呼叫，
+//   功能已被 submitOrder() 完全取代）
 
 function finishOrder(){
   // 清空所有訂單，重設
