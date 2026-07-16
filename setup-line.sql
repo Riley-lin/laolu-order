@@ -2,10 +2,10 @@
 -- 老滷仙 M1：LINE 推播串接（資料庫端）
 -- 用法：Supabase 儀表板 → SQL Editor → 貼上整份 → 按 Run
 --
--- ⚠️⚠️ 跑之前先把下面兩個【佔位符】換成真的值：
---   【WEBHOOK_SECRET】→ 你自己發明的一串通行碼（跟 Edge Function 的 Secrets 填同一串）
---   佔位符只存在這個檔案裡；換好值之後「不要」把真值 commit 回 GitHub
---   （這個 repo 是公開的，真值上去＝鑰匙掛在門口）
+-- ⚠️ 跑之前先把兩處【WEBHOOK_SECRET】換成真的通行碼
+--    （跟 Edge Function Secrets 的 WEBHOOK_SECRET 同一串、不能帶換行）；
+--    跑完把真值改回佔位符再存檔——這個 repo 是公開的，真值不進 GitHub。
+--    ✅ 2026-07-16 已在正式資料庫執行成功（含 pg_net 觸發器）。
 --
 -- 它蓋三樣東西：
 --   1. orders 表加一個欄位：這張訂單綁了誰的 LINE

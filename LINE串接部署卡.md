@@ -11,23 +11,32 @@
 
 ## 第 1 站｜Supabase 保險箱：存鑰匙
 
-Supabase 儀表板 → 左邊選單 **Edge Functions** → **Secrets**（或 Settings → Edge Functions）→ 新增四筆：
+Supabase 儀表板 → 左邊選單 **Edge Functions** → **Secrets** → 用最上面的白色框 **「ADD OR REPLACE SECRETS」**：
 
-| 名稱（一字不差） | 值 |
-|---|---|
-| `LINE_CHANNEL_ACCESS_TOKEN` | 記事本裡那串長的（token） |
-| `LINE_CHANNEL_SECRET` | 記事本裡那串短的（secret） |
-| `BOSS_BIND_CODE` | 自己發明一句密語（例：滷蛋加辣）——老闆綁定時要對的暗號 |
-| `WEBHOOK_SECRET` | 自己發明一串亂碼（例：亂打 20 個英數字）——資料庫叫推播員的通行碼 |
+1. **Name** 格填名稱、**Value** 格貼值（第一筆照下表）
+2. 按 **「Add another」**（Save 左邊）→ 多一組空格 → 填下一筆
+3. 四筆都填好後，**按一次綠色「Save」** 一起存
+
+| # | Name（一字不差） | Value |
+|---|---|---|
+| 1 | `LINE_CHANNEL_ACCESS_TOKEN` | 記事本裡那串長的（token） |
+| 2 | `LINE_CHANNEL_SECRET` | 記事本裡那串短的（secret） |
+| 3 | `BOSS_BIND_CODE` | 自己發明一句密語（例：滷蛋加辣）——老闆綁定時要對的暗號 |
+| 4 | `WEBHOOK_SECRET` | 自己發明一串亂碼（例：亂打 20 個英數字）——資料庫叫推播員的通行碼 |
 
 後面兩個是你**現在自己發明**的，發明完順手抄進 `laolu-line-keys.txt` 保存。
 
+✅ **完成的樣子**：中間「Custom secrets」清單（原本寫 No custom secrets created）出現你的四筆。
+⚠️ 最下面「Default secrets」是 Supabase 自帶的系統鑰匙，**不要動**。
+
 ## 第 2 站｜部署兩個雲端函式
 
-儀表板 **Edge Functions** → **Deploy a new function**（用網頁編輯器）：
+儀表板 **Edge Functions** → **Deploy a new function** → 下拉選單選第一個 **「Via Editor」**（Write and deploy in the browser）：
 
-1. 函式名稱填 `line-webhook` → 把 `supabase/functions/line-webhook/index.ts` 整份內容貼進去 → Deploy
-2. 再建第二個，名稱 `line-push` → 貼 `supabase/functions/line-push/index.ts` → Deploy
+1. 函式名稱填 `line-webhook` → 把 `supabase/functions/line-webhook/index.ts` 整份內容貼進編輯器 → Deploy
+2. 再來一次 Deploy a new function → Via Editor，名稱 `line-push` → 貼 `supabase/functions/line-push/index.ts` → Deploy
+
+（另外兩個選項不用理：Via CLI＝在自己電腦用指令部署；Via AI Assistant＝叫它幫你寫程式——程式我們已經有了）
 3. ⚠️ **兩個函式都要把「Verify JWT」關掉**（函式的 Details/設定裡有開關）——
    因為叫它們的是 LINE 和資料庫，不是登入的使用者；我們用簽章＋通行碼自己驗身分
 

@@ -340,9 +340,11 @@ function fmtHM(iso) {
     { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
-/* ---------- 📱 通知訊息模擬預覽（假測試平台） ----------
-   這裡就是未來 LINE 推播的「插座」：
-   現在＝把訊息畫在螢幕上看樣子；M2/M3 串接後＝同一段訊息改成真的發進客人 LINE */
+/* ---------- 📱 通知訊息預覽（2026-07-16 起為真發送） ----------
+   M1 已通電：按「知道了」寫入 confirmed 後，資料庫觸發器會呼叫
+   line-push 雲端函式，把「同一份訊息」真的推進綁定 LINE 的客人手機。
+   訊息內容以下面 buildCustomerMessage 為準（與 line-push/index.ts 同步維護）。
+   未綁定 LINE 的客人不受影響，照舊用查詢頁看狀態（優雅降級）。 */
 function buildCustomerMessage(r) {
   const items = (r.items || []).flatMap(o => (o.items || []).map(v => v.name + ' ×' + v.qty)).join('、');
   return '🍢 老滷仙\n'
@@ -363,7 +365,7 @@ function showLinePreview(r) {
     '<div class="line-preview">'
     + '<div class="lp-title">📱 客人將收到的訊息（送出前預覽）</div>'
     + '<div class="lp-chat"><div class="lp-bubble">' + esc(msg).replace(/\n/g, '<br>') + '</div></div>'
-    + '<div class="lp-note">按「知道了」才會生效送出；⏳ LINE 串接完成後，這則訊息會自動傳到客人的 LINE</div>'
+    + '<div class="lp-note">按「知道了」才會生效送出；📱 已綁定 LINE 的客人會自動收到這則訊息，未綁定的客人可在查詢頁看到取餐時間</div>'
     + '<div class="cm-actions" style="margin-top:14px;">'
     +   '<button class="btn-plain" style="flex:1;padding:10px;" onclick="this.closest(\'.line-preview-overlay\').remove();openConfirmModal(\'' + r.id + '\',\'' + esc(r.order_no) + '\',' + _cmUpdate + ',true)">↩ 返回</button>'
     +   '<button class="lp-close" style="flex:1;margin:0;" onclick="this.closest(\'.line-preview-overlay\').remove();commitConfirm(\'' + r.id + '\')">知道了</button>'
