@@ -3048,10 +3048,12 @@ document.getElementById('modalBg').addEventListener('click',function(e){if(e.tar
 document.getElementById('coverQueryBg').addEventListener('click',function(e){if(e.target===this)closeCoverQuery();});
 document.getElementById('modeSelectBg').addEventListener('click',function(e){if(e.target===this)closeModeSelect();});
 
-// 🍢 雲端菜單同步：開頁先抓一次，之後每 30 秒巡一次；
-// 客人切去別的 App 再切回來也立刻補抓（售完狀態不能是舊的）
+// 🍢 雲端菜單同步：開頁先抓一次，之後每 10 秒巡一次；
+// 客人切去別的 App 再切回來也立刻補抓（售完狀態不能是舊的）。
+// 注意：輪詢只管「畫面多快變灰」，防錯單的正主是 submitOrder 裡的送出前再驗；
+// 未來升級 Supabase Realtime（做訂單編輯器時一起）可讓這裡變即時推播。
 syncMenu();
-setInterval(syncMenu, 30000);
+setInterval(syncMenu, 10000);
 document.addEventListener('visibilitychange', function(){ if (!document.hidden) syncMenu(); });
 
 
