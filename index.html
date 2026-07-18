@@ -2473,13 +2473,9 @@ function openCheckout(e){
         <textarea class="form-textarea" id="fNote" rows="2" placeholder="其他特殊需求..."></textarea>
       </div>
 
-      <div class="modal-section-label">餐 具</div>
-      <div style="margin-bottom:14px">
-        <div class="pref-grid">
-          <div class="pref-btn \${prefs.utensils==='yes'?'selected':''}" onclick="setPref('utensils','yes',this)">🥢 需要餐具</div>
-          <div class="pref-btn \${prefs.utensils==='no'?'selected':''}" onclick="setPref('utensils','no',this)">不需要餐具</div>
-        </div>
-      </div>
+      <!-- 餐具免費勾選已退役（2026-07-19 Riley 拍板選 A）：
+           餐具改為收費品項，在菜單「餐具加購」區購買（紙碗$2/免洗筷$1），
+           免費勾選與付費加購並存會讓客人誤會免費 -->
 
       ${!multiOrder ? `
       <div class="modal-section-label">口 味 偏 好</div>
