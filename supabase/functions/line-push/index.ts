@@ -85,11 +85,12 @@ function buildNewOrderCard(r: any) {
   const items = (r.items ?? [])
     .flatMap((o: any) => (o.items ?? []).map((v: any) => `${v.name} ×${v.qty}`))
     .join('、')
+  // 按鈕文字只放「25分」三個字——三顆擠一排，帶 emoji 會被手機截成「2...」
   const acceptBtn = (m: number) => ({
     type: 'button', style: 'primary', height: 'sm', color: '#B8860B',
     action: {
       type: 'postback',
-      label: '✅ ' + m + '分',
+      label: m + '分',
       data: JSON.stringify({ a: 'ok', id: r.id, m }),
       displayText: '接單 #' + r.order_no + '（等候 ' + m + ' 分鐘）',
     },
@@ -105,7 +106,7 @@ function buildNewOrderCard(r: any) {
           { type: 'text', text: '👤 ' + (r.customer_name ?? '') + '　📞 ' + (r.customer_phone ?? ''), size: 'sm', wrap: true },
           { type: 'text', text: '📋 ' + items, size: 'sm', wrap: true },
           { type: 'text', text: '💰 合計 $' + r.total, weight: 'bold', margin: 'md' },
-          { type: 'text', text: '按下方按鈕接單，客人會自動收到取餐時間', size: 'xs', color: '#999999', wrap: true, margin: 'md' },
+          { type: 'text', text: '👇 選等候分鐘＝接單，客人自動收到取餐時間', size: 'xs', color: '#999999', wrap: true, margin: 'md' },
         ],
       },
       footer: {
