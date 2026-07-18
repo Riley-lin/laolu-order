@@ -3069,7 +3069,7 @@ document.addEventListener('visibilitychange', function(){ if (!document.hidden) 
    在 LINE Developers 開好 LIFF 後，把 ID 填進來即啟用：
    認出客人 → 結帳姓名自動帶入＋訂單自動綁定（免傳取餐編號）。
    任何一步出錯都靜默放棄——點餐永遠不能被 LIFF 卡住（可用性優先）。 */
-const LIFF_ID = '';  // ← 例：'1234567890-abcdefgh'
+const LIFF_ID = '2010753920-y35aYY9d';  // 2026-07-19 開通（LINE Login channel「老滷仙點餐」）
 let LINE_USER = null; // 認出的客人：{ id, name }
 (async function initLiff() {
   if (!LIFF_ID || typeof liff === 'undefined') return;
