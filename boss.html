@@ -108,6 +108,21 @@
   .ed-add-bar{display:flex;gap:8px;margin:10px 0 4px;}
   .ed-add-bar select{flex:1;padding:8px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);font-size:13px;max-width:100%;}
   .ed-total{text-align:right;font-size:15px;font-weight:900;color:var(--gold2);margin:8px 0;}
+
+  /* ====== 📊 老闆日報 ====== */
+  .dr-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:10px;}
+  .dr-date{font-family:"Noto Serif TC",serif;font-size:16px;font-weight:900;color:var(--gold2);letter-spacing:1px;}
+  .dr-stats{display:flex;gap:8px;margin-bottom:12px;}
+  .dr-stat{flex:1;background:rgba(212,165,32,0.08);border:1px solid var(--line);border-radius:8px;padding:8px 4px;text-align:center;}
+  .dr-stat b{display:block;font-size:18px;color:var(--gold2);}
+  .dr-stat span{font-size:11px;color:var(--dim);letter-spacing:1px;}
+  .dr-sec{font-size:12px;color:var(--gold3,#b8934a);letter-spacing:2px;margin:10px 0 4px;font-weight:700;}
+  .dr-rank-row{display:flex;justify-content:space-between;padding:5px 2px;font-size:14px;border-bottom:1px dashed rgba(212,165,32,0.12);}
+  .dr-order-row{font-size:12.5px;color:var(--dim);padding:6px 2px;border-bottom:1px dashed rgba(212,165,32,0.1);line-height:1.55;}
+  .dr-order-row b{color:var(--gold2);}
+  .dr-order-row.cancelled{opacity:0.5;}
+  .dr-order-row.cancelled b{text-decoration:line-through;}
+  .dr-actions{display:flex;gap:8px;margin-top:12px;}
 </style>
 </head>
 <body>
@@ -131,6 +146,7 @@
       <button class="tab" data-f="done" onclick="setFilter('done',this)">✅ 已完成</button>
       <button class="tab" data-f="all" onclick="setFilter('all',this)">全部</button>
       <span class="spacer"></span>
+      <button class="btn-plain" onclick="openDailyReport()">📊 日報</button>
       <button class="btn-plain" onclick="openMenuManager()">🍢 菜單</button>
       <button class="btn-plain" onclick="loadOrders()">↻ 重新整理</button>
       <button class="btn-plain" onclick="doLogout()">登出</button>
@@ -585,6 +601,160 @@ async function commitEdit() {
   if (error || !data || !data.length) { alert('儲存失敗，請重試'); renderEditModal(); return; }
   _editState = null;
   loadOrders();
+}
+
+/* ---------- 📊 老闆日報（M0.9-A） ----------
+   收店後看一眼今天的成績單：熱賣排行＋訂單總整理＋營收合計。
+   取消的訂單不計入營收與排行（只列在清單裡供對帳）。
+   📤 分享＝手機一鍵傳 LINE；⬇️ CSV＝回家用電腦開 Excel。 */
+let _drDate = null;      // 目前看的日期（台北時間 YYYY-MM-DD）
+let _drShare = '';       // 分享用的純文字版
+let _drCsv = '';         // 下載用的 CSV 內容
+
+function taipeiToday() {
+  // sv-SE 這個地區格式剛好就是 YYYY-MM-DD，拿來當日期字串最省事
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' });
+}
+function drWeekday(dateStr) {
+  return new Date(dateStr + 'T00:00:00+08:00')
+    .toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei', weekday: 'narrow' });
+}
+function drShift(days) {
+  const d = new Date(_drDate + 'T12:00:00+08:00'); // 取中午避開換日邊界
+  d.setDate(d.getDate() + days);
+  const next = d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' });
+  if (next > taipeiToday()) return; // 未來還沒有日報
+  openDailyReport(next);
+}
+
+/* 把一行品項攤進排行統計；任選組合拆開算進各品項（例：任選3個（貢丸×2、花枝丸））
+   ※ 任選組合未來會從菜單移除，這段拆解到時自然閒置，不影響其他品項 */
+function drExplode(v, tally) {
+  const m = /^任選3個（(.+)）$/.exec(v.name);
+  if (m) {
+    m[1].split('、').forEach(tok => {
+      const mm = /^(.+?)×(\d+)$/.exec(tok);
+      const nm = mm ? mm[1] : tok;
+      const n = (mm ? parseInt(mm[2], 10) : 1) * v.qty;
+      tally[nm] = (tally[nm] || 0) + n;
+    });
+  } else {
+    tally[v.name] = (tally[v.name] || 0) + v.qty;
+  }
+}
+
+async function openDailyReport(dateStr) {
+  _drDate = dateStr || taipeiToday();
+  // 台北時間的一整天 = [當日 00:00+08:00, 隔日 00:00+08:00)
+  const start = new Date(_drDate + 'T00:00:00+08:00');
+  const end = new Date(start.getTime() + 86400000);
+  const { data, error } = await db.from('orders').select('*')
+    .gte('created_at', start.toISOString()).lt('created_at', end.toISOString())
+    .order('created_at', { ascending: true });
+  if (error) { alert('日報讀取失敗，請重試'); return; }
+  renderDailyReport(data || []);
+}
+
+function renderDailyReport(rows) {
+  const valid = rows.filter(r => r.status !== 'cancelled');
+  const cancelled = rows.filter(r => r.status === 'cancelled');
+  const revenue = valid.reduce((s, r) => s + (r.total || 0), 0);
+
+  // 熱賣排行（只算沒取消的單）
+  const tally = {};
+  valid.forEach(r => (r.items || []).forEach(o => (o.items || []).forEach(v => drExplode(v, tally))));
+  const rank = Object.entries(tally).sort((a, b) => b[1] - a[1]);
+  const medal = i => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.');
+
+  const statusLabel = { new: '新單', confirmed: '製作中', done: '完成', cancelled: '已取消' };
+  const title = _drDate + '（' + drWeekday(_drDate) + '）';
+
+  // ── 畫面 ──
+  const rankHtml = rank.length
+    ? rank.map(([nm, n], i) =>
+        '<div class="dr-rank-row"><span>' + medal(i) + ' ' + esc(nm) + '</span><b style="color:var(--gold2)">×' + n + '</b></div>'
+      ).join('')
+    : '<div class="empty" style="padding:14px 0">今天還沒有訂單 🍃</div>';
+
+  const listHtml = rows.map(r => {
+    const t = new Date(r.created_at).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
+    const items = (r.items || []).flatMap(o => (o.items || []).map(v => v.name + '×' + v.qty)).join('、');
+    return '<div class="dr-order-row' + (r.status === 'cancelled' ? ' cancelled' : '') + '">'
+      + '<b>#' + esc(r.order_no) + '</b>　' + t + '　' + esc(r.customer_name) + '　$' + r.total
+      + '　[' + (statusLabel[r.status] || r.status) + ']<br>' + esc(items) + '</div>';
+  }).join('');
+
+  // ── 分享文字版（手機傳 LINE 用）──
+  _drShare = '🍢 老滷仙日報 ' + title + '\n'
+    + '訂單 ' + rows.length + ' 張（有效 ' + valid.length + '・取消 ' + cancelled.length + '）\n'
+    + '營收 $' + revenue + '\n\n'
+    + (rank.length ? rank.slice(0, 3).map(([nm, n], i) => medal(i) + ' ' + nm + ' ×' + n).join('\n') : '（本日無訂單）');
+
+  // ── CSV（開頭加 BOM 記號 ﻿＝讓 Excel 認得中文；用明碼寫避免隱形字元事故）──
+  const q = s => '"' + String(s).replace(/"/g, '""') + '"';
+  _drCsv = '﻿' + '老滷仙日報,' + _drDate + '\n'
+    + '訂單數,' + rows.length + '\n有效單,' + valid.length + '\n取消單,' + cancelled.length + '\n營收,' + revenue + '\n\n'
+    + '排行,品項,份數\n'
+    + rank.map(([nm, n], i) => (i + 1) + ',' + q(nm) + ',' + n).join('\n')
+    + '\n\n編號,時間,客人,金額,狀態,品項\n'
+    + rows.map(r => {
+        const t = new Date(r.created_at).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
+        const items = (r.items || []).flatMap(o => (o.items || []).map(v => v.name + '×' + v.qty)).join('、');
+        return q(r.order_no) + ',' + t + ',' + q(r.customer_name) + ',' + r.total + ',' + (statusLabel[r.status] || r.status) + ',' + q(items);
+      }).join('\n');
+
+  // ── 彈窗 ──
+  document.getElementById('dailyReport')?.remove();
+  const overlay = document.createElement('div');
+  overlay.className = 'line-preview-overlay';
+  overlay.id = 'dailyReport';
+  overlay.innerHTML =
+    '<div class="menu-mgr">'
+    + '<div class="lp-title">📊 老闆日報</div>'
+    + '<div class="dr-nav">'
+    +   '<button class="btn-plain" onclick="drShift(-1)">‹ 前一天</button>'
+    +   '<span class="dr-date">' + title + '</span>'
+    +   '<button class="btn-plain" onclick="drShift(1)" ' + (_drDate >= taipeiToday() ? 'disabled style="opacity:0.3"' : '') + '>後一天 ›</button>'
+    + '</div>'
+    + '<div class="dr-stats">'
+    +   '<div class="dr-stat"><b>' + valid.length + '</b><span>有效單</span></div>'
+    +   '<div class="dr-stat"><b>' + cancelled.length + '</b><span>取消</span></div>'
+    +   '<div class="dr-stat"><b>$' + revenue + '</b><span>營收</span></div>'
+    + '</div>'
+    + '<div class="mm-list">'
+    +   '<div class="dr-sec">🏆 熱賣排行</div>' + rankHtml
+    +   '<div class="dr-sec">📋 訂單清單</div>' + (listHtml || '<div class="empty" style="padding:14px 0">無</div>')
+    + '</div>'
+    + '<div class="dr-actions">'
+    +   '<button class="btn-wait" style="flex:1;padding:10px;" onclick="drShareReport()">📤 分享</button>'
+    +   '<button class="btn-wait" style="flex:1;padding:10px;" onclick="drDownloadCsv()">⬇️ CSV</button>'
+    +   '<button class="lp-close" style="flex:1;margin:0;" onclick="document.getElementById(\'dailyReport\').remove()">關 閉</button>'
+    + '</div>'
+    + '</div>';
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+/* 📤 手機：跳出系統分享面板（可直接傳 LINE）；電腦或不支援時退回複製 */
+async function drShareReport() {
+  if (navigator.share) {
+    try { await navigator.share({ text: _drShare }); return; } catch (e) { /* 使用者取消就算了 */ }
+  } else if (navigator.clipboard) {
+    await navigator.clipboard.writeText(_drShare);
+    alert('日報文字已複製，貼到 LINE 就能傳 📋');
+  }
+}
+
+/* ⬇️ 下載 CSV（Excel 直接開；檔名帶日期）*/
+function drDownloadCsv() {
+  const blob = new Blob([_drCsv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '老滷仙日報_' + _drDate + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
 }
 
 /* ---------- 🍢 菜單管理（M0.9-B：售完/恢復） ----------
