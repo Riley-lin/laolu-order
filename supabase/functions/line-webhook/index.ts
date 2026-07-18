@@ -40,21 +40,176 @@ async function verifySignature(body: string, signature: string | null): Promise<
 }
 
 // ---------- 回覆訊息（用 LINE 給的一次性回覆券 replyToken）----------
+// 小知識：「回覆」不占推播額度（免費），所以老闆按按鈕的回饋全用回覆做
 async function reply(replyToken: string, text: string) {
-  await fetch('https://api.line.me/v2/bot/message/reply', {
+  await replyMessages(replyToken, [{ type: 'text', text }])
+}
+
+async function replyMessages(replyToken: string, messages: unknown[]) {
+  const res = await fetch('https://api.line.me/v2/bot/message/reply', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${ACCESS_TOKEN}`,
     },
-    body: JSON.stringify({ replyToken, messages: [{ type: 'text', text }] }),
+    body: JSON.stringify({ replyToken, messages }),
   })
+  if (!res.ok) console.error('LINE reply 失敗：', res.status, await res.text())
 }
 
 // ---------- 台北時間 HH:MM（跟 boss.html 的 fmtHM 同一套）----------
 function fmtHM(iso: string): string {
   return new Date(iso).toLocaleTimeString('zh-TW',
     { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false })
+}
+
+// ============================================================
+// 🔘 M2：老闆按鈕處理（2026-07-18 老闆裁示「完成鍵要在 LINE 按」）
+// 按鈕藏在推播員發的新單卡片裡，按下去 LINE 會把「postback 資料」
+// 送到這裡。資料格式：{ a: 動作, id: 訂單編號, m: 分鐘 }
+//   a='ok'  ＝接單（帶等候分鐘）→ 寫入資料庫 → 門鈴自動通知客人
+//   a='done'＝完成　a='no1'＝想取消（先問一次防手滑）　a='no'＝真的取消　a='keep'＝不取消
+// 安全：先查 line_admins 名簿，不是老闆按的一律拒絕
+// 防重複：更新時加「目前狀態」條件，兩個老闆同時按也只會生效一次
+// ============================================================
+async function handleBossButton(ev: any, userId: string) {
+  let p: any = {}
+  try { p = JSON.parse(ev.postback?.data ?? '{}') } catch { /* 看不懂的資料就當沒事 */ }
+  if (!p.a) return
+
+  // 門禁：只有登記過的老闆能按
+  const { data: admin } = await db.from('line_admins')
+    .select('line_user_id').eq('line_user_id', userId).maybeSingle()
+  if (!admin) {
+    await reply(ev.replyToken, '這些按鈕只有老闆能按喔 🍢')
+    return
+  }
+
+  // ✅ 接單：狀態 new → confirmed（只有還是新單才會成功＝防重複按）
+  if (p.a === 'ok') {
+    const mins = Math.min(180, Math.max(5, parseInt(p.m, 10) || 30))
+    const now = new Date()
+    const pickup = new Date(now.getTime() + mins * 60000)
+    const { data: rows } = await db.from('orders')
+      .update({
+        status: 'confirmed', confirmed_at: now.toISOString(),
+        wait_minutes: mins, pickup_at: pickup.toISOString(),
+      })
+      .eq('id', p.id).eq('status', 'new').select()
+    if (!rows?.length) {
+      await reply(ev.replyToken, '這張單已經處理過囉（可能剛剛已按過或已取消）')
+      return
+    }
+    const r = rows[0]
+    // 這次更新會自動觸發資料庫門鈴 → 推播員通知綁定的客人（不用這裡多做事）
+    await replyMessages(ev.replyToken, [
+      {
+        type: 'text',
+        text: '✅ 已接單 #' + r.order_no + '，取餐時間 ' + fmtHM(r.pickup_at) + '\n'
+          + (r.line_user_id ? '客人已自動收到通知 🔔' : '（這位客人沒綁 LINE，會用查詢頁看時間）'),
+      },
+      buildCookingCard(r),
+    ])
+    return
+  }
+
+  // 🏁 完成：狀態 confirmed → done
+  if (p.a === 'done') {
+    const { data: rows } = await db.from('orders')
+      .update({ status: 'done' })
+      .eq('id', p.id).eq('status', 'confirmed').select()
+    if (!rows?.length) {
+      await reply(ev.replyToken, '這張單不在製作中，可能已完成或已取消囉')
+      return
+    }
+    await reply(ev.replyToken, '🏁 訂單 #' + rows[0].order_no + ' 完成，辛苦了！')
+    return
+  }
+
+  // ❌ 第一段：想取消 → 先確認一次（防手滑，跟看單台的確認視窗同一個精神）
+  if (p.a === 'no1') {
+    const { data: r } = await db.from('orders')
+      .select('id, order_no, status').eq('id', p.id).maybeSingle()
+    if (!r || (r.status !== 'new' && r.status !== 'confirmed')) {
+      await reply(ev.replyToken, '這張單目前不能取消（已完成或已取消）')
+      return
+    }
+    await replyMessages(ev.replyToken, [{
+      type: 'flex',
+      altText: '確定要取消訂單 #' + r.order_no + ' 嗎？',
+      contents: {
+        type: 'bubble',
+        body: {
+          type: 'box', layout: 'vertical', spacing: 'sm', contents: [
+            { type: 'text', text: '⚠️ 確定要取消訂單 #' + r.order_no + ' 嗎？', weight: 'bold', wrap: true },
+            { type: 'text', text: '取消後客人就點不到這張單了', size: 'xs', color: '#999999', wrap: true },
+          ],
+        },
+        footer: {
+          type: 'box', layout: 'horizontal', spacing: 'sm', contents: [
+            {
+              type: 'button', style: 'secondary', height: 'sm',
+              action: { type: 'postback', label: '留著不取消', data: JSON.stringify({ a: 'keep' }), displayText: '訂單留著' },
+            },
+            {
+              type: 'button', style: 'primary', color: '#CC4444', height: 'sm',
+              action: { type: 'postback', label: '確定取消', data: JSON.stringify({ a: 'no', id: r.id }), displayText: '確定取消 #' + r.order_no },
+            },
+          ],
+        },
+      },
+    }])
+    return
+  }
+
+  // ❌ 第二段：真的取消
+  if (p.a === 'no') {
+    const { data: rows } = await db.from('orders')
+      .update({ status: 'cancelled' })
+      .eq('id', p.id).in('status', ['new', 'confirmed']).select()
+    if (!rows?.length) {
+      await reply(ev.replyToken, '這張單已經不能取消了（可能已完成或已取消）')
+      return
+    }
+    await reply(ev.replyToken, '❌ 訂單 #' + rows[0].order_no + ' 已取消')
+    return
+  }
+
+  // 🙆 不取消
+  if (p.a === 'keep') {
+    await reply(ev.replyToken, '好，訂單留著繼續做 🍢')
+    return
+  }
+}
+
+// 接單後回給老闆的「製作中卡片」：上面有完成/取消按鈕，做完直接按
+function buildCookingCard(r: any) {
+  return {
+    type: 'flex',
+    altText: '🔥 #' + r.order_no + ' 製作中',
+    contents: {
+      type: 'bubble',
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'sm', contents: [
+          { type: 'text', text: '🔥 #' + r.order_no + ' 製作中', weight: 'bold', size: 'lg', color: '#B8860B' },
+          { type: 'text', text: '⏰ 取餐時間 ' + fmtHM(r.pickup_at), size: 'sm' },
+          { type: 'text', text: '做好了按「完成」歸檔', size: 'xs', color: '#999999' },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'horizontal', spacing: 'sm', contents: [
+          {
+            type: 'button', style: 'secondary', height: 'sm',
+            action: { type: 'postback', label: '❌ 取消', data: JSON.stringify({ a: 'no1', id: r.id }), displayText: '取消 #' + r.order_no + '？' },
+          },
+          {
+            type: 'button', style: 'primary', color: '#4A8B4A', height: 'sm',
+            action: { type: 'postback', label: '🏁 完成', data: JSON.stringify({ a: 'done', id: r.id }), displayText: '完成 #' + r.order_no },
+          },
+        ],
+      },
+    },
+  }
 }
 
 Deno.serve(async (req) => {
@@ -70,6 +225,12 @@ Deno.serve(async (req) => {
   for (const ev of events ?? []) {
     const userId: string | undefined = ev.source?.userId
     if (!userId) continue
+
+    // ⓪ M2：老闆按了卡片上的按鈕（postback）→ 直接在 LINE 完成接單/完成/取消
+    if (ev.type === 'postback') {
+      await handleBossButton(ev, userId)
+      continue
+    }
 
     // ① 加好友 → 歡迎詞
     if (ev.type === 'follow') {

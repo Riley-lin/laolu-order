@@ -26,13 +26,18 @@ const db = createClient(
 
 // ---------- 發 LINE 推播 ----------
 async function push(to: string, text: string) {
+  await pushMessages(to, [{ type: 'text', text }])
+}
+
+// 進階版：可以發任何形式的訊息（文字、按鈕卡片…）
+async function pushMessages(to: string, messages: unknown[]) {
   const res = await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${ACCESS_TOKEN}`,
     },
-    body: JSON.stringify({ to, messages: [{ type: 'text', text }] }),
+    body: JSON.stringify({ to, messages }),
   })
   if (!res.ok) console.error('LINE push 失敗：', res.status, await res.text())
 }
@@ -72,15 +77,53 @@ function buildEditedMessage(r: any, oldTotal?: number): string {
     + '\n如有疑問請致電 0939-955-888'
 }
 
-// ---------- 老闆訊息：新訂單快報 ----------
-function buildBossMessage(r: any): string {
+// ---------- 老闆訊息：新訂單「按鈕卡片」（M2）----------
+// 老闆的裁示：「完成鍵要在 LINE 按，要去後台就不行」——
+// 所以新單直接給按鈕：✅25/30/35分＝一鍵接單（客人自動收到取餐時間）；❌＝取消（會再問一次防手滑）。
+// 按鈕按下去由接待員（line-webhook）處理，只有名簿裡的老闆按了有效。
+function buildNewOrderCard(r: any) {
   const items = (r.items ?? [])
     .flatMap((o: any) => (o.items ?? []).map((v: any) => `${v.name} ×${v.qty}`))
     .join('、')
-  return '🔔 新訂單 #' + r.order_no + '\n\n'
-    + '📋 ' + items + '\n'
-    + '💰 合計 $' + r.total + '\n\n'
-    + '到看單台按「確認接單」就會通知客人取餐時間'
+  const acceptBtn = (m: number) => ({
+    type: 'button', style: 'primary', height: 'sm', color: '#B8860B',
+    action: {
+      type: 'postback',
+      label: '✅ ' + m + '分',
+      data: JSON.stringify({ a: 'ok', id: r.id, m }),
+      displayText: '接單 #' + r.order_no + '（等候 ' + m + ' 分鐘）',
+    },
+  })
+  return {
+    type: 'flex',
+    altText: '🔔 新訂單 #' + r.order_no + '（$' + r.total + '）',
+    contents: {
+      type: 'bubble',
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'sm', contents: [
+          { type: 'text', text: '🔔 新訂單 #' + r.order_no, weight: 'bold', size: 'lg', color: '#B8860B' },
+          { type: 'text', text: '👤 ' + (r.customer_name ?? '') + '　📞 ' + (r.customer_phone ?? ''), size: 'sm', wrap: true },
+          { type: 'text', text: '📋 ' + items, size: 'sm', wrap: true },
+          { type: 'text', text: '💰 合計 $' + r.total, weight: 'bold', margin: 'md' },
+          { type: 'text', text: '按下方按鈕接單，客人會自動收到取餐時間', size: 'xs', color: '#999999', wrap: true, margin: 'md' },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', spacing: 'sm', contents: [
+          { type: 'box', layout: 'horizontal', spacing: 'sm', contents: [25, 30, 35].map(acceptBtn) },
+          {
+            type: 'button', style: 'secondary', height: 'sm',
+            action: {
+              type: 'postback',
+              label: '❌ 取消這張單',
+              data: JSON.stringify({ a: 'no1', id: r.id }),
+              displayText: '取消 #' + r.order_no + '？',
+            },
+          },
+        ],
+      },
+    },
+  }
 }
 
 Deno.serve(async (req) => {
@@ -92,10 +135,11 @@ Deno.serve(async (req) => {
   const { kind, record, old_total } = await req.json()
 
   if (kind === 'new_order') {
-    // 撈出所有登記過的管理員，逐一通知
+    // 撈出所有登記過的管理員，逐一發「按鈕卡片」（M2：接單直接在 LINE 按）
     const { data: admins } = await db.from('line_admins').select('line_user_id')
+    const card = buildNewOrderCard(record)
     for (const a of admins ?? []) {
-      await push(a.line_user_id, buildBossMessage(record))
+      await pushMessages(a.line_user_id, [card])
     }
   }
 
