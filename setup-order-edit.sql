@@ -2,9 +2,11 @@
 -- 🍢 M0.9-C：訂單編輯器（資料庫端）
 -- 用法：Supabase 儀表板 → SQL Editor → 貼上整份 → 按 Run
 --
--- ⚠️ 跑之前先把三處【WEBHOOK_SECRET】換成真的通行碼
---    （跟 Edge Function Secrets 的 WEBHOOK_SECRET 同一串、不能帶換行）；
---    跑完把真值改回佔位符再存檔——這個 repo 是公開的，真值不進 GitHub。
+-- ⚠️ 歷史檔注意（2026-07-18 部署實錄）：
+--    本檔的 ① 門鈴函式是「三處手貼通行碼」版，部署當晚因貼碼再度 403，
+--    已被 setup-secret-vault.sql 的「保險櫃版」取代（通行碼存 app_secrets 表，
+--    門鈴自己開櫃拿，永不再貼碼）。② Realtime 段仍有效。
+--    之後重蓋門鈴一律用 setup-secret-vault.sql，不要再跑本檔的 ①。
 --
 -- 它蓋兩樣東西：
 --   1. 門鈴（notify_line）加第三種鈴聲：
