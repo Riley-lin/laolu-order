@@ -82,6 +82,17 @@
   .cm-actions{display:flex;gap:10px;}
   .empty{text-align:center;color:var(--dim);padding:50px 0;font-size:14px;letter-spacing:2px;}
   .hidden{display:none;}
+
+  /* ====== 🍢 菜單管理（售完/恢復） ====== */
+  .menu-mgr{background:var(--card);border:1px solid var(--line);border-radius:10px;max-width:460px;width:100%;max-height:82vh;display:flex;flex-direction:column;padding:18px;}
+  .mm-list{overflow-y:auto;margin-top:6px;padding-right:4px;}
+  .mm-cat{color:var(--gold2);font-size:13px;font-weight:700;letter-spacing:2px;margin:12px 0 4px;border-bottom:1px dashed var(--line);padding-bottom:4px;}
+  .mm-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 2px;font-size:14px;}
+  .mm-row.off .mm-name{color:var(--dim);text-decoration:line-through;}
+  .mm-price{color:var(--dim);font-size:12px;margin-left:8px;}
+  .mm-btn{min-width:84px;padding:6px 12px;border-radius:14px;font-size:12px;cursor:pointer;letter-spacing:1px;border:1px solid rgba(127,201,127,0.5);background:rgba(127,201,127,0.1);color:var(--green);}
+  .mm-btn.off{border-color:var(--red);color:var(--red);background:rgba(224,122,95,0.12);}
+  .mm-btn:disabled{opacity:0.5;}
 </style>
 </head>
 <body>
@@ -105,6 +116,7 @@
       <button class="tab" data-f="done" onclick="setFilter('done',this)">✅ 已完成</button>
       <button class="tab" data-f="all" onclick="setFilter('all',this)">全部</button>
       <span class="spacer"></span>
+      <button class="btn-plain" onclick="openMenuManager()">🍢 菜單</button>
       <button class="btn-plain" onclick="loadOrders()">↻ 重新整理</button>
       <button class="btn-plain" onclick="doLogout()">登出</button>
     </div>
@@ -374,6 +386,71 @@ function showLinePreview(r) {
   // 點背景＝取消（不生效，跟按返回一樣安全）
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   document.body.appendChild(overlay);
+}
+
+/* ---------- 🍢 菜單管理（M0.9-B：售完/恢復） ----------
+   菜單住在雲端 menu_items 資料表（跟點餐頁同一份＝單一真相來源）。
+   老闆在這裡按「售完」→ 客人的點餐頁 30 秒內自動變灰不可點；補貨按「恢復」。
+   RLS 門禁：只有登入的老闆改得動；沒登入的人連按都按不出效果。 */
+const CAT_LABELS = {
+  p10: '$10 元', p15: '$15 元', p20: '$20 元', p25: '$25 元', combo25: '任選3個 $25',
+  p30: '$30 元', p35: '$35 元', combo35: '任選3個 $35', p45: '$45 元', noodle: '麵食類'
+};
+
+async function openMenuManager() {
+  const { data, error } = await db.from('menu_items').select('*').order('sort');
+  if (error || !data || !data.length) {
+    alert('菜單讀取失敗——是不是還沒在 Supabase SQL Editor 執行 setup-menu.sql？');
+    return;
+  }
+  // 依分類分組，照 sort 順序畫出來
+  const groups = {};
+  data.forEach(r => { (groups[r.category_id] = groups[r.category_id] || []).push(r); });
+  let listHtml = '';
+  Object.keys(groups).forEach(cid => {
+    listHtml += '<div class="mm-cat">' + (CAT_LABELS[cid] || cid) + '</div>'
+      + groups[cid].map(mmRowHTML).join('');
+  });
+
+  const overlay = document.createElement('div');
+  overlay.className = 'line-preview-overlay';
+  overlay.id = 'menuMgr';
+  overlay.innerHTML =
+    '<div class="menu-mgr">'
+    + '<div class="lp-title">🍢 菜單管理</div>'
+    + '<div class="lp-note" style="margin-top:0">按右邊按鈕切換：售完 → 客人點餐頁變灰不可點；補貨後按一下恢復</div>'
+    + '<div class="mm-list">' + listHtml + '</div>'
+    + '<button class="lp-close" onclick="document.getElementById(\'menuMgr\').remove()">關 閉</button>'
+    + '</div>';
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+/* 一列＝一個品項：名字＋價格＋狀態鈕（綠＝供應中／紅＝已售完，按了就切換） */
+function mmRowHTML(r) {
+  return '<div class="mm-row' + (r.sold_out ? ' off' : '') + '" id="mmrow-' + r.id + '">'
+    + '<span class="mm-name">' + esc(r.name) + '<span class="mm-price">$' + r.price + '</span></span>'
+    + '<button class="mm-btn' + (r.sold_out ? ' off' : '') + '" onclick="toggleSoldOut(' + r.id + ',' + !r.sold_out + ',this)">'
+    + (r.sold_out ? '❌ 已售完' : '✅ 供應中') + '</button>'
+    + '</div>';
+}
+
+async function toggleSoldOut(id, to, btn) {
+  btn.disabled = true;
+  // .select() 是驗收憑證：RLS 若擋下（例如沒登入），更新會「安靜地改到 0 筆」，
+  // 要求回傳改到的資料列，才能分辨「真的改成功」和「被門禁擋掉」
+  const { data, error } = await db.from('menu_items')
+    .update({ sold_out: to }).eq('id', id).select();
+  btn.disabled = false;
+  if (error || !data || !data.length) {
+    alert('更新失敗：請確認已用老闆帳號登入，再試一次');
+    return;
+  }
+  const row = document.getElementById('mmrow-' + id);
+  row.classList.toggle('off', to);
+  btn.classList.toggle('off', to);
+  btn.textContent = to ? '❌ 已售完' : '✅ 供應中';
+  btn.setAttribute('onclick', 'toggleSoldOut(' + id + ',' + !to + ',this)');
 }
 
 /* 防範惡意輸入：把客人填的文字裡的特殊符號變無害（資安基本功）*/

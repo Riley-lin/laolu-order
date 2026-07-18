@@ -499,6 +499,15 @@ body{
 .item-bottom{display:flex;align-items:center;justify-content:space-between;}
 .item-price{font-family:'Noto Serif TC',serif;font-size:14px;font-weight:700;color:var(--gold2);letter-spacing:0.5px;}
 
+/* 🚫 今日售完：整卡變灰、按不了（狀態來自雲端 menu_items.sold_out） */
+.item-card.sold-out{opacity:0.45;filter:grayscale(0.85);}
+.item-card.sold-out:hover{transform:none;border-color:rgba(212,165,32,0.12);background:var(--surface1);box-shadow:none;}
+.sold-tag{
+  display:inline-block;margin-left:6px;padding:1px 6px;
+  font-size:10px;letter-spacing:1px;color:#e07a5f;
+  border:1px solid rgba(224,122,95,0.6);border-radius:3px;vertical-align:1px;
+}
+
 /* ★ 加減按鈕 ★ */
 .qty-ctrl{
   display:flex;align-items:center;
@@ -1675,8 +1684,11 @@ body{
 <script>
 // ────────────────────────────────
 // 菜單資料（已依名片校正）
+// M0.9-B 起菜單真身住在雲端 menu_items 資料表（單一真相來源）；
+// 這份寫死的只當「備用菜單」：雲端讀不到時保底，客人照樣能點（可用性優先）。
+// 分類的標籤／組合規則仍以這份為模板，雲端只管「品項、價格、售完」。
 // ────────────────────────────────
-const MENU = [
+const FALLBACK_MENU = [
   {
     id:'p10', label:'$10 元',
     pricePerItem:10,
@@ -1732,6 +1744,11 @@ const MENU = [
     ]
   }
 ];
+
+// 畫面實際使用的菜單：開頁先用備用版，雲端菜單抓到後換裝
+let MENU = FALLBACK_MENU;
+// 今日售完的品項名單（Set 查起來快）；由雲端 sold_out 欄位餵進來
+let SOLD_OUT = new Set();
 
 // ────────────────────────────────
 // 狀態
@@ -1974,9 +1991,11 @@ function buildComboSection(cat){
 
 function comboItemHTML(comboId,name,sel,totalSel,price){
   const qty = sel[name]||0;
-  const canAdd = totalSel < 3;
-  return `<div class="item-card ${qty>0?'has-qty':''}">
-    <div class="item-name">${name}</div>
+  // 售完的品項不能再＋（－保留，已選的可以退掉）
+  const off = SOLD_OUT.has(name);
+  const canAdd = totalSel < 3 && !off;
+  return `<div class="item-card ${qty>0?'has-qty':''} ${off?'sold-out':''}">
+    <div class="item-name">${name}${off?'<span class="sold-tag">今日售完</span>':''}</div>
     <div class="item-bottom">
       <span class="item-price">$${price}</span>
       <div class="qty-ctrl">
@@ -1991,14 +2010,16 @@ function comboItemHTML(comboId,name,sel,totalSel,price){
 function itemCardHTML(key,name,price){
   const qty=getCart()[key]?.qty||0;
   const k=key.replace(/'/g,"\\'");
-  return `<div class="item-card ${qty>0?'has-qty':''}" id="card-${key}">
-    <div class="item-name">${name}</div>
+  // 售完：卡片變灰＋「＋」停用；「－」保留，讓已加進購物車的還能自己減掉
+  const off = SOLD_OUT.has(name);
+  return `<div class="item-card ${qty>0?'has-qty':''} ${off?'sold-out':''}" id="card-${key}">
+    <div class="item-name">${name}${off?'<span class="sold-tag">今日售完</span>':''}</div>
     <div class="item-bottom">
       <span class="item-price">$${price}</span>
       <div class="qty-ctrl">
         <button class="qty-btn" onclick="chQty('${k}','${name}',${price},-1)">－</button>
         <span class="qty-num" id="qty-${key}">${qty}</span>
-        <button class="qty-btn" onclick="chQty('${k}','${name}',${price},1)">＋</button>
+        <button class="qty-btn" onclick="chQty('${k}','${name}',${price},1)" ${off?'disabled style="opacity:0.3;cursor:not-allowed"':''}>＋</button>
       </div>
     </div>
   </div>`;
@@ -2038,7 +2059,10 @@ function addComboToCart(comboId,price){
     price
   };
   getComboCartItems()[comboId].push(entry);
-  getCart()[entry.id] = {name:`任選3個（${desc}）`, price, qty:1};
+  // names＝這份組合裡的品名清單（結構化），送出前的售完檢查靠它，
+  // 不用去猜描述字串（「香菇」會誤中「香菇貢丸」這種substring陷阱）
+  getCart()[entry.id] = {name:`任選3個（${desc}）`, price, qty:1,
+    names:Object.entries(sel).filter(([,v])=>v>0).map(([k])=>k)};
   // 清空選擇
   getComboSelections()[comboId] = {};
   refreshComboSection(comboId, price);
@@ -2662,6 +2686,69 @@ function saveOrderToHistory(orderNo, name, phone, total, ordersToShow, mode) {
 const SUPABASE_URL = 'https://wwirnzsbqrqafyjrvgkn.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_eJLYMZhDGmE5dlYb4G5XbQ_DapXnnra';
 
+/* ── 🍢 雲端菜單（M0.9-B）─────────────────────────────
+   菜單真身在 menu_items 資料表；這裡負責三件事：
+   ① 抓菜單 ② 用抓到的資料重組 MENU（分類模板沿用備用菜單）③ 更新售完名單 */
+
+// ① 跟雲端要整份菜單（依 sort 排序）
+async function fetchMenuRows() {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/menu_items?select=category_id,name,price,sold_out,sort&order=sort.asc', {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+  });
+  if (!res.ok) throw new Error('菜單讀取 HTTP ' + res.status);
+  return res.json();
+}
+
+// ② 雲端資料 → 畫面用的 MENU 結構（分類標籤/組合規則沿用備用菜單的模板）
+function rebuildMenuFromRows(rows) {
+  const byCat = {};
+  rows.forEach(r => { (byCat[r.category_id] = byCat[r.category_id] || []).push(r); });
+  return FALLBACK_MENU.map(meta => {
+    const rs = byCat[meta.id];
+    if (!rs || !rs.length) return meta;  // 雲端沒這分類的資料 → 照用備用版
+    if (meta.isNoodle) {
+      // 麵食類：同分類有兩種價位，依價格自動分組還原 subgroups
+      const byPrice = {};
+      rs.forEach(r => { (byPrice[r.price] = byPrice[r.price] || []).push(r.name); });
+      const subgroups = Object.keys(byPrice).map(Number).sort((a, b) => a - b)
+        .map(p => ({ price: p, items: byPrice[p] }));
+      return Object.assign({}, meta, { subgroups });
+    }
+    // 一般分類與任選組合：品項清單＋分類價都以雲端為準（改價免改程式碼）
+    return Object.assign({}, meta, { pricePerItem: rs[0].price, items: rs.map(r => r.name) });
+  });
+}
+
+// ③ 更新售完名單
+function applySoldOut(rows) {
+  SOLD_OUT = new Set(rows.filter(r => r.sold_out).map(r => r.name));
+}
+
+// 同步一輪：抓雲端 → 換裝 MENU ＋售完名單 → 點餐頁開著就重畫
+// （資料沒變就不重畫，避免打擾正在點餐的客人）
+let _menuSnapshot = '';
+async function syncMenu() {
+  try {
+    const rows = await fetchMenuRows();
+    if (!rows.length) return;  // 資料表還沒灌菜單 → 繼續用備用版
+    const snap = JSON.stringify(rows);
+    if (snap === _menuSnapshot) return;
+    _menuSnapshot = snap;
+    MENU = rebuildMenuFromRows(rows);
+    applySoldOut(rows);
+    if (document.getElementById('order-page').style.display === 'block') buildOrderPage();
+  } catch (e) { /* 讀不到就先用手上這份，客人照樣能點（可用性優先） */ }
+}
+
+// 送出前的售完清查：回傳購物車裡踩到售完的品名（去重）
+function findSoldOutInOrders(list) {
+  const hit = new Set();
+  list.forEach(o => Object.values(o.cart || {}).forEach(v => {
+    (v.names || [v.name]).forEach(n => { if (SOLD_OUT.has(n)) hit.add(n); });
+  }));
+  return Array.from(hit);
+}
+
 // 把訂單寫上雲端；失敗會丟出錯誤，由 submitOrder 決定怎麼善後
 async function sendOrderToCloud(records) {
   const res = await fetch(SUPABASE_URL + '/rest/v1/orders', {
@@ -2714,6 +2801,20 @@ async function submitOrder() {
   // 防手滑連點：上傳期間先鎖住送出鈕，避免同一單送兩次
   const btn = document.querySelector('#modalBox .btn-order');
   if (btn) { btn.disabled = true; btn.textContent = '傳送中…'; }
+
+  // 🛡 售完最後把關：送出瞬間再問一次雲端，堵「加進購物車之後才被下架」的時間差
+  try {
+    const rows = await fetchMenuRows();
+    if (rows.length) { applySoldOut(rows); MENU = rebuildMenuFromRows(rows); }
+  } catch (e) { /* 雲端問不到就照手上名單放行，別把客人卡死 */ }
+  const blocked = findSoldOutInOrders(ordersToShow);
+  if (blocked.length) {
+    if (btn) { btn.disabled = false; btn.textContent = '送 出 訂 單'; }
+    closeModal();
+    buildOrderPage();  // 重畫菜單，讓剛售完的變灰
+    alert('⚠️ 不好意思，「' + blocked.join('、') + '」剛剛售完了！\n請調整購物車內容後再送出。');
+    return;
+  }
 
   const orderNo = await genOrderNo(); // 跟雲端發號櫃檯領號（await：要等號碼拿到手才往下走）
 
@@ -2946,6 +3047,12 @@ function closeModal(){
 document.getElementById('modalBg').addEventListener('click',function(e){if(e.target===this)closeModal();});
 document.getElementById('coverQueryBg').addEventListener('click',function(e){if(e.target===this)closeCoverQuery();});
 document.getElementById('modeSelectBg').addEventListener('click',function(e){if(e.target===this)closeModeSelect();});
+
+// 🍢 雲端菜單同步：開頁先抓一次，之後每 30 秒巡一次；
+// 客人切去別的 App 再切回來也立刻補抓（售完狀態不能是舊的）
+syncMenu();
+setInterval(syncMenu, 30000);
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) syncMenu(); });
 
 
 // ────────────────────────────────
