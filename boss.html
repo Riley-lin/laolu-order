@@ -93,6 +93,21 @@
   .mm-btn{min-width:84px;padding:6px 12px;border-radius:14px;font-size:12px;cursor:pointer;letter-spacing:1px;border:1px solid rgba(127,201,127,0.5);background:rgba(127,201,127,0.1);color:var(--green);}
   .mm-btn.off{border-color:var(--red);color:var(--red);background:rgba(224,122,95,0.12);}
   .mm-btn:disabled{opacity:0.5;}
+
+  /* ====== ✏️ 訂單編輯器 ====== */
+  .btn-edit{padding:8px 12px;border:1px solid var(--gold);border-radius:6px;background:none;color:var(--gold2);font-size:13px;cursor:pointer;}
+  .ed-list{overflow-y:auto;max-height:44vh;margin:4px 0;}
+  .ed-sub-name{color:var(--gold2);font-size:13px;font-weight:700;margin:8px 0 2px;}
+  .ed-row{display:flex;align-items:center;gap:8px;padding:7px 0;font-size:14px;border-bottom:1px dashed rgba(212,165,32,0.15);}
+  .ed-name{flex:1;line-height:1.4;}
+  .ed-price{color:var(--dim);font-size:12px;}
+  .ed-step{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:none;color:var(--gold2);font-size:16px;font-weight:900;cursor:pointer;}
+  .ed-step:disabled{opacity:0.3;cursor:not-allowed;}
+  .ed-qty{min-width:22px;text-align:center;font-weight:700;}
+  .ed-del{border:1px solid var(--red);background:none;color:var(--red);border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:13px;}
+  .ed-add-bar{display:flex;gap:8px;margin:10px 0 4px;}
+  .ed-add-bar select{flex:1;padding:8px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);font-size:13px;max-width:100%;}
+  .ed-total{text-align:right;font-size:15px;font-weight:900;color:var(--gold2);margin:8px 0;}
 </style>
 </head>
 <body>
@@ -157,17 +172,31 @@ async function doLogin() {
 async function doLogout() {
   await db.auth.signOut();
   clearInterval(pollTimer);
+  if (rtChannel) { db.removeChannel(rtChannel); rtChannel = null; }
   document.getElementById('boardView').classList.add('hidden');
   document.getElementById('loginView').classList.remove('hidden');
 }
 
-/* 進入看單模式：顯示列表＋每 15 秒自動抓一次新單 */
+/* 進入看單模式：Realtime 即時廣播當主力（新單/改單瞬間跳出），
+   輪詢降為 60 秒保底（萬一廣播斷線也不漏單）*/
 function showBoard() {
   document.getElementById('loginView').classList.add('hidden');
   document.getElementById('boardView').classList.remove('hidden');
   loadOrders();
+  startRealtime();
   clearInterval(pollTimer);
-  pollTimer = setInterval(loadOrders, 15000);
+  pollTimer = setInterval(loadOrders, 60000);
+}
+
+/* ---------- ⚡ Realtime 即時跳單（M0.9-C） ----------
+   訂閱 orders 表的即時廣播：資料庫一有動靜馬上重抓列表。
+   廣播一樣過 RLS 門禁——沒登入的人就算訂閱了也收不到訂單資料。 */
+let rtChannel = null;
+function startRealtime() {
+  if (rtChannel) return;
+  rtChannel = db.channel('orders-live')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => loadOrders())
+    .subscribe();
 }
 
 /* 打開頁面時：如果之前登入過還沒過期，直接進看單台 */
@@ -182,11 +211,14 @@ function setFilter(f, el) {
 }
 
 async function loadOrders() {
-  // 跟資料庫要最近 100 筆，最新的排最上面
-  let query = db.from('orders').select('*').order('created_at', { ascending: false }).limit(100);
-  if (currentFilter === 'new')       query = query.eq('status', 'new');
-  if (currentFilter === 'confirmed') query = query.eq('status', 'confirmed');
-  if (currentFilter === 'done')      query = query.eq('status', 'done');
+  // 跟資料庫要最近 100 筆。
+  // 「製作中」分頁按取餐時間排（快到期的在最上面，老闆一眼知道先滷哪張）；
+  // 其他分頁照下單時間新到舊。
+  let query = db.from('orders').select('*').limit(100);
+  if (currentFilter === 'new')            query = query.eq('status', 'new').order('created_at', { ascending: false });
+  else if (currentFilter === 'confirmed') query = query.eq('status', 'confirmed').order('pickup_at', { ascending: true, nullsFirst: false });
+  else if (currentFilter === 'done')      query = query.eq('status', 'done').order('created_at', { ascending: false });
+  else                                    query = query.order('created_at', { ascending: false });
 
   const { data, error } = await query;
   const list = document.getElementById('orderList');
@@ -224,11 +256,13 @@ function renderCard(r) {
   if (r.status === 'new') {
     actions = '<div class="oc-actions">'
       + '<button class="btn-cancel" onclick="setStatus(\'' + r.id + '\',\'cancelled\')">取消</button>'
+      + '<button class="btn-edit" onclick="openEditModal(\'' + r.id + '\')">✏️ 編輯</button>'
       + '<button class="btn-accept" onclick="openConfirmModal(\'' + r.id + '\',\'' + esc(r.order_no) + '\')">✅ 確認接單</button>'
       + '</div>';
   } else if (r.status === 'confirmed') {
     actions = '<div class="oc-actions">'
       + '<button class="btn-cancel" onclick="setStatus(\'' + r.id + '\',\'cancelled\')">取消</button>'
+      + '<button class="btn-edit" onclick="openEditModal(\'' + r.id + '\')">✏️ 編輯</button>'
       + '<button class="btn-wait" onclick="openConfirmModal(\'' + r.id + '\',\'' + esc(r.order_no) + '\',true)">⏰ 改時間</button>'
       + '<button class="btn-done" onclick="setStatus(\'' + r.id + '\',\'done\')">完 成</button>'
       + '</div>';
@@ -386,6 +420,171 @@ function showLinePreview(r) {
   // 點背景＝取消（不生效，跟按返回一樣安全）
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   document.body.appendChild(overlay);
+}
+
+/* ---------- ✏️ 訂單編輯器（M0.9-C） ----------
+   客人點錯／打電話來改 → 老闆直接在這裡改量、刪品項、加品項。
+   跟確認接單同一套把關：先看「客人會收到的變更訊息」，按知道了才寫入；
+   寫入後資料庫門鈴自動叫推播員，通知綁定 LINE 的客人（沒綁的不發）。 */
+let _editState = null;   // 編輯中的訂單：{ id, order_no, pickup_at, oldTotal, packs }
+let _edMenuCache = null; // 加品項下拉選單的菜單快取（每次開編輯器重抓，售完的不進來）
+
+async function openEditModal(id) {
+  const { data: r, error } = await db.from('orders').select('*').eq('id', id).single();
+  if (error || !r) { alert('讀取訂單失敗，請重試'); return; }
+  if (r.status !== 'new' && r.status !== 'confirmed') { alert('這張單目前的狀態不能編輯'); return; }
+  _editState = {
+    id: r.id, order_no: r.order_no, pickup_at: r.pickup_at,
+    oldTotal: r.total,
+    packs: JSON.parse(JSON.stringify(r.items || []))  // 深拷貝：按「返回」不會弄髒原單
+  };
+  // 抓可加購的菜單（售完的不列入）
+  const { data: menu } = await db.from('menu_items').select('*').eq('sold_out', false).order('sort');
+  _edMenuCache = menu || [];
+  renderEditModal();
+}
+
+function edPackTotal(p) { return (p.items || []).reduce((s, v) => s + v.price * v.qty, 0); }
+function edGrandTotal() { return _editState.packs.reduce((s, p) => s + edPackTotal(p), 0); }
+function edItemCount()  { return _editState.packs.reduce((s, p) => s + (p.items || []).length, 0); }
+
+function renderEditModal() {
+  document.getElementById('editModal')?.remove();
+  const st = _editState;
+
+  let rows = '';
+  st.packs.forEach((p, pi) => {
+    if (st.packs.length > 1 && p.name) rows += '<div class="ed-sub-name">' + esc(p.name) + '</div>';
+    (p.items || []).forEach((v, ii) => {
+      rows += '<div class="ed-row">'
+        + '<span class="ed-name">' + esc(v.name) + ' <span class="ed-price">$' + v.price + '</span></span>'
+        + '<button class="ed-step" onclick="edQty(' + pi + ',' + ii + ',-1)" ' + (v.qty <= 1 ? 'disabled' : '') + '>−</button>'
+        + '<span class="ed-qty">' + v.qty + '</span>'
+        + '<button class="ed-step" onclick="edQty(' + pi + ',' + ii + ',1)">＋</button>'
+        + '<button class="ed-del" onclick="edDel(' + pi + ',' + ii + ')">✕</button>'
+        + '</div>';
+    });
+  });
+
+  // 加品項下拉：依分類分組（只列供應中的）
+  let opts = '';
+  let lastCat = null;
+  _edMenuCache.forEach((m, i) => {
+    if (m.category_id !== lastCat) {
+      if (lastCat !== null) opts += '</optgroup>';
+      opts += '<optgroup label="' + esc(CAT_LABELS[m.category_id] || m.category_id) + '">';
+      lastCat = m.category_id;
+    }
+    opts += '<option value="' + i + '">' + esc(m.name) + '（$' + m.price + '）</option>';
+  });
+  if (lastCat !== null) opts += '</optgroup>';
+
+  const overlay = document.createElement('div');
+  overlay.className = 'line-preview-overlay';
+  overlay.id = 'editModal';
+  overlay.innerHTML =
+    '<div class="line-preview">'
+    + '<div class="lp-title">✏️ 編輯訂單 #' + esc(st.order_no) + '</div>'
+    + '<div class="ed-list">' + rows + '</div>'
+    + '<div class="ed-add-bar">'
+    +   '<select id="edPicker">' + opts + '</select>'
+    +   '<button class="btn-wait" onclick="edAdd()">＋ 加入</button>'
+    + '</div>'
+    + '<div class="ed-total">合計 $' + edGrandTotal()
+    +   (edGrandTotal() !== st.oldTotal ? ' <span style="color:var(--dim);font-size:12px;font-weight:400">（原 $' + st.oldTotal + '）</span>' : '')
+    + '</div>'
+    + '<div class="cm-actions">'
+    +   '<button class="btn-plain" style="flex:1;padding:11px;" onclick="edClose()">↩ 返回</button>'
+    +   '<button class="btn-accept" style="flex:2;padding:11px;" onclick="edPreview()">預覽變更</button>'
+    + '</div>'
+    + '</div>';
+  overlay.addEventListener('click', e => { if (e.target === overlay) edClose(); });
+  document.body.appendChild(overlay);
+}
+
+function edClose() { document.getElementById('editModal')?.remove(); _editState = null; }
+
+function edQty(pi, ii, delta) {
+  const v = _editState.packs[pi].items[ii];
+  v.qty = Math.max(1, v.qty + delta);  // 最少 1，要拿掉整項請按 ✕
+  renderEditModal();
+}
+
+function edDel(pi, ii) {
+  _editState.packs[pi].items.splice(ii, 1);
+  renderEditModal();
+}
+
+function edAdd() {
+  const sel = document.getElementById('edPicker');
+  const m = _edMenuCache[parseInt(sel.value, 10)];
+  if (!m) return;
+  // 加進第一包；同品項已存在就數量 +1，不重複開行
+  const pack = _editState.packs[0] || (_editState.packs[0] = { items: [] });
+  if (!pack.items) pack.items = [];
+  const exist = pack.items.find(v => v.name === m.name && v.price === m.price);
+  if (exist) exist.qty += 1;
+  else pack.items.push({ name: m.name, qty: 1, price: m.price });
+  renderEditModal();
+}
+
+/* 跟推播員（line-push）同一份格式：客人收到的「訂單內容更新」訊息 */
+function buildEditedMessage(r, oldTotal) {
+  const items = (r.items || []).flatMap(o => (o.items || []).map(v => v.name + ' ×' + v.qty)).join('、');
+  const totalLine = (typeof oldTotal === 'number' && oldTotal !== r.total)
+    ? '💰 合計 $' + r.total + '（原 $' + oldTotal + '）'
+    : '💰 合計 $' + r.total;
+  return '🍢 老滷仙\n'
+    + '✏️ 訂單內容更新（取餐編號 #' + r.order_no + '）\n\n'
+    + '📋 新內容：' + items + '\n'
+    + totalLine + '\n'
+    + (r.pickup_at ? '⏰ 取餐時間不變：' + fmtHM(r.pickup_at) + '\n' : '')
+    + '\n如有疑問請致電 0939-955-888';
+}
+
+/* 按「預覽變更」→ 先看客人會收到的訊息（此時什麼都還沒生效）*/
+function edPreview() {
+  const st = _editState;
+  if (edItemCount() === 0) {
+    alert('訂單不能改到空——要整單作廢請用「取消」');
+    return;
+  }
+  const preview = {
+    order_no: st.order_no, pickup_at: st.pickup_at,
+    items: st.packs, total: edGrandTotal()
+  };
+  const msg = buildEditedMessage(preview, st.oldTotal);
+  document.getElementById('editModal')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'line-preview-overlay';
+  overlay.id = 'editPreview';
+  overlay.innerHTML =
+    '<div class="line-preview">'
+    + '<div class="lp-title">📱 客人將收到的訊息（送出前預覽）</div>'
+    + '<div class="lp-chat"><div class="lp-bubble">' + esc(msg).replace(/\n/g, '<br>') + '</div></div>'
+    + '<div class="lp-note">按「知道了」才會生效；📱 已綁定 LINE 的客人會自動收到這則訊息，未綁定的不發送</div>'
+    + '<div class="cm-actions" style="margin-top:14px;">'
+    +   '<button class="btn-plain" style="flex:1;padding:10px;" onclick="document.getElementById(\'editPreview\').remove();renderEditModal()">↩ 返回</button>'
+    +   '<button class="lp-close" style="flex:1;margin:0;" onclick="document.getElementById(\'editPreview\').remove();commitEdit()">知道了</button>'
+    + '</div>'
+    + '</div>';
+  overlay.addEventListener('click', e => { if (e.target === overlay) { overlay.remove(); renderEditModal(); } });
+  document.body.appendChild(overlay);
+}
+
+/* 預覽按「知道了」→ 真正寫入（.select() 驗證真的改到，防 RLS 靜默擋下）*/
+async function commitEdit() {
+  const st = _editState;
+  const packs = st.packs
+    .filter(p => (p.items || []).length > 0)             // 空包不留
+    .map(p => Object.assign({}, p, { total: edPackTotal(p) }));
+  const total = packs.reduce((s, p) => s + p.total, 0);
+  const { data, error } = await db.from('orders')
+    .update({ items: packs, total }).eq('id', st.id).select();
+  if (error || !data || !data.length) { alert('儲存失敗，請重試'); renderEditModal(); return; }
+  _editState = null;
+  loadOrders();
 }
 
 /* ---------- 🍢 菜單管理（M0.9-B：售完/恢復） ----------

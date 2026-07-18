@@ -5,6 +5,7 @@
 //
 //   kind = 'new_order'  → 通知所有管理員（老闆）：有新單！
 //   kind = 'confirmed'  → 通知該訂單綁定的客人：取餐時間出爐
+//   kind = 'edited'     → 通知該訂單綁定的客人：訂單內容被老闆修改
 //
 // 訊息格式完全沿用 boss.html 的 buildCustomerMessage——
 // 也就是老闆在預覽視窗看到的那份，一字不差。
@@ -55,6 +56,22 @@ function buildCustomerMessage(r: any): string {
     + '💰 合計 $' + r.total
 }
 
+// ---------- 客人訊息：訂單內容更新（跟 boss.html 編輯預覽同一份格式）----------
+function buildEditedMessage(r: any, oldTotal?: number): string {
+  const items = (r.items ?? [])
+    .flatMap((o: any) => (o.items ?? []).map((v: any) => `${v.name} ×${v.qty}`))
+    .join('、')
+  const totalLine = (typeof oldTotal === 'number' && oldTotal !== r.total)
+    ? '💰 合計 $' + r.total + '（原 $' + oldTotal + '）'
+    : '💰 合計 $' + r.total
+  return '🍢 老滷仙\n'
+    + '✏️ 訂單內容更新（取餐編號 #' + r.order_no + '）\n\n'
+    + '📋 新內容：' + items + '\n'
+    + totalLine + '\n'
+    + (r.pickup_at ? '⏰ 取餐時間不變：' + fmtHM(r.pickup_at) + '\n' : '')
+    + '\n如有疑問請致電 0939-955-888'
+}
+
 // ---------- 老闆訊息：新訂單快報 ----------
 function buildBossMessage(r: any): string {
   const items = (r.items ?? [])
@@ -72,7 +89,7 @@ Deno.serve(async (req) => {
     return new Response('forbidden', { status: 403 })
   }
 
-  const { kind, record } = await req.json()
+  const { kind, record, old_total } = await req.json()
 
   if (kind === 'new_order') {
     // 撈出所有登記過的管理員，逐一通知
@@ -85,6 +102,11 @@ Deno.serve(async (req) => {
   if (kind === 'confirmed' && record?.line_user_id) {
     // 只通知有綁定 LINE 的客人（沒綁的照舊用查詢頁，不影響）
     await push(record.line_user_id, buildCustomerMessage(record))
+  }
+
+  if (kind === 'edited' && record?.line_user_id) {
+    // 訂單被老闆修改 → 通知綁定的客人新內容（沒綁的不發，優雅降級）
+    await push(record.line_user_id, buildEditedMessage(record, old_total))
   }
 
   return new Response('ok')
