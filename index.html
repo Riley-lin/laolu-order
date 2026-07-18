@@ -1681,6 +1681,9 @@ body{
   </div>
 </div>
 
+<!-- 📱 LIFF SDK（M3）：LINE 官方零件——當這頁在 LINE 裡打開時，能認出客人是誰。
+     一般瀏覽器照常載入但不啟動，對非 LINE 客人零影響。 -->
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
 // ────────────────────────────────
 // 菜單資料（已依名片校正）
@@ -2433,7 +2436,7 @@ function openCheckout(e){
 
       <div class="form-group">
         <label class="form-label">姓 名</label>
-        <input class="form-input" id="fName" placeholder="請輸入姓名" type="text">
+        <input class="form-input" id="fName" placeholder="請輸入姓名" type="text" value="${LINE_USER ? String(LINE_USER.name).replace(/"/g,'&quot;') : ''}">
       </div>
       <div class="form-group">
         <label class="form-label">電 話</label>
@@ -2772,6 +2775,9 @@ function buildCloudRecords(orderNo, name, phone, total, ordersToShow, mode) {
     total: o.total,
     prefs: o.prefs
   });
+  // 📱 LIFF 自動綁定：從 LINE 開的客人，訂單直接記住他的 LINE
+  // （＝老闆接單時通知直達，客人免傳取餐編號；一般瀏覽器客人此欄為空，照舊用編號綁）
+  const lineId = LINE_USER ? LINE_USER.id : null;
   if (mode === 'split' && ordersToShow.length > 1) {
     // 分開結帳：一人一筆，編號加 B、C… 後綴（跟本機紀錄同一套規則）
     return ordersToShow.map((o, i) => ({
@@ -2780,7 +2786,8 @@ function buildCloudRecords(orderNo, name, phone, total, ordersToShow, mode) {
       customer_phone: phone,
       mode: 'single',
       items: [pack(o)],
-      total: o.total
+      total: o.total,
+      line_user_id: lineId
     }));
   }
   // 合併結帳或個人單：整包存一筆
@@ -2790,7 +2797,8 @@ function buildCloudRecords(orderNo, name, phone, total, ordersToShow, mode) {
     customer_phone: phone,
     mode: mode,
     items: ordersToShow.map(pack),
-    total: total
+    total: total,
+    line_user_id: lineId
   }];
 }
 
@@ -3055,6 +3063,23 @@ document.getElementById('modeSelectBg').addEventListener('click',function(e){if(
 syncMenu();
 setInterval(syncMenu, 10000);
 document.addEventListener('visibilitychange', function(){ if (!document.hidden) syncMenu(); });
+
+/* ── 📱 LIFF 啟動（M3）：客人從 LINE 打開時自動認人 ──
+   LIFF_ID 留空＝一般網頁模式，整段直接跳過（上線前的安全預設）。
+   在 LINE Developers 開好 LIFF 後，把 ID 填進來即啟用：
+   認出客人 → 結帳姓名自動帶入＋訂單自動綁定（免傳取餐編號）。
+   任何一步出錯都靜默放棄——點餐永遠不能被 LIFF 卡住（可用性優先）。 */
+const LIFF_ID = '';  // ← 例：'1234567890-abcdefgh'
+let LINE_USER = null; // 認出的客人：{ id, name }
+(async function initLiff() {
+  if (!LIFF_ID || typeof liff === 'undefined') return;
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) return; // LINE 裡開必定已登入；外部瀏覽器未登入就當一般客人
+    const p = await liff.getProfile();
+    LINE_USER = { id: p.userId, name: p.displayName };
+  } catch (e) { /* LIFF 失敗＝一般網頁模式，不影響點餐 */ }
+})();
 
 
 // ────────────────────────────────

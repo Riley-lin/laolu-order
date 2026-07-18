@@ -48,30 +48,40 @@ function fmtHM(iso: string): string {
     { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
+// ---------- 品項條列：一行一項（2026-07-19 Riley 裁示：一條龍難讀）----------
+function itemLines(r: any): string {
+  return (r.items ?? [])
+    .flatMap((o: any) => (o.items ?? []).map((v: any) => `・${v.name} ×${v.qty}`))
+    .join('\n')
+}
+
 // ---------- 客人訊息：跟 boss.html 預覽視窗同一份格式 ----------
 function buildCustomerMessage(r: any): string {
-  const items = (r.items ?? [])
-    .flatMap((o: any) => (o.items ?? []).map((v: any) => `${v.name} ×${v.qty}`))
-    .join('、')
   return '🍢 老滷仙\n'
     + '✅ 訂單確認！（取餐編號 #' + r.order_no + '）\n\n'
     + '食材新鮮現滷，等候時間約 ' + r.wait_minutes + ' 分鐘，\n'
     + '請於 ' + fmtHM(r.pickup_at) + ' 前往現場取餐。\n\n'
-    + '📋 ' + items + '\n'
+    + '📋 訂單內容\n' + itemLines(r) + '\n'
     + '💰 合計 $' + r.total
+}
+
+// ---------- 客人訊息：取餐時間更新（M3：改時間終於會通知了）----------
+function buildRetimedMessage(r: any, oldPickup?: string): string {
+  return '🍢 老滷仙\n'
+    + '⏰ 取餐時間更新（取餐編號 #' + r.order_no + '）\n\n'
+    + '新的取餐時間：' + fmtHM(r.pickup_at)
+    + (oldPickup ? '（原 ' + fmtHM(oldPickup) + '）' : '') + '\n\n'
+    + '如有疑問請致電 0939-955-888'
 }
 
 // ---------- 客人訊息：訂單內容更新（跟 boss.html 編輯預覽同一份格式）----------
 function buildEditedMessage(r: any, oldTotal?: number): string {
-  const items = (r.items ?? [])
-    .flatMap((o: any) => (o.items ?? []).map((v: any) => `${v.name} ×${v.qty}`))
-    .join('、')
   const totalLine = (typeof oldTotal === 'number' && oldTotal !== r.total)
     ? '💰 合計 $' + r.total + '（原 $' + oldTotal + '）'
     : '💰 合計 $' + r.total
   return '🍢 老滷仙\n'
     + '✏️ 訂單內容更新（取餐編號 #' + r.order_no + '）\n\n'
-    + '📋 新內容：' + items + '\n'
+    + '📋 新內容\n' + itemLines(r) + '\n'
     + totalLine + '\n'
     + (r.pickup_at ? '⏰ 取餐時間不變：' + fmtHM(r.pickup_at) + '\n' : '')
     + '\n如有疑問請致電 0939-955-888'
@@ -82,9 +92,7 @@ function buildEditedMessage(r: any, oldTotal?: number): string {
 // 所以新單直接給按鈕：✅25/30/35分＝一鍵接單（客人自動收到取餐時間）；❌＝取消（會再問一次防手滑）。
 // 按鈕按下去由接待員（line-webhook）處理，只有名簿裡的老闆按了有效。
 function buildNewOrderCard(r: any) {
-  const items = (r.items ?? [])
-    .flatMap((o: any) => (o.items ?? []).map((v: any) => `${v.name} ×${v.qty}`))
-    .join('、')
+  const items = itemLines(r)  // 一行一項，好讀（Flex 文字設 wrap 即可吃換行）
   // 按鈕文字只放「25分」三個字——三顆擠一排，帶 emoji 會被手機截成「2...」
   const acceptBtn = (m: number) => ({
     type: 'button', style: 'primary', height: 'sm', color: '#B8860B',
@@ -104,7 +112,7 @@ function buildNewOrderCard(r: any) {
         type: 'box', layout: 'vertical', spacing: 'sm', contents: [
           { type: 'text', text: '🔔 新訂單 #' + r.order_no, weight: 'bold', size: 'lg', color: '#B8860B' },
           { type: 'text', text: '👤 ' + (r.customer_name ?? '') + '　📞 ' + (r.customer_phone ?? ''), size: 'sm', wrap: true },
-          { type: 'text', text: '📋 ' + items, size: 'sm', wrap: true },
+          { type: 'text', text: items, size: 'sm', wrap: true, weight: 'bold' },
           { type: 'text', text: '💰 合計 $' + r.total, weight: 'bold', margin: 'md' },
           { type: 'text', text: '👇 選等候分鐘＝接單，客人自動收到取餐時間', size: 'xs', color: '#999999', wrap: true, margin: 'md' },
         ],
@@ -133,7 +141,7 @@ Deno.serve(async (req) => {
     return new Response('forbidden', { status: 403 })
   }
 
-  const { kind, record, old_total } = await req.json()
+  const { kind, record, old_total, old_pickup_at } = await req.json()
 
   if (kind === 'new_order') {
     // 撈出所有登記過的管理員，逐一發「按鈕卡片」（M2：接單直接在 LINE 按）
@@ -152,6 +160,11 @@ Deno.serve(async (req) => {
   if (kind === 'edited' && record?.line_user_id) {
     // 訂單被老闆修改 → 通知綁定的客人新內容（沒綁的不發，優雅降級）
     await push(record.line_user_id, buildEditedMessage(record, old_total))
+  }
+
+  if (kind === 'retimed' && record?.line_user_id) {
+    // 取餐時間被改 → 通知綁定的客人新時間（M3 補上的第四鈴聲）
+    await push(record.line_user_id, buildRetimedMessage(record, old_pickup_at))
   }
 
   return new Response('ok')

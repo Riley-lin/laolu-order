@@ -407,13 +407,17 @@ function fmtHM(iso) {
    line-push 雲端函式，把「同一份訊息」真的推進綁定 LINE 的客人手機。
    訊息內容以下面 buildCustomerMessage 為準（與 line-push/index.ts 同步維護）。
    未綁定 LINE 的客人不受影響，照舊用查詢頁看狀態（優雅降級）。 */
+/* 品項條列：一行一項（2026-07-19 Riley 裁示，與 line-push 同步維護）*/
+function itemLines(r) {
+  return (r.items || []).flatMap(o => (o.items || []).map(v => '・' + v.name + ' ×' + v.qty)).join('\n');
+}
+
 function buildCustomerMessage(r) {
-  const items = (r.items || []).flatMap(o => (o.items || []).map(v => v.name + ' ×' + v.qty)).join('、');
   return '🍢 老滷仙\n'
     + '✅ 訂單確認！（取餐編號 #' + r.order_no + '）\n\n'
     + '食材新鮮現滷，等候時間約 ' + r.wait_minutes + ' 分鐘，\n'
     + '請於 ' + fmtHM(r.pickup_at) + ' 前往現場取餐。\n\n'
-    + '📋 ' + items + '\n'
+    + '📋 訂單內容\n' + itemLines(r) + '\n'
     + '💰 合計 $' + r.total;
 }
 
@@ -546,13 +550,12 @@ function edAdd() {
 
 /* 跟推播員（line-push）同一份格式：客人收到的「訂單內容更新」訊息 */
 function buildEditedMessage(r, oldTotal) {
-  const items = (r.items || []).flatMap(o => (o.items || []).map(v => v.name + ' ×' + v.qty)).join('、');
   const totalLine = (typeof oldTotal === 'number' && oldTotal !== r.total)
     ? '💰 合計 $' + r.total + '（原 $' + oldTotal + '）'
     : '💰 合計 $' + r.total;
   return '🍢 老滷仙\n'
     + '✏️ 訂單內容更新（取餐編號 #' + r.order_no + '）\n\n'
-    + '📋 新內容：' + items + '\n'
+    + '📋 新內容\n' + itemLines(r) + '\n'
     + totalLine + '\n'
     + (r.pickup_at ? '⏰ 取餐時間不變：' + fmtHM(r.pickup_at) + '\n' : '')
     + '\n如有疑問請致電 0939-955-888';
