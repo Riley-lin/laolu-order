@@ -464,9 +464,35 @@ async function openEditModal(id) {
   renderEditModal();
 }
 
-function edPackTotal(p) { return (p.items || []).reduce((s, v) => s + v.price * v.qty, 0); }
-function edGrandTotal() { return _editState.packs.reduce((s, p) => s + edPackTotal(p), 0); }
+function edPackGross(p) { return (p.items || []).reduce((s, v) => s + v.price * v.qty, 0); }
 function edItemCount()  { return _editState.packs.reduce((s, p) => s + (p.items || []).length, 0); }
+
+/* 🎁 優惠重算（M4）：跟點餐頁同一套「自動湊」規則。
+   規則來自菜單快取（每列帶 bundle_qty/bundle_price）；
+   品項要有 cat（分區代號）才算得了——舊訂單沒 cat 就當無優惠，照品項價計 */
+function edBundleRules() {
+  const rules = {};
+  (_edMenuCache || []).forEach(m => {
+    if (m.bundle_qty && m.bundle_price && !rules[m.category_id]) {
+      rules[m.category_id] = { qty: m.bundle_qty, price: m.bundle_price, unit: m.price };
+    }
+  });
+  return rules;
+}
+function edPackDiscount(p) {
+  const rules = edBundleRules();
+  const cnt = {};
+  (p.items || []).forEach(v => { if (v.cat) cnt[v.cat] = (cnt[v.cat] || 0) + v.qty; });
+  let saved = 0;
+  Object.entries(cnt).forEach(([c, n]) => {
+    const r = rules[c];
+    if (r) saved += Math.floor(n / r.qty) * (r.qty * r.unit - r.price);
+  });
+  return saved;
+}
+function edPackTotal(p)  { return edPackGross(p) - edPackDiscount(p); }
+function edGrandTotal()  { return _editState.packs.reduce((s, p) => s + edPackTotal(p), 0); }
+function edGrandSaved()  { return _editState.packs.reduce((s, p) => s + edPackDiscount(p), 0); }
 
 function renderEditModal() {
   document.getElementById('editModal')?.remove();
@@ -510,7 +536,9 @@ function renderEditModal() {
     +   '<select id="edPicker">' + opts + '</select>'
     +   '<button class="btn-wait" onclick="edAdd()">＋ 加入</button>'
     + '</div>'
-    + '<div class="ed-total">合計 $' + edGrandTotal()
+    + '<div class="ed-total">'
+    +   (edGrandSaved() > 0 ? '<span style="color:var(--dim);font-size:12px;font-weight:400">🎁 已折 $' + edGrandSaved() + '　</span>' : '')
+    +   '合計 $' + edGrandTotal()
     +   (edGrandTotal() !== st.oldTotal ? ' <span style="color:var(--dim);font-size:12px;font-weight:400">（原 $' + st.oldTotal + '）</span>' : '')
     + '</div>'
     + '<div class="cm-actions">'
@@ -544,7 +572,7 @@ function edAdd() {
   if (!pack.items) pack.items = [];
   const exist = pack.items.find(v => v.name === m.name && v.price === m.price);
   if (exist) exist.qty += 1;
-  else pack.items.push({ name: m.name, qty: 1, price: m.price });
+  else pack.items.push({ name: m.name, qty: 1, price: m.price, cat: m.category_id }); // cat＝優惠重算的鑰匙
   renderEditModal();
 }
 
@@ -597,7 +625,7 @@ async function commitEdit() {
   const st = _editState;
   const packs = st.packs
     .filter(p => (p.items || []).length > 0)             // 空包不留
-    .map(p => Object.assign({}, p, { total: edPackTotal(p) }));
+    .map(p => Object.assign({}, p, { total: edPackTotal(p), discount: edPackDiscount(p) }));
   const total = packs.reduce((s, p) => s + p.total, 0);
   const { data, error } = await db.from('orders')
     .update({ items: packs, total }).eq('id', st.id).select();
@@ -765,8 +793,12 @@ function drDownloadCsv() {
    老闆在這裡按「售完」→ 客人的點餐頁 10 秒內自動變灰不可點；補貨按「恢復」。
    RLS 門禁：只有登入的老闆改得動；沒登入的人連按都按不出效果。 */
 const CAT_LABELS = {
+  // v2（2026-07-19 老闆親傳菜單）
+  b15: '15元區', wan: '丸類', jiao: '餃類', b20: '20元區', b25: '25元區', b30: '30元區',
+  solo: '招牌單品', meat: '肉類', veg: '蔬食青菜', noodle: '麵類', extra: '餐具加購',
+  // 舊版代號（歷史訂單對照用）
   p10: '$10 元', p15: '$15 元', p20: '$20 元', p25: '$25 元', combo25: '任選3個 $25',
-  p30: '$30 元', p35: '$35 元', combo35: '任選3個 $35', p45: '$45 元', noodle: '麵食類'
+  p30: '$30 元', p35: '$35 元', combo35: '任選3個 $35', p45: '$45 元'
 };
 
 async function openMenuManager() {

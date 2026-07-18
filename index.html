@@ -499,6 +499,9 @@ body{
 .item-bottom{display:flex;align-items:center;justify-content:space-between;}
 .item-price{font-family:'Noto Serif TC',serif;font-size:14px;font-weight:700;color:var(--gold2);letter-spacing:0.5px;}
 
+/* 單位小標（一份4條、半個…）＝說明份量，跟在品名後面 */
+.unit-tag{margin-left:5px;font-size:10px;color:rgba(253,246,227,0.45);letter-spacing:0.5px;}
+
 /* 🚫 今日售完：整卡變灰、按不了（狀態來自雲端 menu_items.sold_out） */
 .item-card.sold-out{opacity:0.45;filter:grayscale(0.85);}
 .item-card.sold-out:hover{transform:none;border-color:rgba(212,165,32,0.12);background:var(--surface1);box-shadow:none;}
@@ -1686,72 +1689,89 @@ body{
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
 // ────────────────────────────────
-// 菜單資料（已依名片校正）
-// M0.9-B 起菜單真身住在雲端 menu_items 資料表（單一真相來源）；
-// 這份寫死的只當「備用菜單」：雲端讀不到時保底，客人照樣能點（可用性優先）。
-// 分類的標籤／組合規則仍以這份為模板，雲端只管「品項、價格、售完」。
+// 菜單資料 v2（2026-07-19 老闆親傳版，取代名片抄錄版）
+// 真身住在雲端 menu_items 資料表（單一真相來源）；這份是備用保底。
+// 新模型：每個品項有自己的價格與單位；分類可帶「湊件優惠」bundle
+// （任 qty 件 $price）——購物車會自動湊，客人不用學。
 // ────────────────────────────────
 const FALLBACK_MENU = [
-  {
-    id:'p10', label:'$10 元',
-    pricePerItem:10,
-    items:['蘿蔔','海帶','黑輪','甜不辣','魚包蛋','龍蝦沙拉','鳥蛋三顆','年糕三條']
-  },
-  {
-    id:'p15', label:'$15 元',
-    pricePerItem:15,
-    items:['豬皮','炸豆包','竹輪','鱈魚燒']
-  },
-  {
-    id:'p20', label:'$20 元',
-    pricePerItem:20,
-    items:['雞心','雞胗','鴨胗','素雞','素胗','麵腸','芋粿','米血','百頁']
-  },
-  {
-    id:'p25', label:'$25 元',
-    pricePerItem:25,
-    items:['大豆皮','黑豆干','大熟狗','蘭花干','豬頭皮','蒸煮麵','德國香腸']
-  },
-  {
-    id:'combo25', label:'任選3個 $25', isCombo:true,
-    comboNote:'以下品項任選，每份計 $25（品項可重複）',
-    pricePerItem:25,
-    items:['凍豆腐','鱈魚丸','水晶餃','起司燒','鑫鑫腸','魚豆腐','蟹肉棒','魚餃']
-  },
-  {
-    id:'p30', label:'$30 元',
-    pricePerItem:30,
-    items:['鴨血','金針菇','杏鮑菇','秀珍菇','青椒','香菇','花椰菜','四季豆','高麗菜','洋蔥','水蓮','玉米筍','小黃瓜','大陸妹','茼蒿','絲瓜','黑木耳','筊白筍','空心菜','菠菜']
-  },
-  {
-    id:'p35', label:'$35 元',
-    pricePerItem:35,
-    items:['豬肉片','嘴邊肉','肝連肉','豬耳朵','素肚']
-  },
-  {
-    id:'combo35', label:'任選3個 $35', isCombo:true,
-    comboNote:'以下品項任選，每份計 $35（品項可重複）',
-    pricePerItem:35,
-    items:['貢丸','香菇貢丸','北海貝','麻糬卷','花枝丸']
-  },
-  {
-    id:'p45', label:'$45 元',
-    pricePerItem:45,
-    items:['大腸','粉腸']
-  },
-  {
-    id:'noodle', label:'麵食類', isNoodle:true,
-    subgroups:[
-      {price:15, items:['王子麵','張君雅','細冬粉','寬冬粉']},
-      {price:20, items:['板條','烏龍麵','鍋燒','意麵']}
-    ]
-  }
+  { id:'b15', label:'15元區', bundle:{qty:2,price:25}, items:[
+    {name:'蘿蔔',price:15,unit:'一個'},{name:'黑輪',price:15,unit:'一條'},{name:'海帶',price:15,unit:'一個'},
+    {name:'甜不辣',price:15,unit:'一片'},{name:'年糕',price:15,unit:'一份4條'},{name:'鳥蛋',price:15,unit:'一份4顆'} ] },
+  { id:'wan', label:'丸類', bundle:{qty:2,price:25}, items:[
+    {name:'貢丸',price:15,unit:'一個'},{name:'香菇貢丸',price:15,unit:'一個'},{name:'魚包蛋',price:15,unit:'一個'},
+    {name:'龍蝦沙拉',price:15,unit:'一個'},{name:'花枝丸',price:15,unit:'一個'},{name:'北海貝',price:15,unit:'一個'},
+    {name:'麻糬燒',price:15,unit:'一個'} ] },
+  { id:'jiao', label:'餃類', bundle:{qty:4,price:35}, items:[
+    {name:'小豆干',price:10,unit:'一個'},{name:'凍豆腐',price:10,unit:'一個'},{name:'起司燒',price:10,unit:'一個'},
+    {name:'水晶餃',price:10,unit:'一個'},{name:'魚餃',price:10,unit:'一個'},{name:'魚豆腐',price:10,unit:'一個'},
+    {name:'鑫鑫腸',price:10,unit:'一個'},{name:'鱈魚丸',price:10,unit:'一個'},{name:'蟹肉棒',price:10,unit:'一個'} ] },
+  { id:'b20', label:'20元區', bundle:{qty:2,price:35}, items:[
+    {name:'竹輪',price:20,unit:'一支'},{name:'炸豆包',price:20,unit:'一片'},{name:'鱈魚燒',price:20,unit:'一片'},
+    {name:'豬皮',price:20,unit:'一份'},{name:'素肚',price:20,unit:'半個'} ] },
+  { id:'b25', label:'25元區', bundle:{qty:2,price:45}, items:[
+    {name:'素雞',price:25,unit:'一條'},{name:'素胗',price:25,unit:'一個'},{name:'雞心',price:25,unit:'一串'},
+    {name:'雞胗',price:25,unit:'一串'},{name:'豆腸',price:25,unit:'一條'},{name:'芋粿',price:25,unit:'一條'},
+    {name:'米血糕',price:25,unit:'一片'},{name:'百頁豆腐',price:25,unit:'一條'},{name:'麵腸',price:25,unit:'一個'} ] },
+  { id:'b30', label:'30元區', bundle:{qty:2,price:55}, items:[
+    {name:'大熱狗',price:30,unit:'一根'},{name:'德國香腸',price:30,unit:'一根'},{name:'豆皮',price:30,unit:'一個'},
+    {name:'蘭花干',price:30,unit:'一個'},{name:'大豆干',price:30,unit:'一個'} ] },
+  { id:'solo', label:'招牌單品', bundle:null, items:[
+    {name:'鴨血',price:35,unit:'一份'},{name:'大腸',price:50,unit:'一份'} ] },
+  { id:'meat', label:'肉類', bundle:{qty:2,price:75}, items:[
+    {name:'豬肉片',price:40,unit:'一份'},{name:'嘴邊肉',price:40,unit:'一份'},{name:'肝連肉',price:40,unit:'一份'},
+    {name:'豬頭皮',price:40,unit:'一份'},{name:'豬耳朵',price:40,unit:'一份'} ] },
+  { id:'veg', label:'蔬食青菜', bundle:{qty:3,price:100}, items:[
+    {name:'金針菇',price:35,unit:'一樣'},{name:'香菇',price:35,unit:'一樣'},{name:'秀珍菇',price:35,unit:'一樣'},
+    {name:'杏鮑菇',price:35,unit:'一樣'},{name:'木耳',price:35,unit:'一樣'},{name:'花椰菜',price:35,unit:'一樣'},
+    {name:'玉米筍',price:35,unit:'一樣'},{name:'水蓮',price:35,unit:'一樣'},{name:'娃娃菜',price:35,unit:'一樣'},
+    {name:'小黃瓜',price:35,unit:'一樣'},{name:'洋蔥',price:35,unit:'一樣'},{name:'青椒',price:35,unit:'一樣'},
+    {name:'茼蒿',price:35,unit:'一樣'},{name:'絲瓜',price:35,unit:'一樣'},{name:'高麗菜',price:35,unit:'一樣'},
+    {name:'大陸妹',price:35,unit:'一樣'},{name:'空心菜',price:35,unit:'一樣'},{name:'菠菜',price:35,unit:'一樣'},
+    {name:'四季豆',price:35,unit:'一樣'} ] },
+  { id:'noodle', label:'麵類', bundle:null, items:[
+    {name:'王子麵',price:15,unit:'一包'},{name:'滷味麵',price:15,unit:'一包'},{name:'細冬粉',price:15,unit:'一卷'},
+    {name:'寬冬粉',price:15,unit:'一卷'},{name:'烏龍麵',price:20,unit:'一包'},{name:'蒸煮麵',price:25,unit:'一包'} ] },
+  { id:'extra', label:'餐具加購', bundle:null, items:[
+    {name:'紙碗',price:2,unit:'一個'},{name:'免洗筷',price:1,unit:'一雙'} ] }
 ];
 
 // 畫面實際使用的菜單：開頁先用備用版，雲端菜單抓到後換裝
 let MENU = FALLBACK_MENU;
 // 今日售完的品項名單（Set 查起來快）；由雲端 sold_out 欄位餵進來
 let SOLD_OUT = new Set();
+
+// ────────────────────────────────
+// 🎁 自動湊優惠引擎（M4）
+// 規則：同一區每湊滿 N 件，自動用優惠價；餘數用單點價。
+// 例：15元區拿 3 樣＝ 25（2樣優惠）＋15（單點）＝ $40。
+// 客人什麼都不用選，永遠拿到最便宜的算法。
+// ────────────────────────────────
+function catOfKey(key){ return String(key).split(':')[0]; }
+
+function bundleRuleOf(catId){
+  const c = MENU.find(x => x.id === catId);
+  if (!c || !c.bundle) return null;
+  // 有優惠的區單價一致，取第一項當單價
+  return { qty: c.bundle.qty, price: c.bundle.price, unit: (c.items[0] || {}).price || 0 };
+}
+
+// 算一個購物車：{ gross 原價總和, saved 優惠折抵, total 實付 }
+function cartCalc(cart){
+  let gross = 0;
+  const cnt = {}; // 每區件數
+  Object.entries(cart || {}).forEach(([k, v]) => {
+    gross += v.price * v.qty;
+    const c = catOfKey(k);
+    cnt[c] = (cnt[c] || 0) + v.qty;
+  });
+  let saved = 0;
+  Object.entries(cnt).forEach(([c, n]) => {
+    const r = bundleRuleOf(c);
+    if (r) saved += Math.floor(n / r.qty) * (r.qty * r.unit - r.price);
+  });
+  return { gross, saved, total: gross - saved };
+}
 
 // ────────────────────────────────
 // 狀態
@@ -1937,22 +1957,17 @@ function buildOrderPage(){
 }
 
 function buildSection(cat){
-  let inner='';
-  if(cat.isNoodle){
-    inner=cat.subgroups.map(sg=>`
-      <div class="noodle-sub-label">$${sg.price} 元</div>
-      <div class="items-grid" style="margin-bottom:12px">${sg.items.map(it=>itemCardHTML(`${cat.id}:${it}`,it,sg.price)).join('')}</div>
-    `).join('');
-  } else if(cat.isCombo){
-    inner=buildComboSection(cat);
-  } else {
-    inner=`<div class="items-grid">${cat.items.map(it=>itemCardHTML(`${cat.id}:${it}`,it,cat.pricePerItem)).join('')}</div>`;
-  }
+  // v2：每個品項自帶價格與單位；有優惠的區在標題下顯示規則
+  // （優惠是「自動湊」：客人自由加，購物車自動用最便宜算法，不用選盤）
+  const inner=`<div class="items-grid">${cat.items.map(it=>itemCardHTML(`${cat.id}:${it.name}`,it.name,it.price,it.unit)).join('')}</div>`;
+  const note = cat.bundle
+    ? `<div class="combo-note">💡 單點 $${cat.items[0].price}・任選 ${cat.bundle.qty} 樣 $${cat.bundle.price}（自動折抵，直接加就好）</div>`
+    : '';
   return `<div class="menu-section" id="sec-${cat.id}">
     <div class="section-hd">
       <span class="section-title">${cat.label}</span>
       <span class="section-line"></span>
-    </div>${inner}</div>`;
+    </div>${note}${inner}</div>`;
 }
 
 function buildComboSection(cat){
@@ -2010,13 +2025,13 @@ function comboItemHTML(comboId,name,sel,totalSel,price){
   </div>`;
 }
 
-function itemCardHTML(key,name,price){
+function itemCardHTML(key,name,price,unit){
   const qty=getCart()[key]?.qty||0;
   const k=key.replace(/'/g,"\\'");
   // 售完：卡片變灰＋「＋」停用；「－」保留，讓已加進購物車的還能自己減掉
   const off = SOLD_OUT.has(name);
   return `<div class="item-card ${qty>0?'has-qty':''} ${off?'sold-out':''}" id="card-${key}">
-    <div class="item-name">${name}${off?'<span class="sold-tag">今日售完</span>':''}</div>
+    <div class="item-name">${name}${unit?`<span class="unit-tag">${unit}</span>`:''}${off?'<span class="sold-tag">今日售完</span>':''}</div>
     <div class="item-bottom">
       <span class="item-price">$${price}</span>
       <div class="qty-ctrl">
@@ -2139,7 +2154,7 @@ const orderPrefs = {};
 let _currentGroupPrefIdx = 0; // 正在填偏好的訂單 idx
 
 function showGroupNextModal(currentName) {
-  const total = Object.values(currentOrder().cart).reduce((s,v)=>s+v.price*v.qty, 0);
+  const total = cartCalc(currentOrder().cart).total;
   _currentGroupPrefIdx = currentOrderIdx;
 
   document.getElementById('groupNextTitle').textContent = `${currentName} 的訂單 🎉`;
@@ -2289,10 +2304,7 @@ function deleteOrder(e, idx) {
 
 // 計算所有訂單總金額
 function allOrdersTotal() {
-  return orders.reduce((total, o) => {
-    const cartAmt = Object.values(o.cart).reduce((s,v)=>s+v.price*v.qty, 0);
-    return total + cartAmt;
-  }, 0);
+  return orders.reduce((total, o) => total + cartCalc(o.cart).total, 0);
 }
 
 function hasAnyItems() {
@@ -2304,9 +2316,9 @@ function updateCartBar(){
   if(lbl) lbl.textContent = groupMode ? ('訂單：' + currentOrder().name) : '購物車';
   const entries=Object.entries(getCart());
   const totalQty=entries.reduce((s,[,v])=>s+v.qty,0);
-  const totalAmt=entries.reduce((s,[,v])=>s+v.price*v.qty,0);
+  const calc=cartCalc(getCart()); // 🎁 自動湊優惠後的實付金額
   document.getElementById('cartBadge').textContent=totalQty;
-  document.getElementById('cartTotalNum').textContent=`$${totalAmt}`;
+  document.getElementById('cartTotalNum').textContent=`$${calc.total}`+(calc.saved>0?` 🎁已折${calc.saved}`:'');
   document.getElementById('checkoutBtn').disabled = groupMode ? !hasAnyItems() : Object.keys(getCart()).length===0;
   const el=document.getElementById('cartItems');
   if(!entries.length){
@@ -2318,7 +2330,11 @@ function updateCartBar(){
         <span class="cart-row-qty">× ${item.qty}</span>
         <span class="cart-row-sub">$${item.price*item.qty}</span>
         <button class="cart-del" onclick="removeItem('${key}')">✕</button>
-      </div>`).join('');
+      </div>`).join('')
+      + (calc.saved>0?`<div class="cart-row" style="color:var(--gold2);font-weight:700">
+        <span class="cart-row-name">🎁 任選優惠折抵</span><span class="cart-row-qty"></span>
+        <span class="cart-row-sub">−$${calc.saved}</span><span style="width:24px"></span>
+      </div>`:'');
   }
 }
 function toggleCartDetail(){
@@ -2366,7 +2382,7 @@ function openCheckout(e){
           else mergedCart[k] = {...v};
         });
       });
-      const total = Object.values(mergedCart).reduce((s,v)=>s+v.price*v.qty,0);
+      const total = cartCalc(mergedCart).total;
       ordersToShow = [{ name:'合併訂單', cart: mergedCart, total, prefs: null }];
     } else if (mode === 'split') {
       // 分開：每張訂單各自
@@ -2375,14 +2391,13 @@ function openCheckout(e){
         return {
           name: o.name,
           cart: o.cart,
-          total: Object.values(o.cart).reduce((s,v)=>s+v.price*v.qty,0),
+          total: cartCalc(o.cart).total,
           prefs: orderPrefs[idx] || null
         };
       });
     } else {
       // 單張訂單
-      const entries = Object.entries(getCart());
-      const total = entries.reduce((s,[,v])=>s+v.price*v.qty,0);
+      const total = cartCalc(getCart()).total;
       ordersToShow = [{ name: currentOrder().name, cart: getCart(), total, prefs: {
         scallion: prefs.scallion, garlic: prefs.garlic, pepper: prefs.pepper,
         spicy: prefs.spicy, spiceLevel: prefs.spiceLevel,
@@ -2409,12 +2424,14 @@ function openCheckout(e){
   else if(o.prefs.utensils==='no') prefLines.push('不需要餐具');
   if(o.prefs.note) prefLines.push(`備註：${o.prefs.note}`);
       }
+      const savedO = cartCalc(o.cart).saved;
       return `<div class="split-order-block">
         <div class="split-order-name">
           <span>訂單：${o.name}</span>
           <span>$${o.total}</span>
         </div>
         ${Object.values(o.cart).map(v=>`<div class="recap-row"><span>${v.name} × ${v.qty}</span><span>$${v.price*v.qty}</span></div>`).join('')}
+        ${savedO>0?`<div class="recap-row" style="color:var(--gold2);font-weight:700"><span>🎁 任選優惠折抵</span><span>−$${savedO}</span></div>`:''}
         ${prefLines.length>0?`<div style="margin-top:6px;font-size:11px;color:rgba(255,255,255,0.45);letter-spacing:0.5px">🌿 ${prefLines.join('、')}</div>`:''}
       </div>`;
     }).join('');
@@ -2693,32 +2710,34 @@ const SUPABASE_KEY = 'sb_publishable_eJLYMZhDGmE5dlYb4G5XbQ_DapXnnra';
    菜單真身在 menu_items 資料表；這裡負責三件事：
    ① 抓菜單 ② 用抓到的資料重組 MENU（分類模板沿用備用菜單）③ 更新售完名單 */
 
-// ① 跟雲端要整份菜單（依 sort 排序）
+// ① 跟雲端要整份菜單（依 sort 排序；v2 多要單位與優惠欄位）
 async function fetchMenuRows() {
-  const res = await fetch(SUPABASE_URL + '/rest/v1/menu_items?select=category_id,name,price,sold_out,sort&order=sort.asc', {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/menu_items?select=category_id,name,price,unit,bundle_qty,bundle_price,sold_out,sort&order=sort.asc', {
     headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
   });
   if (!res.ok) throw new Error('菜單讀取 HTTP ' + res.status);
   return res.json();
 }
 
-// ② 雲端資料 → 畫面用的 MENU 結構（分類標籤/組合規則沿用備用菜單的模板）
+// ② 雲端資料 → 畫面用的 MENU 結構 v2
+// 每列自帶價格/單位/優惠；分區標籤沿用備用菜單，雲端新開的區排最後
 function rebuildMenuFromRows(rows) {
   const byCat = {};
   rows.forEach(r => { (byCat[r.category_id] = byCat[r.category_id] || []).push(r); });
-  return FALLBACK_MENU.map(meta => {
-    const rs = byCat[meta.id];
-    if (!rs || !rs.length) return meta;  // 雲端沒這分類的資料 → 照用備用版
-    if (meta.isNoodle) {
-      // 麵食類：同分類有兩種價位，依價格自動分組還原 subgroups
-      const byPrice = {};
-      rs.forEach(r => { (byPrice[r.price] = byPrice[r.price] || []).push(r.name); });
-      const subgroups = Object.keys(byPrice).map(Number).sort((a, b) => a - b)
-        .map(p => ({ price: p, items: byPrice[p] }));
-      return Object.assign({}, meta, { subgroups });
-    }
-    // 一般分類與任選組合：品項清單＋分類價都以雲端為準（改價免改程式碼）
-    return Object.assign({}, meta, { pricePerItem: rs[0].price, items: rs.map(r => r.name) });
+  const order = [];
+  FALLBACK_MENU.forEach(c => { if (byCat[c.id]) order.push(c.id); });
+  Object.keys(byCat).forEach(id => { if (!order.includes(id)) order.push(id); });
+  return order.map(id => {
+    const rs = byCat[id];
+    const meta = FALLBACK_MENU.find(c => c.id === id);
+    const b = (rs[0].bundle_qty && rs[0].bundle_price)
+      ? { qty: rs[0].bundle_qty, price: rs[0].bundle_price } : null;
+    return {
+      id,
+      label: meta ? meta.label : id,
+      bundle: b,
+      items: rs.map(r => ({ name: r.name, price: r.price, unit: r.unit || '' })),
+    };
   });
 }
 
@@ -2769,10 +2788,13 @@ async function sendOrderToCloud(records) {
 // 把畫面上的訂單整理成資料表格式（回傳一筆或多筆的陣列）
 function buildCloudRecords(orderNo, name, phone, total, ordersToShow, mode) {
   // 單張訂單的內容物：品項、小計、口味偏好（存成 JSON 進 items 欄位）
+  // v2：每個品項多存 cat（分區代號）＋整包存 discount（優惠折抵）——
+  // 老闆端改單時才能用同一套規則重算優惠
   const pack = o => ({
     name: o.name,
-    items: Object.values(o.cart).map(v => ({ name: v.name, qty: v.qty, price: v.price })),
+    items: Object.entries(o.cart).map(([k, v]) => ({ name: v.name, qty: v.qty, price: v.price, cat: catOfKey(k) })),
     total: o.total,
+    discount: cartCalc(o.cart).saved,
     prefs: o.prefs
   });
   // 📱 LIFF 自動綁定：從 LINE 開的客人，訂單直接記住他的 LINE
