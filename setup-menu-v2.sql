@@ -66,3 +66,11 @@ insert into public.menu_items (category_id, name, price, unit, bundle_qty, bundl
 
 -- ④ 自我體檢：應回 75
 select count(*) as 品項數 from public.menu_items;
+
+-- ⑤ 單位大掃除（2026-07-19 Riley 拍板）：
+-- 客人看單位沒意義還佔版面，全部拿掉；
+-- 只留年糕/鳥蛋——「一份4條/一份4顆」影響客人點幾份的判斷，必須留。
+update public.menu_items set unit = '' where name not in ('年糕','鳥蛋');
+
+-- 自我體檢：應只剩 2 列（年糕 一份4條、鳥蛋 一份4顆）
+select name, unit from public.menu_items where unit <> '' order by name;

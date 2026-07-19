@@ -20,6 +20,13 @@
   --transition: all 0.22s cubic-bezier(0.4,0,0.2,1);
 }
 *{margin:0;padding:0;box-sizing:border-box;}
+/* 「$」專用字體：襯線體(Noto Serif)的 $ 是花體、看起來像美金符號——
+   這個字體只接管 $ 這一個字元(U+0024)，讓它一律用手機內建的平體，數字不受影響 */
+@font-face{
+  font-family:'CashSign';
+  src:local('PingFang TC'),local('Helvetica Neue'),local('Roboto'),local('Arial');
+  unicode-range:U+0024;
+}
 html{scroll-behavior:smooth;background:var(--dark);} /* 補底色：滑到底不露白邊 */
 body{
   background: var(--dark);
@@ -29,6 +36,12 @@ body{
   font-family:'Noto Sans TC',sans-serif;
   color:var(--cream);
   min-height:100vh;
+}
+/* iPhone 的 LINE 瀏覽器：滑到底再拉，整頁會被「橡皮筋」拉走、露出底下的白色——
+   html 背景管不到那塊。鋪一張比螢幕上下各多一個螢幕高的固定深色底墊，怎麼拉都不露白 */
+body::before{
+  content:'';position:fixed;left:0;right:0;top:-100vh;bottom:-100vh;
+  z-index:-2;background:var(--dark);pointer-events:none;
 }
 
 /* ══════════════ COVER ══════════════ */
@@ -150,7 +163,7 @@ body{
 }
 .cover-daodi-line.r { background: linear-gradient(90deg, rgba(212,165,32,0.8), transparent); }
 .cover-daodi span {
-  font-family: 'Noto Serif TC', serif;
+  font-family: 'CashSign','Noto Serif TC', serif;
   font-size: clamp(12px, 2.8vw, 15px);
   letter-spacing: 5px;
   color: rgba(252,233,160,0.9);
@@ -159,7 +172,7 @@ body{
 
 /* 老滷仙大字 */
 .cover-logo {
-  font-family: 'Noto Serif TC', serif;
+  font-family: 'CashSign','Noto Serif TC', serif;
   font-size: clamp(72px, 20vw, 116px);
   font-weight: 900;
   color: #fff;
@@ -186,7 +199,7 @@ body{
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Noto Serif TC', serif;
+  font-family: 'CashSign','Noto Serif TC', serif;
   font-size: clamp(12px,2.5vw,15px);
   font-weight: 900;
   color: #5a1010;
@@ -223,7 +236,7 @@ body{
   border: 1.5px solid rgba(255,255,255,0.65);
   border-radius: 28px;
   padding: clamp(5px,1.5vw,8px) clamp(22px,6vw,38px);
-  font-family: 'Noto Serif TC', serif;
+  font-family: 'CashSign','Noto Serif TC', serif;
   font-size: clamp(14px,3.5vw,19px);
   font-weight: 900;
   color: #2a0800;
@@ -268,7 +281,7 @@ body{
 .start-btn {
   background: linear-gradient(135deg, #f0c84a, #b8891a);
   color: #5a1010;
-  font-family: 'Noto Serif TC', serif;
+  font-family: 'CashSign','Noto Serif TC', serif;
   font-size: clamp(15px,4vw,18px);
   font-weight: 900;
   letter-spacing: 6px;
@@ -335,7 +348,7 @@ body{
   box-shadow: 0 2px 20px rgba(0,0,0,0.5);
   position: static;
 }
-.order-hname{font-family:'Noto Serif TC',serif;font-size:20px;font-weight:900;color:#fff;letter-spacing:4px;text-shadow:0 0 20px rgba(212,165,32,0.3);}
+.order-hname{font-family:'CashSign','Noto Serif TC',serif;font-size:20px;font-weight:900;color:#fff;letter-spacing:4px;text-shadow:0 0 20px rgba(212,165,32,0.3);}
 .order-hsub{font-size:11px;color:var(--goldlight);letter-spacing:2px;margin-top:1px;}
 .back-btn{
   margin-left:auto;background:rgba(212,165,32,0.12);border:1px solid var(--gold3);
@@ -351,7 +364,7 @@ body{
   padding:9px 16px;text-align:center;
   font-size:12px;color:rgba(252,233,160,0.7);letter-spacing:2px;
 }
-.wait-bar span{color:var(--gold2);font-weight:900;font-family:'Noto Serif TC',serif;font-size:16px;}
+.wait-bar span{color:var(--gold2);font-weight:900;font-family:'CashSign','Noto Serif TC',serif;font-size:16px;}
 
 /* 分類導覽 */
 .cat-nav{
@@ -397,7 +410,7 @@ body{
   margin-bottom:12px;padding-bottom:8px;
   border-bottom:1px solid rgba(212,165,32,0.2);
 }
-.section-title{font-family:'Noto Serif TC',serif;font-size:16px;font-weight:700;color:var(--gold2);white-space:nowrap;letter-spacing:2px;text-shadow:0 0 12px rgba(212,165,32,0.2);}
+.section-title{font-family:'CashSign','Noto Serif TC',serif;font-size:16px;font-weight:700;color:var(--gold2);white-space:nowrap;letter-spacing:2px;text-shadow:0 0 12px rgba(212,165,32,0.2);}
 .section-line{flex:1;height:1px;background:linear-gradient(90deg,rgba(212,165,32,0.25),rgba(212,165,32,0.05),transparent);}
 
 .combo-note{
@@ -415,7 +428,7 @@ body{
 }
 .combo-progress-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
 .combo-progress-label{font-size:13px;color:var(--goldlight);letter-spacing:1px;}
-.combo-progress-count{font-family:'Noto Serif TC',serif;font-size:16px;font-weight:900;color:var(--gold2);}
+.combo-progress-count{font-family:'CashSign','Noto Serif TC',serif;font-size:16px;font-weight:900;color:var(--gold2);}
 .combo-progress-bar-bg{height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;}
 .combo-progress-bar{height:5px;background:linear-gradient(90deg,var(--gold3),var(--gold2),var(--goldlight));border-radius:3px;transition:width 0.4s cubic-bezier(0.4,0,0.2,1);box-shadow:0 0 8px rgba(212,165,32,0.4);}
 .combo-progress-hint{font-size:11px;color:rgba(255,255,255,0.35);margin-top:6px;letter-spacing:0.5px;}
@@ -440,7 +453,7 @@ body{
   width:100%;margin-top:10px;
   background:linear-gradient(135deg,#f0c84a,#b8891a);
   border:none;color:var(--dark);
-  font-family:'Noto Serif TC',serif;font-size:14px;font-weight:900;
+  font-family:'CashSign','Noto Serif TC',serif;font-size:14px;font-weight:900;
   letter-spacing:2px;padding:11px;border-radius:8px;cursor:pointer;
   transition:var(--transition);
   box-shadow:0 2px 12px rgba(212,165,32,0.3),inset 0 1px 0 rgba(255,255,255,0.2);
@@ -497,7 +510,7 @@ body{
 
 .item-name{font-size:13px;font-weight:500;color:rgba(253,246,227,0.9);line-height:1.4;letter-spacing:0.3px;}
 .item-bottom{display:flex;align-items:center;justify-content:space-between;}
-.item-price{font-family:'Noto Serif TC',serif;font-size:14px;font-weight:700;color:var(--gold2);letter-spacing:0.5px;}
+.item-price{font-family:'CashSign','Noto Serif TC',serif;font-size:14px;font-weight:700;color:var(--gold2);letter-spacing:0.5px;}
 
 /* 🚫 關閉「連點兩下放大」（狂按＋按太快會誤觸縮放）；兩指捏合縮放保留 */
 *{touch-action:manipulation;}
@@ -531,7 +544,7 @@ body{
   text-align:center;
 }
 .closed-title{
-  font-family:'Noto Serif TC',serif;font-size:36px;font-weight:900;
+  font-family:'CashSign','Noto Serif TC',serif;font-size:36px;font-weight:900;
   color:#F3DFA5;letter-spacing:8px;text-indent:8px;line-height:1.3;
 }
 .closed-sub{margin-top:10px;font-size:14px;color:rgba(253,246,227,0.75);letter-spacing:4px;text-indent:4px;}
@@ -570,7 +583,7 @@ body{
 .qty-btn:active{transform:scale(0.85);}
 .qty-num{
   width:30px;text-align:center;
-  font-family:'Noto Serif TC',serif;font-size:14px;font-weight:700;
+  font-family:'CashSign','Noto Serif TC',serif;font-size:14px;font-weight:700;
   color:var(--goldlight);
   background: rgba(0,0,0,0.25);
   line-height:28px;user-select:none;
@@ -599,7 +612,7 @@ body{
 .cart-row{display:flex;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);gap:8px;font-size:14px;}
 .cart-row-name{flex:1;color:var(--cream);}
 .cart-row-qty{color:rgba(255,255,255,0.38);font-size:13px;}
-.cart-row-sub{font-family:'Noto Serif TC',serif;font-weight:700;color:var(--gold2);min-width:46px;text-align:right;}
+.cart-row-sub{font-family:'CashSign','Noto Serif TC',serif;font-weight:700;color:var(--gold2);min-width:46px;text-align:right;}
 .cart-del{background:none;border:none;color:rgba(255,255,255,0.2);cursor:pointer;font-size:15px;padding:0 4px;transition:color 0.15s;}
 .cart-del:hover{color:#e74c3c;}
 .cart-empty-msg{text-align:center;color:rgba(255,255,255,0.22);font-size:13px;padding:14px 0;}
@@ -617,11 +630,11 @@ body{
 }
 .cart-info{flex:1;}
 .cart-label{font-size:12px;color:rgba(255,255,255,0.42);letter-spacing:1px;}
-.cart-total-num{font-family:'Noto Serif TC',serif;font-size:22px;font-weight:900;color:var(--gold2);}
+.cart-total-num{font-family:'CashSign','Noto Serif TC',serif;font-size:22px;font-weight:900;color:var(--gold2);}
 .checkout-btn{
   background: linear-gradient(135deg, #f0c84a 0%, #d4a520 50%, #b8891a 100%);
   color:var(--dark);border:none;padding:12px 26px;
-  font-family:'Noto Serif TC',serif;font-size:15px;font-weight:900;
+  font-family:'CashSign','Noto Serif TC',serif;font-size:15px;font-weight:900;
   letter-spacing:3px;cursor:pointer;border-radius:8px;
   box-shadow: 0 2px 16px rgba(212,165,32,0.4), inset 0 1px 0 rgba(255,255,255,0.25);
   transition: var(--transition);white-space:nowrap;
@@ -656,7 +669,7 @@ body{
 .modal-box::-webkit-scrollbar{width:3px;}
 .modal-box::-webkit-scrollbar-thumb{background:var(--gold3);}
 
-.modal-title{font-family:'Noto Serif TC',serif;font-size:20px;font-weight:900;color:var(--gold2);text-align:center;margin-bottom:4px;letter-spacing:3px;text-shadow:0 0 20px rgba(212,165,32,0.3);}
+.modal-title{font-family:'CashSign','Noto Serif TC',serif;font-size:20px;font-weight:900;color:var(--gold2);text-align:center;margin-bottom:4px;letter-spacing:3px;text-shadow:0 0 20px rgba(212,165,32,0.3);}
 .modal-sub{text-align:center;font-size:12px;color:rgba(255,255,255,0.32);letter-spacing:1px;margin-bottom:18px;}
 
 /* Section divider in modal */
@@ -727,7 +740,7 @@ body{
 }
 .wait-confirm-dot{width:10px;height:10px;border-radius:50%;background:#4caf50;flex-shrink:0;animation:blink 1.5s infinite;}
 .wait-confirm-text{font-size:13px;color:var(--goldlight);line-height:1.6;}
-.wait-confirm-time{font-family:'Noto Serif TC',serif;font-size:18px;font-weight:900;color:var(--gold2);}
+.wait-confirm-time{font-family:'CashSign','Noto Serif TC',serif;font-size:18px;font-weight:900;color:var(--gold2);}
 
 /* 訂單明細 */
 .order-recap{
@@ -738,7 +751,7 @@ body{
 .recap-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:var(--cream);}
 .recap-total{
   display:flex;justify-content:space-between;
-  font-family:'Noto Serif TC',serif;font-size:18px;font-weight:900;color:var(--gold2);
+  font-family:'CashSign','Noto Serif TC',serif;font-size:18px;font-weight:900;color:var(--gold2);
   border-top:1px solid rgba(212,165,32,0.22);margin-top:8px;padding-top:8px;
 }
 
@@ -752,7 +765,7 @@ body{
 .btn-order{
   background: linear-gradient(135deg, #f0c84a 0%, #d4a520 50%, #b8891a 100%);
   border:none;color:var(--dark);padding:12px;
-  font-family:'Noto Serif TC',serif;font-size:15px;font-weight:900;
+  font-family:'CashSign','Noto Serif TC',serif;font-size:15px;font-weight:900;
   letter-spacing:3px;cursor:pointer;border-radius:8px;
   transition: var(--transition);
   box-shadow: 0 2px 16px rgba(212,165,32,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
@@ -765,13 +778,13 @@ body{
 .success-wrap{text-align:center;padding:16px 0 6px;}
 .success-emoji{font-size:52px;display:block;margin-bottom:14px;animation:bounceIn 0.6s cubic-bezier(0.34,1.56,0.64,1);}
 @keyframes bounceIn{0%{transform:scale(0.5);opacity:0;}100%{transform:scale(1);opacity:1;}}
-.success-title{font-family:'Noto Serif TC',serif;font-size:24px;font-weight:900;color:var(--gold2);margin-bottom:10px;letter-spacing:3px;text-shadow:0 0 20px rgba(212,165,32,0.4);}
+.success-title{font-family:'CashSign','Noto Serif TC',serif;font-size:24px;font-weight:900;color:var(--gold2);margin-bottom:10px;letter-spacing:3px;text-shadow:0 0 20px rgba(212,165,32,0.4);}
 .success-msg{font-size:13px;color:rgba(255,255,255,0.5);line-height:2.3;margin-bottom:20px;}
 .success-msg strong{color:var(--goldlight);}
 .btn-done{
   background:linear-gradient(135deg,#f0c84a,#b8891a);border:none;
   color:var(--dark);padding:14px 40px;
-  font-family:'Noto Serif TC',serif;font-size:15px;font-weight:900;
+  font-family:'CashSign','Noto Serif TC',serif;font-size:15px;font-weight:900;
   letter-spacing:4px;cursor:pointer;border-radius:8px;width:100%;
   box-shadow:0 2px 16px rgba(212,165,32,0.35),inset 0 1px 0 rgba(255,255,255,0.2);
   transition:var(--transition);
@@ -924,7 +937,7 @@ body{
 }
 .group-modal-icon { font-size: 36px; margin-bottom: 10px; }
 .group-modal-title {
-  font-family: 'Noto Serif TC', serif;
+  font-family: 'CashSign','Noto Serif TC', serif;
   font-size: 18px; font-weight: 900;
   color: var(--gold2);
   margin-bottom: 6px;
@@ -968,7 +981,7 @@ body{
   background: linear-gradient(135deg, var(--gold2), var(--gold3));
   color: var(--dark);
   font-weight: 700;
-  font-family: 'Noto Serif TC', serif;
+  font-family: 'CashSign','Noto Serif TC', serif;
   letter-spacing: 2px;
 }
 .gm-btn-primary:hover { opacity: 0.88; }
@@ -1008,7 +1021,7 @@ body{
   overflow-y: auto;
 }
 .tutorial-title {
-  font-family: 'Noto Serif TC', serif;
+  font-family: 'CashSign','Noto Serif TC', serif;
   font-size: 19px;
   font-weight: 900;
   color: var(--gold2);
@@ -1058,7 +1071,7 @@ body{
   border: none;
   color: var(--dark);
   padding: 13px;
-  font-family: 'Noto Serif TC', serif;
+  font-family: 'CashSign','Noto Serif TC', serif;
   font-size: 16px;
   font-weight: 900;
   letter-spacing: 3px;
@@ -1102,7 +1115,7 @@ body{
 .confirm-grand-total {
   display: flex;
   justify-content: space-between;
-  font-family: 'Noto Serif TC', serif;
+  font-family: 'CashSign','Noto Serif TC', serif;
   font-size: 19px;
   font-weight: 900;
   color: var(--gold2);
@@ -1128,7 +1141,7 @@ body{
 }
 .query-box-header-icon { font-size: 16px; }
 .query-box-header-text {
-  font-family: 'Noto Serif TC', serif;
+  font-family: 'CashSign','Noto Serif TC', serif;
   font-size: 13px;
   font-weight: 700;
   color: var(--gold2);
@@ -1191,7 +1204,7 @@ body{
   cursor: pointer;
   border-radius: 6px;
   white-space: nowrap;
-  font-family: 'Noto Serif TC', serif;
+  font-family: 'CashSign','Noto Serif TC', serif;
   letter-spacing: 1px;
   transition: opacity 0.2s;
   flex-shrink: 0;
@@ -1225,7 +1238,7 @@ body{
   border-bottom: 1px solid rgba(212,165,32,0.1);
 }
 .query-card-no {
-  font-family: 'Noto Serif TC', serif;
+  font-family: 'CashSign','Noto Serif TC', serif;
   font-size: 15px;
   font-weight: 900;
   color: var(--gold2);
@@ -1264,7 +1277,7 @@ body{
   border-top: 1px solid rgba(212,165,32,0.1);
 }
 .query-card-total {
-  font-family: 'Noto Serif TC', serif;
+  font-family: 'CashSign','Noto Serif TC', serif;
   font-size: 16px;
   font-weight: 900;
   color: var(--gold2);
@@ -1283,7 +1296,7 @@ body{
   margin-bottom: 8px;
 }
 .split-order-name {
-  font-family: 'Noto Serif TC', serif;
+  font-family: 'CashSign','Noto Serif TC', serif;
   font-size: 14px;
   font-weight: 700;
   color: var(--gold2);
@@ -1331,7 +1344,7 @@ body{
   border:2px solid var(--gold3);border-radius:6px;
   padding:24px 22px;width:100%;max-width:360px;
 }
-.boss-title{font-family:'Noto Serif TC',serif;font-size:18px;font-weight:900;color:var(--gold2);text-align:center;margin-bottom:16px;}
+.boss-title{font-family:'CashSign','Noto Serif TC',serif;font-size:18px;font-weight:900;color:var(--gold2);text-align:center;margin-bottom:16px;}
 .boss-desc{font-size:13px;color:rgba(255,255,255,0.45);text-align:center;margin-bottom:18px;line-height:1.7;}
 .boss-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
 .boss-opt{
@@ -1353,7 +1366,7 @@ body{
 .boss-save{
   background:linear-gradient(135deg,var(--gold2),var(--gold3));border:none;
   color:var(--dark);padding:10px 20px;
-  font-family:'Noto Serif TC',serif;font-size:14px;font-weight:900;
+  font-family:'CashSign','Noto Serif TC',serif;font-size:14px;font-weight:900;
   letter-spacing:2px;cursor:pointer;border-radius:3px;white-space:nowrap;
 }
 .boss-close{
@@ -1731,46 +1744,47 @@ body{
 // （任 qty 件 $price）——購物車會自動湊，客人不用學。
 // ────────────────────────────────
 const FALLBACK_MENU = [
+  // 單位只留年糕/鳥蛋（一份幾個會影響點餐判斷）；其餘 2026-07-19 Riley 拍板全部拿掉
   { id:'b15', label:'15元區', bundle:{qty:2,price:25}, items:[
-    {name:'蘿蔔',price:15,unit:'一個'},{name:'黑輪',price:15,unit:'一條'},{name:'海帶',price:15,unit:'一個'},
-    {name:'甜不辣',price:15,unit:'一片'},{name:'年糕',price:15,unit:'一份4條'},{name:'鳥蛋',price:15,unit:'一份4顆'} ] },
+    {name:'蘿蔔',price:15},{name:'黑輪',price:15},{name:'海帶',price:15},
+    {name:'甜不辣',price:15},{name:'年糕',price:15,unit:'一份4條'},{name:'鳥蛋',price:15,unit:'一份4顆'} ] },
   { id:'wan', label:'鍋物', bundle:{qty:2,price:25}, items:[
-    {name:'貢丸',price:15,unit:'一個'},{name:'香菇貢丸',price:15,unit:'一個'},{name:'魚包蛋',price:15,unit:'一個'},
-    {name:'龍蝦沙拉',price:15,unit:'一個'},{name:'花枝丸',price:15,unit:'一個'},{name:'北海貝',price:15,unit:'一個'},
-    {name:'麻糬燒',price:15,unit:'一個'} ] },
+    {name:'貢丸',price:15},{name:'香菇貢丸',price:15},{name:'魚包蛋',price:15},
+    {name:'龍蝦沙拉',price:15},{name:'花枝丸',price:15},{name:'北海貝',price:15},
+    {name:'麻糬燒',price:15} ] },
   { id:'jiao', label:'鍋物', bundle:{qty:4,price:35}, items:[
-    {name:'小豆干',price:10,unit:'一個'},{name:'凍豆腐',price:10,unit:'一個'},{name:'起司燒',price:10,unit:'一個'},
-    {name:'水晶餃',price:10,unit:'一個'},{name:'魚餃',price:10,unit:'一個'},{name:'魚豆腐',price:10,unit:'一個'},
-    {name:'鑫鑫腸',price:10,unit:'一個'},{name:'鱈魚丸',price:10,unit:'一個'},{name:'蟹肉棒',price:10,unit:'一個'} ] },
+    {name:'小豆干',price:10},{name:'凍豆腐',price:10},{name:'起司燒',price:10},
+    {name:'水晶餃',price:10},{name:'魚餃',price:10},{name:'魚豆腐',price:10},
+    {name:'鑫鑫腸',price:10},{name:'鱈魚丸',price:10},{name:'蟹肉棒',price:10} ] },
   { id:'b20', label:'20元區', bundle:{qty:2,price:35}, items:[
-    {name:'竹輪',price:20,unit:'一支'},{name:'炸豆包',price:20,unit:'一片'},{name:'鱈魚燒',price:20,unit:'一片'},
-    {name:'豬皮',price:20,unit:'一份'},{name:'素肚',price:20,unit:'半個'} ] },
+    {name:'竹輪',price:20},{name:'炸豆包',price:20},{name:'鱈魚燒',price:20},
+    {name:'豬皮',price:20},{name:'素肚',price:20} ] },
   { id:'b25', label:'25元區', bundle:{qty:2,price:45}, items:[
-    {name:'素雞',price:25,unit:'一條'},{name:'素胗',price:25,unit:'一個'},{name:'雞心',price:25,unit:'一串'},
-    {name:'雞胗',price:25,unit:'一串'},{name:'豆腸',price:25,unit:'一條'},{name:'芋粿',price:25,unit:'一條'},
-    {name:'米血糕',price:25,unit:'一片'},{name:'百頁豆腐',price:25,unit:'一條'},{name:'麵腸',price:25,unit:'一個'} ] },
+    {name:'素雞',price:25},{name:'素胗',price:25},{name:'雞心',price:25},
+    {name:'雞胗',price:25},{name:'豆腸',price:25},{name:'芋粿',price:25},
+    {name:'米血糕',price:25},{name:'百頁豆腐',price:25},{name:'麵腸',price:25} ] },
   { id:'b30', label:'30元區', bundle:{qty:2,price:55}, items:[
-    {name:'大熱狗',price:30,unit:'一根'},{name:'德國香腸',price:30,unit:'一根'},{name:'豆皮',price:30,unit:'一個'},
-    {name:'蘭花干',price:30,unit:'一個'},{name:'大豆干',price:30,unit:'一個'} ] },
+    {name:'大熱狗',price:30},{name:'德國香腸',price:30},{name:'豆皮',price:30},
+    {name:'蘭花干',price:30},{name:'大豆干',price:30} ] },
   { id:'solo', label:'單品', bundle:null, items:[
-    {name:'鴨血',price:35,unit:'一份'},{name:'大腸',price:50,unit:'一份'} ] },
+    {name:'鴨血',price:35},{name:'大腸',price:50} ] },
   { id:'meat', label:'肉類', bundle:{qty:2,price:75}, items:[
-    {name:'豬肉片',price:40,unit:'一份'},{name:'嘴邊肉',price:40,unit:'一份'},{name:'肝連肉',price:40,unit:'一份'},
-    {name:'豬頭皮',price:40,unit:'一份'},{name:'豬耳朵',price:40,unit:'一份'} ] },
+    {name:'豬肉片',price:40},{name:'嘴邊肉',price:40},{name:'肝連肉',price:40},
+    {name:'豬頭皮',price:40},{name:'豬耳朵',price:40} ] },
   { id:'veg', label:'蔬食青菜', bundle:{qty:3,price:100}, items:[
-    {name:'金針菇',price:35,unit:'一樣'},{name:'香菇',price:35,unit:'一樣'},{name:'秀珍菇',price:35,unit:'一樣'},
-    {name:'杏鮑菇',price:35,unit:'一樣'},{name:'木耳',price:35,unit:'一樣'},{name:'花椰菜',price:35,unit:'一樣'},
-    {name:'玉米筍',price:35,unit:'一樣'},{name:'水蓮',price:35,unit:'一樣'},{name:'娃娃菜',price:35,unit:'一樣'},
-    {name:'小黃瓜',price:35,unit:'一樣'},{name:'洋蔥',price:35,unit:'一樣'},{name:'青椒',price:35,unit:'一樣'},
-    {name:'茼蒿',price:35,unit:'一樣'},{name:'絲瓜',price:35,unit:'一樣'},{name:'高麗菜',price:35,unit:'一樣'},
-    {name:'大陸妹',price:35,unit:'一樣'},{name:'空心菜',price:35,unit:'一樣'},{name:'菠菜',price:35,unit:'一樣'},
-    {name:'四季豆',price:35,unit:'一樣'} ] },
+    {name:'金針菇',price:35},{name:'香菇',price:35},{name:'秀珍菇',price:35},
+    {name:'杏鮑菇',price:35},{name:'木耳',price:35},{name:'花椰菜',price:35},
+    {name:'玉米筍',price:35},{name:'水蓮',price:35},{name:'娃娃菜',price:35},
+    {name:'小黃瓜',price:35},{name:'洋蔥',price:35},{name:'青椒',price:35},
+    {name:'茼蒿',price:35},{name:'絲瓜',price:35},{name:'高麗菜',price:35},
+    {name:'大陸妹',price:35},{name:'空心菜',price:35},{name:'菠菜',price:35},
+    {name:'四季豆',price:35} ] },
   { id:'noodle', label:'麵類', bundle:null, items:[
-    {name:'王子麵',price:15,unit:'一包'},{name:'滷味麵',price:15,unit:'一包'},{name:'細冬粉',price:15,unit:'一卷'},
-    {name:'寬冬粉',price:15,unit:'一卷'},{name:'烏龍麵',price:20,unit:'一包'},{name:'蒸煮麵',price:25,unit:'一包'} ] },
+    {name:'王子麵',price:15},{name:'滷味麵',price:15},{name:'細冬粉',price:15},
+    {name:'寬冬粉',price:15},{name:'烏龍麵',price:20},{name:'蒸煮麵',price:25} ] },
   { id:'extra', label:'餐具', bundle:null,
     items:[
-    {name:'紙碗',price:2,unit:'一個'},{name:'免洗筷',price:1,unit:'一雙'} ] }
+    {name:'紙碗',price:2},{name:'免洗筷',price:1} ] }
 ];
 
 // 畫面實際使用的菜單：開頁先用備用版，雲端菜單抓到後換裝
@@ -3104,7 +3118,7 @@ async function submitOrder() {
 
       <div style="background:rgba(212,165,32,0.1);border:1px solid rgba(212,165,32,0.35);border-radius:4px;padding:10px 14px;margin-bottom:14px;text-align:center;">
         <div style="font-size:11px;letter-spacing:3px;color:var(--gold3);margin-bottom:2px">取 餐 編 號</div>
-        <div style="font-family:'Noto Serif TC',serif;font-size:22px;font-weight:900;color:var(--gold2);letter-spacing:2px">${orderNo}</div>
+        <div style="font-family:'CashSign','Noto Serif TC',serif;font-size:22px;font-weight:900;color:var(--gold2);letter-spacing:2px">${orderNo}</div>
       </div>
 
       <div class="success-msg">

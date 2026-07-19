@@ -15,9 +15,18 @@
     --green:#7fc97f; --red:#e07a5f;
   }
   *{box-sizing:border-box;margin:0;padding:0;touch-action:manipulation;}
+  /* 「$」專用字體：襯線體的 $ 是花體、看起來像美金符號——只接管 $ 這一個字元，改用平體 */
+  @font-face{
+    font-family:'CashSign';
+    src:local('PingFang TC'),local('Helvetica Neue'),local('Roboto'),local('Arial');
+    unicode-range:U+0024;
+  }
+  html{background:var(--bg);}
   body{background:var(--bg);color:var(--text);font-family:"Noto Sans TC",system-ui,sans-serif;min-height:100vh;}
+  /* iPhone 橡皮筋回彈防露白：固定深色底墊，上下各多鋪一個螢幕高 */
+  body::before{content:'';position:fixed;left:0;right:0;top:-100vh;bottom:-100vh;z-index:-2;background:var(--bg);pointer-events:none;}
   .wrap{max-width:720px;margin:0 auto;padding:16px;}
-  h1{font-family:"Noto Serif TC",serif;color:var(--gold2);font-size:22px;letter-spacing:4px;text-align:center;padding:14px 0 4px;}
+  h1{font-family:'CashSign',"Noto Serif TC",serif;color:var(--gold2);font-size:22px;letter-spacing:4px;text-align:center;padding:14px 0 4px;}
   .sub{text-align:center;color:var(--dim);font-size:12px;letter-spacing:2px;margin-bottom:16px;}
 
   /* ====== 登入卡 ====== */
@@ -38,7 +47,7 @@
   .order-card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:12px;}
   .order-card.is-new{border-color:var(--gold);box-shadow:0 0 12px rgba(212,165,32,0.15);}
   .oc-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
-  .oc-no{font-family:"Noto Serif TC",serif;font-size:20px;font-weight:900;color:var(--gold2);letter-spacing:2px;}
+  .oc-no{font-family:'CashSign',"Noto Serif TC",serif;font-size:20px;font-weight:900;color:var(--gold2);letter-spacing:2px;}
   .oc-time{color:var(--dim);font-size:12px;}
   .oc-cust{font-size:14px;margin-bottom:8px;}
   .oc-cust a{color:var(--goldlight);text-decoration:none;}
@@ -77,7 +86,7 @@
   .cm-preset.active{background:var(--gold);color:#1a1611;}
   .cm-stepper{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:12px;}
   .cm-step{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:none;color:var(--gold2);font-size:22px;font-weight:900;cursor:pointer;}
-  .cm-mins{font-family:"Noto Serif TC",serif;font-size:28px;font-weight:900;color:var(--gold2);min-width:52px;text-align:center;}
+  .cm-mins{font-family:'CashSign',"Noto Serif TC",serif;font-size:28px;font-weight:900;color:var(--gold2);min-width:52px;text-align:center;}
   .cm-pickup{text-align:center;font-size:14px;color:#ff9d5c;letter-spacing:1px;margin-bottom:14px;min-height:20px;}
   .cm-actions{display:flex;gap:10px;}
   .empty{text-align:center;color:var(--dim);padding:50px 0;font-size:14px;letter-spacing:2px;}
@@ -111,7 +120,7 @@
 
   /* ====== 📊 老闆日報 ====== */
   .dr-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:10px;}
-  .dr-date{font-family:"Noto Serif TC",serif;font-size:16px;font-weight:900;color:var(--gold2);letter-spacing:1px;}
+  .dr-date{font-family:'CashSign',"Noto Serif TC",serif;font-size:16px;font-weight:900;color:var(--gold2);letter-spacing:1px;}
   .dr-stats{display:flex;gap:8px;margin-bottom:12px;}
   .dr-stat{flex:1;background:rgba(212,165,32,0.08);border:1px solid var(--line);border-radius:8px;padding:8px 4px;text-align:center;}
   .dr-stat b{display:block;font-size:18px;color:var(--gold2);}
