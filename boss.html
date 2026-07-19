@@ -641,11 +641,14 @@ async function commitEdit() {
    「今日暫停」的聰明設計：存的是今天的日期，明天自動失效——按了不用記得關。 */
 async function openShopSettings() {
   const { data, error } = await db.from('app_config')
-    .select('name,value').in('name', ['notice', 'closed_dates', 'closed_now']);
+    .select('name,value').in('name', ['notice', 'closed_dates', 'closed_now', 'open_hours']);
   if (error || !data) { alert('讀取失敗——還沒跑 setup-config.sql？'); return; }
   const cfg = {}; data.forEach(r => cfg[r.name] = r.value || '');
   const today = taipeiToday();
   const pausedToday = cfg.closed_now === today;
+  // 營業時段拆成兩個時間框（存檔格式 HH:MM-HH:MM；24:00＝收到半夜，畫面顯示 00:00）
+  const hm = /^(\d{2}:\d{2})-(\d{2}:\d{2})$/.exec(cfg.open_hours || '') || [null, '17:00', '24:00'];
+  const openFrom = hm[1], openTo = (hm[2] === '24:00' ? '00:00' : hm[2]);
 
   const overlay = document.createElement('div');
   overlay.className = 'line-preview-overlay';
@@ -659,6 +662,13 @@ async function openShopSettings() {
     +     (pausedToday ? '▶️ 恢復接單（目前：今日暫停中）' : '⏸️ 今日暫停接單')
     +   '</button>'
     +   '<div class="lp-note" style="text-align:left">按下後客人點餐頁立刻顯示「今日公休」且無法下單；明天自動恢復，不用記得回來關</div>'
+    +   '<div class="dr-sec">🕔 每日接單時段</div>'
+    +   '<div style="display:flex;gap:8px;align-items:center;">'
+    +     '<input type="time" id="cfgOpenFrom" value="' + openFrom + '" style="flex:1;padding:9px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);color-scheme:dark;">'
+    +     '<span style="color:var(--dim)">–</span>'
+    +     '<input type="time" id="cfgOpenTo" value="' + openTo + '" style="flex:1;padding:9px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);color-scheme:dark;">'
+    +   '</div>'
+    +   '<div class="lp-note" style="text-align:left">時段外客人頁顯示「尚未營業」並擋單；結束時間選 00:00＝收單到半夜</div>'
     +   '<div class="dr-sec">📅 未來公休日</div>'
     +   '<div style="display:flex;gap:8px;">'
     +     '<input type="date" id="cfgDatePick" min="' + today + '" value="' + today + '" style="flex:1;padding:9px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);color-scheme:dark;">'
@@ -718,9 +728,16 @@ async function togglePauseToday(currentlyPaused) {
 async function saveShopSettings() {
   const dates = _cfgDates.join(',');  // 日期籤選好的（存完整格式，顯示才用 7/19）
   const notice = (document.getElementById('cfgNotice')?.value || '').trim();
+  const from = document.getElementById('cfgOpenFrom')?.value || '17:00';
+  const toRaw = document.getElementById('cfgOpenTo')?.value || '00:00';
+  const hours = from + '-' + (toRaw === '00:00' ? '24:00' : toRaw); // 00:00 存成 24:00＝收到半夜
   const r1 = await db.from('app_config').update({ value: dates }).eq('name', 'closed_dates').select();
   const r2 = await db.from('app_config').update({ value: notice }).eq('name', 'notice').select();
-  if (r1.error || r2.error || !r1.data?.length || !r2.data?.length) { alert('儲存失敗，請確認已登入再試'); return; }
+  const r3 = await db.from('app_config').update({ value: hours }).eq('name', 'open_hours').select();
+  if (r1.error || r2.error || r3.error || !r1.data?.length || !r2.data?.length || !r3.data?.length) {
+    alert('儲存失敗——若是接單時段存不進去，先重跑一次 setup-config.sql（要含 open_hours 的版本）再試');
+    return;
+  }
   alert('✅ 已儲存！客人頁 10 秒內生效');
   document.getElementById('shopSettings')?.remove();
 }

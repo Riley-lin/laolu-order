@@ -17,24 +17,25 @@ create table if not exists public.app_config (
 );
 alter table public.app_config enable row level security;
 
--- 客人可讀的三格（公告/公休日/臨時打烊——點餐頁要即時反應）
+-- 客人可讀的四格（公告/公休日/臨時打烊/營業時段——點餐頁要即時反應）
 drop policy if exists "config_public_read" on public.app_config;
 create policy "config_public_read" on public.app_config
   for select to anon, authenticated
-  using (name in ('notice', 'closed_dates', 'closed_now'));
+  using (name in ('notice', 'closed_dates', 'closed_now', 'open_hours'));
 
--- 登入的老闆可改同三格（店務頁的營業設定區）；沒開 insert/delete＝改不了別格、加不了新格
+-- 登入的老闆可改同四格（店務頁的營業設定區）；沒開 insert/delete＝改不了別格、加不了新格
 drop policy if exists "config_boss_write" on public.app_config;
 create policy "config_boss_write" on public.app_config
   for update to authenticated
-  using (name in ('notice', 'closed_dates', 'closed_now'))
-  with check (name in ('notice', 'closed_dates', 'closed_now'));
+  using (name in ('notice', 'closed_dates', 'closed_now', 'open_hours'))
+  with check (name in ('notice', 'closed_dates', 'closed_now', 'open_hours'));
 
--- 三格開戶（已存在就不動它）
+-- 四格開戶（已存在就不動它）；營業時段預設＝老闆 2026-07-19 拍板 17:00–00:00
+-- （24:00＝跨到半夜零點的寫法；改時段去店務頁「營業設定」）
 insert into public.app_config (name, value) values
-  ('notice', ''), ('closed_dates', ''), ('closed_now', '')
+  ('notice', ''), ('closed_dates', ''), ('closed_now', ''), ('open_hours', '17:00-24:00')
 on conflict (name) do nothing;
 
--- 自我體檢：應看到三格（value 都空白＝正常，內容之後在店務頁填）
+-- 自我體檢：應看到四格
 select name, value from public.app_config
-where name in ('notice','closed_dates','closed_now') order by name;
+where name in ('notice','closed_dates','closed_now','open_hours') order by name;

@@ -1441,6 +1441,11 @@ body{
       <div class="closed-sub">感謝支持，明天見</div>
       <div class="closed-dates" id="closedDates" style="display:none"></div>
     </div>
+    <!-- 🕔 時段外看板（還沒到接單時間；同樣是唯一焦點） -->
+    <div id="coverOffhours" class="closed-box" style="display:none">
+      <div class="closed-title">尚 未 營 業</div>
+      <div class="closed-sub" id="offhoursSub">今日接單時間 17:00 – 00:00</div>
+    </div>
     <!-- 📢 公告條（有公告才現身） -->
     <div id="coverNotice" class="notice-bar" style="display:none"></div>
 
@@ -1910,8 +1915,9 @@ function showOrderPage(){
 const ENABLE_GROUP_MODE = false;
 
 function openModeSelect() {
-  // 🚪 打烊日：連菜單都不給進（不看字的客人也擋得住）
+  // 🚪 打烊日／時段外：連菜單都不給進（不看字的客人也擋得住）
   if (SHOP_CLOSED) { alert('🍢 今日公休，感謝支持，明天見！'); return; }
+  if (SHOP_OFFHOURS) { alert('🕔 還沒開始接單喔！今日接單時間 ' + (SHOP_HOURS_LABEL || '17:00 – 00:00')); return; }
   if (!ENABLE_GROUP_MODE) {
     // 揪團關閉中：跳過「選擇點餐方式」，直接以個人模式進點餐頁
     selectOrderMode('personal');
@@ -2803,6 +2809,8 @@ async function syncMenu() {
 let SHOP_NOTICE = '';
 let SHOP_CLOSED = false;
 let SHOP_CLOSED_UPCOMING = []; // 近期公休日（今天含以後），公告條自動顯示
+let SHOP_OFFHOURS = false;     // 還沒到接單時段（老闆拍板 17:00–00:00，存 app_config 可改）
+let SHOP_HOURS_LABEL = '';     // 顯示用：「17:00 – 00:00」
 
 function taipeiTodayStr() {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' });
@@ -2821,6 +2829,15 @@ async function syncShopConfig() {
     const dates = (cfg.closed_dates || '').split(/[,，\s]+/).filter(Boolean);
     SHOP_CLOSED = (cfg.closed_now === today) || dates.includes(today);
     SHOP_CLOSED_UPCOMING = dates.filter(d => d >= today).sort();
+    // 🕔 接單時段：格式 HH:MM-HH:MM（24:00＝收到半夜）；沒設定＝整天可點
+    SHOP_OFFHOURS = false;
+    const m = /^(\d{2}:\d{2})-(\d{2}:\d{2})$/.exec((cfg.open_hours || '').trim());
+    if (m) {
+      const nowHM = new Date().toLocaleTimeString('en-GB',
+        { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
+      SHOP_OFFHOURS = !(nowHM >= m[1] && nowHM < m[2]);
+      SHOP_HOURS_LABEL = m[1] + ' – ' + (m[2] === '24:00' ? '00:00' : m[2]);
+    }
     renderShopStatus();
   } catch (e) { /* 讀不到就維持現狀，不影響點餐 */ }
 }
@@ -2839,13 +2856,19 @@ function renderShopStatus() {
     el.textContent = lines.join('\n');
     el.style.display = (lines.length && !SHOP_CLOSED) ? 'block' : 'none';
   });
-  // 公休日：打烊看板是唯一焦點——等待時間、點餐鈕整組退場（公休沒有等待時間這回事）
+  // 公休日／時段外：看板是唯一焦點——等待時間、點餐鈕整組退場
+  // 優先序：公休 > 時段外 > 正常營業
+  const blocked = SHOP_CLOSED || SHOP_OFFHOURS;
   const closedEl = document.getElementById('coverClosed');
   if (closedEl) closedEl.style.display = SHOP_CLOSED ? 'block' : 'none';
+  const offEl = document.getElementById('coverOffhours');
+  if (offEl) offEl.style.display = (!SHOP_CLOSED && SHOP_OFFHOURS) ? 'block' : 'none';
+  const offSub = document.getElementById('offhoursSub');
+  if (offSub && SHOP_HOURS_LABEL) offSub.textContent = '今日接單時間 ' + SHOP_HOURS_LABEL;
   const waitBanner = document.getElementById('coverWaitBanner');
-  if (waitBanner) waitBanner.style.display = SHOP_CLOSED ? 'none' : '';
+  if (waitBanner) waitBanner.style.display = blocked ? 'none' : '';
   const startBtn = document.querySelector('.start-btn');
-  if (startBtn) startBtn.style.display = SHOP_CLOSED ? 'none' : '';
+  if (startBtn) startBtn.style.display = blocked ? 'none' : '';
   // 看板內附上之後的公休日（今天以外還有排休才顯示）
   const datesEl = document.getElementById('closedDates');
   if (datesEl) {
@@ -2926,11 +2949,13 @@ async function submitOrder() {
   const btn = document.querySelector('#modalBox .btn-order');
   if (btn) { btn.disabled = true; btn.textContent = '傳送中…'; }
 
-  // 🚪 打烊最後把關：開著頁面跨到公休日的邊角也擋（先同步一次店況）
+  // 🚪 打烊最後把關：開著頁面跨到公休日/時段外的邊角也擋（先同步一次店況）
   await syncShopConfig();
-  if (SHOP_CLOSED) {
+  if (SHOP_CLOSED || SHOP_OFFHOURS) {
     if (btn) { btn.disabled = false; btn.textContent = '送 出 訂 單'; }
-    alert('🍢 今日公休無法接單，感謝支持，明天見！');
+    alert(SHOP_CLOSED
+      ? '🍢 今日公休無法接單，感謝支持，明天見！'
+      : '🕔 目前非接單時段（' + (SHOP_HOURS_LABEL || '17:00 – 00:00') + '），時間到了再來喔！');
     return;
   }
 
