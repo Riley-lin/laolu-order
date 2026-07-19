@@ -3189,127 +3189,118 @@ function switchQueryTab(mode) {
   document.getElementById('queryResult').innerHTML = '';
 }
 
-function queryOrder() {
-  try {
-    const history = JSON.parse(localStorage.getItem('luyuxian_orders') || '[]');
-    const el = document.getElementById('queryResult');
-    let found = [];
+/* ── 查詢 v2（2026-07-19 Riley UAT 抓到重寫）：改查雲端 ──
+   舊版只翻「這支手機存過的紀錄」——換瀏覽器、清資料、或 LINE 內開網頁
+   就查無訂單。現在拿姓名＋電話直接問雲端窄窗口 get_customer_orders：
+   任何手機都查得到；只查當天（取餐編號每天重排，隔天的舊單沒有查詢意義）。 */
 
-    const name = document.getElementById('queryName')?.value.trim();
-    const phone = document.getElementById('queryPhone2')?.value.trim();
-    if (!name || !phone) { alert('請輸入姓名和電話'); return; }
-    found = history.filter(r => r.name === name && r.phone === phone);
+// 狀態列：跟訂單目前的處理進度對齊（做成一列 HTML）
+function queryStatusLine(status, pickup_at) {
+  let text = '', color = 'var(--gold3)';
+  if (status === 'confirmed' && pickup_at) {
+    const hm = new Date(pickup_at).toLocaleTimeString('zh-TW',
+      { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
+    text = '🔥 店家製作中，請於 ' + hm + ' 前往取餐'; color = '#ff9d5c';
+  } else if (status === 'new') { text = '⏳ 等待店家確認中'; }
+  else if (status === 'done') { text = '✅ 餐點已完成'; color = '#7fc97f'; }
+  else if (status === 'cancelled') { text = '❌ 訂單已取消（有疑問請致電 0939-955-888）'; color = '#e07a5f'; }
+  if (!text) return '';
+  return '<div class="query-status" style="font-size:12px;letter-spacing:1px;margin:6px 0 2px;color:' + color + '">' + text + '</div>';
+}
 
-    if (!found.length) {
-      el.innerHTML = '<div class="query-result-empty">找不到相關訂單記錄</div>';
-      return;
-    }
+// 口味偏好一列（查詢卡共用；prefs 可能是 null）
+function prefLinesHTML(prefs) {
+  if (!prefs) return '';
+  const pLines = [];
+  if (prefs.scallion === 'yes') pLines.push('加蔥');
+  else if (prefs.scallion === 'no') pLines.push('不要蔥');
+  if (prefs.garlic === 'yes') pLines.push('加蒜');
+  else if (prefs.garlic === 'no') pLines.push('不要蒜');
+  if (prefs.pepper === 'yes') pLines.push('加胡椒');
+  else if (prefs.pepper === 'no') pLines.push('不要胡椒');
+  if (prefs.spicy === 'yes' && prefs.spiceLevel) pLines.push(prefs.spiceLevel);
+  else if (prefs.spicy === 'no') pLines.push('不加辣');
+  if (prefs.note) pLines.push('備註：' + prefs.note);
+  if (!pLines.length) return '';
+  return '<div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:5px;padding-top:5px;border-top:1px dashed rgba(255,255,255,0.07)">🌿 ' + pLines.join('、') + '</div>';
+}
 
-    let resultHtml = '';
-    found.forEach(r => {
-      let ordersHtml = '';
-      r.orders.forEach(o => {
-        if (r.orders.length > 1) {
-          ordersHtml += '<div class="query-order-name">— ' + o.name + ' 的訂單</div>';
-        }
-        o.items.forEach(item => {
-          ordersHtml += '<div class="query-item-row">'
-            + '<span>' + item.name + ' × ' + item.qty + '</span>'
-            + '<span class="query-item-price">$' + (item.price * item.qty) + '</span>'
-            + '</div>';
-        });
-        // 個別小計（揪團分開結帳時有意義）
-        if (r.orders.length > 1) {
-          ordersHtml += '<div style="text-align:right;font-size:12px;color:var(--gold3);margin-top:4px;padding-top:4px;border-top:1px dashed rgba(212,165,32,0.15)">小計 $' + o.total + '</div>';
-        }
-        if (o.prefs) {
-          const pLines = [];
-          if(o.prefs.scallion==='yes') pLines.push('加蔥');
-          else if(o.prefs.scallion==='no') pLines.push('不要蔥');
-          if(o.prefs.garlic==='yes') pLines.push('加蒜');
-          else if(o.prefs.garlic==='no') pLines.push('不要蒜');
-          if(o.prefs.pepper==='yes') pLines.push('加胡椒');
-          else if(o.prefs.pepper==='no') pLines.push('不要胡椒');
-          if(o.prefs.spicy==='yes' && o.prefs.spiceLevel) pLines.push(o.prefs.spiceLevel);
-          else if(o.prefs.spicy==='no') pLines.push('不加辣');
-          if(o.prefs.utensils==='yes') pLines.push('需要餐具🥢');
-          else if(o.prefs.utensils==='no') pLines.push('不需要餐具');
-          if(o.prefs.note) pLines.push('備註：'+o.prefs.note);
-          if (pLines.length > 0) {
-            ordersHtml += '<div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:5px;padding-top:5px;border-top:1px dashed rgba(255,255,255,0.07)">🌿 '+pLines.join('、')+'</div>';
-          }
-        }
-      });
-
-      // 顯示訂餐人（揪團分開結帳時顯示是哪位）
-      const subLabel = r.orderName ? (' · ' + r.orderName) : '';
-
-      resultHtml += '<div class="query-card">'
-        + '<div class="query-card-header">'
-        + '<span class="query-card-no">取餐編號 ' + r.orderNo + subLabel + '</span>'
-        + '<span class="query-card-time">' + r.time + '</span>'
-        + '</div>'
-        + '<div class="query-status" data-ono="' + r.orderNo + '" style="font-size:12px;letter-spacing:1px;margin:6px 0 2px;color:var(--gold3);">⏳ 查詢狀態中…</div>'
-        + '<div class="query-card-body">' + ordersHtml + '</div>'
-        + '<div class="query-card-footer">'
-        + '<span class="query-card-total">合計 $' + r.total + '</span>'
-        + '<span class="query-card-wait">⏱ 等待約 ' + (r.waitMinutes||'?') + ' 分鐘</span>'
-        + '</div>'
+// 雲端訂單 → 查詢卡片 HTML（品項、折扣、狀態、合計）
+function cloudOrderCardHTML(r) {
+  const packs = Array.isArray(r.items) ? r.items : [];
+  let ordersHtml = '';
+  packs.forEach(o => {
+    if (packs.length > 1) ordersHtml += '<div class="query-order-name">— ' + o.name + ' 的訂單</div>';
+    (o.items || []).forEach(item => {
+      ordersHtml += '<div class="query-item-row">'
+        + '<span>' + item.name + ' × ' + item.qty + '</span>'
+        + '<span class="query-item-price">$' + (item.price * item.qty) + '</span>'
         + '</div>';
     });
+    if (o.discount > 0) {
+      ordersHtml += '<div class="query-item-row" style="color:var(--gold2);font-weight:700"><span>🎁 優惠折抵</span><span>−$' + o.discount + '</span></div>';
+      (o.discount_lines || []).forEach(l => {
+        ordersHtml += '<div style="font-size:11px;color:rgba(255,255,255,0.45);padding-left:12px;">' + l + '</div>';
+      });
+    }
+    if (packs.length > 1) {
+      ordersHtml += '<div style="text-align:right;font-size:12px;color:var(--gold3);margin-top:4px;padding-top:4px;border-top:1px dashed rgba(212,165,32,0.15)">小計 $' + o.total + '</div>';
+    }
+    ordersHtml += prefLinesHTML(o.prefs);
+  });
+  const hm = new Date(r.created_at).toLocaleTimeString('zh-TW',
+    { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
+  return '<div class="query-card">'
+    + '<div class="query-card-header">'
+    + '<span class="query-card-no">取餐編號 #' + r.order_no + '</span>'
+    + '<span class="query-card-time">' + hm + ' 下單</span>'
+    + '</div>'
+    + queryStatusLine(r.status, r.pickup_at)
+    + '<div class="query-card-body">' + ordersHtml + '</div>'
+    + '<div class="query-card-footer">'
+    + '<span class="query-card-total">合計 $' + r.total + '</span>'
+    + '<span class="query-card-wait">⏱ 等待約 ' + (r.wait_minutes || '?') + ' 分鐘</span>'
+    + '</div>'
+    + '</div>';
+}
 
-    el.innerHTML = resultHtml;
-    refreshQueryStatuses(el); // 補查每張單的雲端最新狀態（確認了沒？幾點取餐？）
-  } catch(e) {
-    document.getElementById('queryResult').innerHTML = '<div class="query-result-empty">查詢失敗，請重試</div>';
+// 共用查詢流程：兩個查詢入口（首頁彈窗／點餐頁）都走這條
+async function runOrderQuery(name, phone, el) {
+  el.innerHTML = '<div class="query-result-empty">⏳ 查詢中…</div>';
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_customer_orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      },
+      body: JSON.stringify({ p_name: name, p_phone: phone })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    if (!rows || !rows.length) {
+      el.innerHTML = '<div class="query-result-empty">找不到今天的訂單<br><small style="opacity:0.7">姓名電話要跟下單時填的一模一樣喔（僅保留當天訂單）</small></div>';
+      return;
+    }
+    el.innerHTML = rows.map(cloudOrderCardHTML).join('');
+  } catch (e) {
+    el.innerHTML = '<div class="query-result-empty">網路不穩查不到，請再試一次<br><small style="opacity:0.7">或直接致電 0939-955-888</small></div>';
   }
+}
+
+function queryOrder() {
+  const name = document.getElementById('queryName')?.value.trim();
+  const phone = document.getElementById('queryPhone2')?.value.trim();
+  if (!name || !phone) { alert('請輸入姓名和電話'); return; }
+  runOrderQuery(name, phone, document.getElementById('queryResult'));
 }
 
 // （confirmOrder() 死碼已於 2026-07-11 移除：舊版送單流程遺留，無任何地方呼叫，
 //   功能已被 submitOrder() 完全取代）
 
-/* ────────────────────────────────
-   查詢卡片的雲端狀態補查（M0.75 新增）
-   本機紀錄只知道「我點過什麼」，狀態（老闆確認了沒、幾點取餐）要問雲端。
-   透過 get_order_status 函式查：只回狀態＋取餐時間、只查當天、不含任何個資。
-   ──────────────────────────────── */
-async function refreshQueryStatuses(container) {
-  const nodes = container.querySelectorAll('.query-status[data-ono]');
-  for (const node of nodes) {
-    try {
-      const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_order_status', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_KEY,
-          'Authorization': 'Bearer ' + SUPABASE_KEY
-        },
-        body: JSON.stringify({ p_order_no: node.dataset.ono })
-      });
-      if (!res.ok) { node.remove(); continue; }
-      const rows = await res.json();
-      // 查不到＝不是今天的單（編號每天重數，只查當天避免撈到舊單）→ 不顯示狀態列
-      if (!rows || !rows.length) { node.remove(); continue; }
-      const { status, pickup_at } = rows[0];
-      if (status === 'confirmed' && pickup_at) {
-        const hm = new Date(pickup_at).toLocaleTimeString('zh-TW',
-          { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
-        node.textContent = '🔥 店家製作中，請於 ' + hm + ' 前往取餐';
-        node.style.color = '#ff9d5c';
-      } else if (status === 'new') {
-        node.textContent = '⏳ 等待店家確認中';
-      } else if (status === 'done') {
-        node.textContent = '✅ 餐點已完成';
-        node.style.color = '#7fc97f';
-      } else if (status === 'cancelled') {
-        node.textContent = '❌ 訂單已取消（有疑問請致電 0939-955-888）';
-        node.style.color = '#e07a5f';
-      } else {
-        node.remove();
-      }
-    } catch (e) { node.remove(); }
-  }
-}
+/* （refreshQueryStatuses 已於 2026-07-19 移除：查詢 v2 直接從 get_customer_orders
+    一次拿到品項＋狀態，不用再逐張補查 get_order_status） */
 
 function finishOrder(){
   // 清空所有訂單，重設
@@ -3330,7 +3321,8 @@ function closeModal(){
   document.getElementById('modalBg').classList.remove('open');
 }
 document.getElementById('modalBg').addEventListener('click',function(e){if(e.target===this)closeModal();});
-document.getElementById('coverQueryBg').addEventListener('click',function(e){if(e.target===this)closeCoverQuery();});
+/* 查詢視窗不做「點背景關閉」——鍵盤開著時容易誤觸背景、查到一半整個彈窗被關掉
+   （Riley UAT 抓的「跳回首頁」），關閉一律走底部的「關 閉」按鈕 */
 document.getElementById('modeSelectBg').addEventListener('click',function(e){if(e.target===this)closeModeSelect();});
 
 /* 🔔 自家提示氣泡：全站接管 alert（樣式跟網站一家人，沒有嚇人的網址抬頭）
@@ -3458,72 +3450,10 @@ function switchCoverQueryTab(mode) {
 }
 
 function doCoverQuery() {
-  try {
-    const history = JSON.parse(localStorage.getItem('luyuxian_orders') || '[]');
-    const el = document.getElementById('coverQueryResult');
-    const name = document.getElementById('coverQueryName')?.value.trim();
-    const phone = document.getElementById('coverQueryPhone')?.value.trim();
-    if (!name || !phone) { alert('請輸入姓名和電話'); return; }
-    const found = history.filter(r => r.name === name && r.phone === phone);
-
-    if (!found.length) {
-      el.innerHTML = '<div class="query-result-empty">找不到相關訂單記錄</div>';
-      return;
-    }
-
-    let resultHtml = '';
-    found.forEach(r => {
-      let ordersHtml = '';
-      r.orders.forEach(o => {
-        if (r.orders.length > 1) {
-          ordersHtml += '<div class="query-order-name">— ' + o.name + ' 的訂單</div>';
-        }
-        o.items.forEach(item => {
-          ordersHtml += '<div class="query-item-row">'
-            + '<span>' + item.name + ' × ' + item.qty + '</span>'
-            + '<span class="query-item-price">$' + (item.price * item.qty) + '</span>'
-            + '</div>';
-        });
-        if (r.orders.length > 1) {
-          ordersHtml += '<div style="text-align:right;font-size:12px;color:var(--gold3);margin-top:4px;padding-top:4px;border-top:1px dashed rgba(212,165,32,0.15)">小計 $' + o.total + '</div>';
-        }
-        if (o.prefs) {
-          const pLines = [];
-          if(o.prefs.scallion==='yes') pLines.push('加蔥');
-          else if(o.prefs.scallion==='no') pLines.push('不要蔥');
-          if(o.prefs.garlic==='yes') pLines.push('加蒜');
-          else if(o.prefs.garlic==='no') pLines.push('不要蒜');
-          if(o.prefs.pepper==='yes') pLines.push('加胡椒');
-          else if(o.prefs.pepper==='no') pLines.push('不要胡椒');
-          if(o.prefs.spicy==='yes' && o.prefs.spiceLevel) pLines.push(o.prefs.spiceLevel);
-          else if(o.prefs.spicy==='no') pLines.push('不加辣');
-          if(o.prefs.utensils==='yes') pLines.push('需要餐具🥢');
-          else if(o.prefs.utensils==='no') pLines.push('不需要餐具');
-          if(o.prefs.note) pLines.push('備註：'+o.prefs.note);
-          if (pLines.length > 0) {
-            ordersHtml += '<div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:5px;padding-top:5px;border-top:1px dashed rgba(255,255,255,0.07)">🌿 '+pLines.join('、')+'</div>';
-          }
-        }
-      });
-      const subLabel = r.orderName ? (' · ' + r.orderName) : '';
-      resultHtml += '<div class="query-card">'
-        + '<div class="query-card-header">'
-        + '<span class="query-card-no">取餐編號 ' + r.orderNo + subLabel + '</span>'
-        + '<span class="query-card-time">' + r.time + '</span>'
-        + '</div>'
-        + '<div class="query-status" data-ono="' + r.orderNo + '" style="font-size:12px;letter-spacing:1px;margin:6px 0 2px;color:var(--gold3);">⏳ 查詢狀態中…</div>'
-        + '<div class="query-card-body">' + ordersHtml + '</div>'
-        + '<div class="query-card-footer">'
-        + '<span class="query-card-total">合計 $' + r.total + '</span>'
-        + '<span class="query-card-wait">⏱ 等待約 ' + (r.waitMinutes||'?') + ' 分鐘</span>'
-        + '</div>'
-        + '</div>';
-    });
-    el.innerHTML = resultHtml;
-    refreshQueryStatuses(el); // 補查每張單的雲端最新狀態（確認了沒？幾點取餐？）
-  } catch(e) {
-    document.getElementById('coverQueryResult').innerHTML = '<div class="query-result-empty">查詢失敗，請重試</div>';
-  }
+  const name = document.getElementById('coverQueryName')?.value.trim();
+  const phone = document.getElementById('coverQueryPhone')?.value.trim();
+  if (!name || !phone) { alert('請輸入姓名和電話'); return; }
+  runOrderQuery(name, phone, document.getElementById('coverQueryResult'));
 }
 
 
