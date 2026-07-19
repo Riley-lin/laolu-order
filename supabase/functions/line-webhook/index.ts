@@ -251,6 +251,15 @@ Deno.serve(async (req) => {
       continue
     }
 
+    // ②.5 傳「休假日」（圖文選單按鈕代送）→ 回店務設定檔裡的公告
+    //     內容存 app_config 表，老闆改休假 → Table Editor 改一格字即生效，不用重部署
+    if (text === '休假日' || text === '公休') {
+      const { data: cfg } = await db.from('app_config')
+        .select('value').eq('name', 'holiday_notice').maybeSingle()
+      await reply(ev.replyToken, cfg?.value ?? '休假資訊請洽 0939-955-888 🍢')
+      continue
+    }
+
     // ③ 老闆綁定：傳「老闆綁定 <密語>」→ 登記成管理員
     if (text.startsWith('老闆綁定')) {
       const code = text.replace('老闆綁定', '').trim()
