@@ -3090,14 +3090,31 @@ document.addEventListener('visibilitychange', function(){ if (!document.hidden) 
 const LIFF_ID = '2010753920-y35aYY9d';  // 2026-07-19 開通（LINE Login channel「老滷仙點餐」）
 let LINE_USER = null; // 認出的客人：{ id, name }
 (async function initLiff() {
-  if (!LIFF_ID || typeof liff === 'undefined') return;
+  if (!LIFF_ID || typeof liff === 'undefined') { jumpToSection(); return; }
   try {
     await liff.init({ liffId: LIFF_ID });
-    if (!liff.isLoggedIn()) return; // LINE 裡開必定已登入；外部瀏覽器未登入就當一般客人
-    const p = await liff.getProfile();
-    LINE_USER = { id: p.userId, name: p.displayName };
+    if (liff.isLoggedIn()) {
+      const p = await liff.getProfile();
+      LINE_USER = { id: p.userId, name: p.displayName };
+    }
   } catch (e) { /* LIFF 失敗＝一般網頁模式，不影響點餐 */ }
+  jumpToSection(); // 等 LIFF 把網址還原後再看暗號
 })();
+
+/* 🥬 直達分區暗號（M1.5 圖文選單用）：
+   網址帶 ?sec=veg → 自動進點餐頁＋捲到蔬食區（圖文選單「今日青菜」按鈕）。
+   sec 可以是任何分區代號（veg/meat/noodle…），以後想加按鈕不用改程式。 */
+function jumpToSection() {
+  try {
+    const sec = new URLSearchParams(location.search).get('sec');
+    if (!sec) return;
+    selectOrderMode('personal');           // 跳過封面直接進菜單
+    setTimeout(() => {
+      const el = document.getElementById('sec-' + sec);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }, 400);                               // 給菜單一點時間畫完
+  } catch (e) { /* 暗號失敗就停在封面，客人自己點，無傷 */ }
+}
 
 
 // ────────────────────────────────
