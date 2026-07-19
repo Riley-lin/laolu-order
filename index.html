@@ -1605,8 +1605,8 @@ body::before{
     <div style="margin-bottom:14px">
       <div class="form-label">辣 度</div>
       <div class="pref-grid" style="grid-template-columns:1fr 1fr 1fr;">
-        <div class="pref-btn" id="gp-spicy-yes" onclick="setGroupPref('spicy','yes');updateGroupSpiceUI()">🌶️ 要加辣</div>
-        <div class="pref-btn" id="gp-spicy-side" onclick="setGroupPref('spicy','side');updateGroupSpiceUI()">🥡 辣另外裝</div>
+        <div class="pref-btn" id="gp-spicy-yes" onclick="setGroupPref('spicy','yes');updateGroupSpiceUI()">要加辣</div>
+        <div class="pref-btn" id="gp-spicy-side" onclick="setGroupPref('spicy','side');updateGroupSpiceUI()">辣另外裝</div>
         <div class="pref-btn" id="gp-spicy-no" onclick="setGroupPref('spicy','no');updateGroupSpiceUI()">不要辣</div>
       </div>
       <div id="gpSpiceRow" class="spice-row" style="display:none;margin-top:8px">
@@ -2634,8 +2634,8 @@ function openCheckout(e){
       <div style="margin-bottom:14px">
         <div class="form-label">辣 度</div>
         <div class="pref-grid" style="grid-template-columns:1fr 1fr 1fr;">
-          <div class="pref-btn ${prefs.spicy==='yes'?'selected':''}" onclick="setPref('spicy','yes',this);updateSpiceUI()">🌶️ 要加辣</div>
-          <div class="pref-btn ${prefs.spicy==='side'?'selected':''}" onclick="setPref('spicy','side',this);updateSpiceUI()">🥡 辣另外裝</div>
+          <div class="pref-btn ${prefs.spicy==='yes'?'selected':''}" onclick="setPref('spicy','yes',this);updateSpiceUI()">要加辣</div>
+          <div class="pref-btn ${prefs.spicy==='side'?'selected':''}" onclick="setPref('spicy','side',this);updateSpiceUI()">辣另外裝</div>
           <div class="pref-btn ${prefs.spicy==='no'?'selected':''}" onclick="setPref('spicy','no',this);updateSpiceUI()">不要辣</div>
         </div>
         <div id="spiceRow" class="spice-row" style="display:${(prefs.spicy==='yes'||prefs.spicy==='side')?'flex':'none'}">
