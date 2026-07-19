@@ -149,7 +149,7 @@
       <button class="btn-plain" onclick="openShopSettings()">🚪 營業</button>
       <button class="btn-plain" onclick="openDailyReport()">📊 日報</button>
       <button class="btn-plain" onclick="openMenuManager()">🍢 菜單</button>
-      <button class="btn-plain" onclick="loadOrders()">↻ 重新整理</button>
+      <button class="btn-plain" id="refreshBtn" onclick="refreshOrders()">↻ 重新整理</button>
       <button class="btn-plain" onclick="doLogout()">登出</button>
     </div>
     <div id="orderList"><div class="empty">載入中…</div></div>
@@ -218,6 +218,17 @@ function startRealtime() {
 
 /* 打開頁面時：如果之前登入過還沒過期，直接進看單台 */
 db.auth.getSession().then(({ data }) => { if (data.session) showBoard(); });
+
+/* 手動重新整理：加上看得見的回饋——沒回饋的成功看起來跟壞掉一樣（Riley 實測心得）*/
+async function refreshOrders() {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 更新中…'; }
+  await loadOrders();
+  if (btn) {
+    btn.textContent = '✅ 已是最新';
+    setTimeout(() => { btn.textContent = '↻ 重新整理'; btn.disabled = false; }, 1200);
+  }
+}
 
 /* ---------- 讀訂單 ---------- */
 function setFilter(f, el) {
