@@ -2660,21 +2660,14 @@ function showUtensilPrompt(next){
       <div style="margin-top:10px;border-top:1px dashed rgba(212,165,32,0.3);padding-top:4px;">
         ${items.map(i => utensilRowHTML(i.name, i.price)).join('')}
       </div>
-      <div style="display:flex;gap:8px;margin-top:14px;">
-        <button class="btn-back" style="flex:1;padding:12px;" onclick="closeUtensilPrompt(true)">不需要餐具</button>
-        <button class="btn-order" style="flex:1.4;" onclick="closeUtensilPrompt()">繼 續 結 帳</button>
-      </div>
+      <button class="btn-order" style="width:100%;margin-top:14px;" onclick="closeUtensilPrompt()">繼 續 結 帳</button>
     </div>`;
   ov.addEventListener('click', e => { if (e.target === ov) closeUtensilPrompt(); });
   window._utensilNext = next;
   document.body.appendChild(ov);
 }
-function closeUtensilPrompt(noNeed){
-  // 按「不需要餐具」＝把彈窗裡加過的餐具清掉再走（反悔權）
-  if (noNeed) {
-    Object.keys(getCart()).filter(k => k.startsWith('extra:')).forEach(k => { delete getCart()[k]; });
-    updateCartBar();
-  }
+function closeUtensilPrompt(){
+  // 要幾份客人自己用 ＋− 決定（0 份＝不需要），單一按鈕不猜心
   document.getElementById('utensilPrompt')?.remove();
   _utensilPromptDone = true;  // 同一次點餐不再問（送出成功重置）
   const n = window._utensilNext; window._utensilNext = null;
