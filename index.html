@@ -1451,7 +1451,7 @@ body{
 
     <button class="start-btn" onclick="openModeSelect()">立 即 點 餐</button>
 
-    <button onclick="openCoverQuery()" style="
+    <button id="coverQueryBtn" onclick="openCoverQuery()" style="
       background:transparent;
       border:1px solid rgba(212,165,32,0.35);
       color:rgba(252,233,160,0.65);
@@ -2869,6 +2869,9 @@ function renderShopStatus() {
   if (waitBanner) waitBanner.style.display = blocked ? 'none' : '';
   const startBtn = document.querySelector('.start-btn');
   if (startBtn) startBtn.style.display = blocked ? 'none' : '';
+  // 打烊/時段外連「查詢我的訂單」也收起——看板下只留地址電話，畫面最乾淨
+  const queryBtn = document.getElementById('coverQueryBtn');
+  if (queryBtn) queryBtn.style.display = blocked ? 'none' : '';
   // 看板內附上之後的公休日（今天以外還有排休才顯示）
   const datesEl = document.getElementById('closedDates');
   if (datesEl) {
