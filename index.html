@@ -1757,7 +1757,9 @@ const FALLBACK_MENU = [
   { id:'noodle', label:'麵類', bundle:null, items:[
     {name:'王子麵',price:15,unit:'一包'},{name:'滷味麵',price:15,unit:'一包'},{name:'細冬粉',price:15,unit:'一卷'},
     {name:'寬冬粉',price:15,unit:'一卷'},{name:'烏龍麵',price:20,unit:'一包'},{name:'蒸煮麵',price:25,unit:'一包'} ] },
-  { id:'extra', label:'餐具加購', bundle:null, items:[
+  { id:'extra', label:'餐具加購', bundle:null,
+    note:'🌱 環保小提醒：餐點不附碗筷，需要的話在這裡加購就好囉',
+    items:[
     {name:'紙碗',price:2,unit:'一個'},{name:'免洗筷',price:1,unit:'一雙'} ] }
 ];
 
@@ -2006,7 +2008,7 @@ function buildGroupSection(g){
   const inner = g.cats.map(cat => {
     const note = cat.bundle
       ? `<div class="combo-note">💡 單點 $${cat.items[0].price}・任選 ${cat.bundle.qty} 樣 $${cat.bundle.price}（自動折抵，直接加就好）</div>`
-      : '';
+      : (cat.note ? `<div class="combo-note">${cat.note}</div>` : '');
     return note + `<div class="items-grid" style="margin-bottom:12px">${cat.items.map(it=>itemCardHTML(`${cat.id}:${it.name}`,it.name,it.price,it.unit)).join('')}</div>`;
   }).join('');
   return `<div class="menu-section" id="sec-${g.id}">
@@ -2802,6 +2804,7 @@ function rebuildMenuFromRows(rows) {
       id,
       label: meta ? meta.label : id,
       bundle: b,
+      note: meta ? meta.note : undefined, // 分區小提醒（例：餐具加購的環保提示）
       items: rs.map(r => ({ name: r.name, price: r.price, unit: r.unit || '' })),
     };
   });
