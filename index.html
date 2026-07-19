@@ -2789,6 +2789,7 @@ async function syncMenu() {
    對「什麼都不看」的客人：打烊日連「立即點餐」都按不下去（第三層防禦）。 */
 let SHOP_NOTICE = '';
 let SHOP_CLOSED = false;
+let SHOP_CLOSED_UPCOMING = []; // 近期公休日（今天含以後），公告條自動顯示
 
 function taipeiTodayStr() {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' });
@@ -2806,16 +2807,24 @@ async function syncShopConfig() {
     const today = taipeiTodayStr();
     const dates = (cfg.closed_dates || '').split(/[,，\s]+/).filter(Boolean);
     SHOP_CLOSED = (cfg.closed_now === today) || dates.includes(today);
+    SHOP_CLOSED_UPCOMING = dates.filter(d => d >= today).sort();
     renderShopStatus();
   } catch (e) { /* 讀不到就維持現狀，不影響點餐 */ }
 }
 
 function renderShopStatus() {
+  // 公告條內容＝老闆公告＋近期公休日（7/26 短格式，自動掛上，老闆不用打兩次字）
+  const lines = [];
+  if (SHOP_NOTICE) lines.push('📢 ' + SHOP_NOTICE);
+  if (SHOP_CLOSED_UPCOMING.length) {
+    const md = SHOP_CLOSED_UPCOMING.map(d => { const p = d.split('-'); return parseInt(p[1],10) + '/' + parseInt(p[2],10); });
+    lines.push('🗓️ 近期公休：' + md.join('、'));
+  }
   ['coverNotice', 'orderNotice'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.textContent = '📢 ' + SHOP_NOTICE;
-    el.style.display = (SHOP_NOTICE && !SHOP_CLOSED) ? 'block' : 'none';
+    el.textContent = lines.join('\n');
+    el.style.display = (lines.length && !SHOP_CLOSED) ? 'block' : 'none';
   });
   const closedEl = document.getElementById('coverClosed');
   if (closedEl) closedEl.style.display = SHOP_CLOSED ? 'block' : 'none';
