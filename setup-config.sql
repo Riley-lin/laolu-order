@@ -17,25 +17,26 @@ create table if not exists public.app_config (
 );
 alter table public.app_config enable row level security;
 
--- 客人可讀的四格（公告/公休日/臨時打烊/營業時段——點餐頁要即時反應）
+-- 客人可讀的五格（公告/公休日/臨時打烊/營業時段/等待時間——點餐頁要即時反應）
 drop policy if exists "config_public_read" on public.app_config;
 create policy "config_public_read" on public.app_config
   for select to anon, authenticated
-  using (name in ('notice', 'closed_dates', 'closed_now', 'open_hours'));
+  using (name in ('notice', 'closed_dates', 'closed_now', 'open_hours', 'wait_minutes'));
 
--- 登入的老闆可改同四格（店務頁的營業設定區）；沒開 insert/delete＝改不了別格、加不了新格
+-- 登入的老闆可改同五格（店務頁的營業設定區）；沒開 insert/delete＝改不了別格、加不了新格
 drop policy if exists "config_boss_write" on public.app_config;
 create policy "config_boss_write" on public.app_config
   for update to authenticated
-  using (name in ('notice', 'closed_dates', 'closed_now', 'open_hours'))
-  with check (name in ('notice', 'closed_dates', 'closed_now', 'open_hours'));
+  using (name in ('notice', 'closed_dates', 'closed_now', 'open_hours', 'wait_minutes'))
+  with check (name in ('notice', 'closed_dates', 'closed_now', 'open_hours', 'wait_minutes'));
 
--- 四格開戶（已存在就不動它）；營業時段預設＝老闆 2026-07-19 拍板 17:00–00:00
--- （24:00＝跨到半夜零點的寫法；改時段去店務頁「營業設定」）
+-- 五格開戶（已存在就不動它）；營業時段預設＝老闆 2026-07-19 拍板 17:00–00:00
+-- wait_minutes＝首頁「目前等待時間」（2026-07-19 起改後台管理，取代長按電話的舊機關）
 insert into public.app_config (name, value) values
-  ('notice', ''), ('closed_dates', ''), ('closed_now', ''), ('open_hours', '17:00-24:00')
+  ('notice', ''), ('closed_dates', ''), ('closed_now', ''),
+  ('open_hours', '17:00-24:00'), ('wait_minutes', '15')
 on conflict (name) do nothing;
 
--- 自我體檢：應看到四格
+-- 自我體檢：應看到五格
 select name, value from public.app_config
-where name in ('notice','closed_dates','closed_now','open_hours') order by name;
+where name in ('notice','closed_dates','closed_now','open_hours','wait_minutes') order by name;

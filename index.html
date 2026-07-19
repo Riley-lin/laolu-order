@@ -1470,7 +1470,7 @@ body{
 
     <div class="cover-address">
       桃園市八德區廣福路98號<br>
-      ☎ <b id="bossTrigger" class="boss-trigger" oncontextmenu="openBossPanel(event)">0939－955－888</b>
+      ☎ <b>0939－955－888</b>
     </div>
   </div>
 </div>
@@ -1704,25 +1704,7 @@ body{
 </div>
 
 <!-- ══════════ 老闆設定 PANEL ══════════ -->
-<div id="boss-panel">
-  <div class="boss-box">
-    <div class="boss-title">⚙️ 老闆設定</div>
-    <div class="boss-desc">請設定目前的等待時間，<br>顧客將在點餐頁看到此資訊。</div>
-    <div class="boss-options" id="bossOptions">
-      <div class="boss-opt" onclick="selectWait(10,this)">10 分鐘</div>
-      <div class="boss-opt" onclick="selectWait(15,this)">15 分鐘</div>
-      <div class="boss-opt" onclick="selectWait(20,this)">20 分鐘</div>
-      <div class="boss-opt" onclick="selectWait(30,this)">30 分鐘</div>
-      <div class="boss-opt" onclick="selectWait(45,this)">45 分鐘</div>
-      <div class="boss-opt" onclick="selectWait(60,this)">60 分鐘</div>
-    </div>
-    <div class="boss-custom">
-      <input type="number" id="customWait" placeholder="自訂分鐘數" min="1" max="180">
-      <button class="boss-save" onclick="applyCustomWait()">套用</button>
-    </div>
-    <button class="boss-close" onclick="closeBossPanel()">關 閉</button>
-  </div>
-</div>
+<!-- （2026-07-19 老闆回饋「長按電話難用」：前台隱藏設定拆除，等待時間改由看單台「🚪 營業」管理，存雲端全客同步） -->
 
 <!-- 📱 LIFF SDK（M3）：LINE 官方零件——當這頁在 LINE 裡打開時，能認出客人是誰。
      一般瀏覽器照常載入但不啟動，對非 LINE 客人零影響。 -->
@@ -1838,10 +1820,10 @@ function getCart() { return currentOrder().cart; }
 
 let cartOpen = false;
 
-// 從 localStorage 讀取等待時間
+// 等待時間 v2：預設 15，開頁後由雲端 app_config 餵真值（老闆在看單台改，全客同步）
 let waitMinutes = 15;
 try {
-  const saved = localStorage.getItem('luyuxian_wait');
+  const saved = null; // 舊版存 localStorage（單機生效）已淘汰
   if (saved) waitMinutes = parseInt(saved);
 } catch(e) {}
 
@@ -2818,7 +2800,7 @@ function taipeiTodayStr() {
 
 async function syncShopConfig() {
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/app_config?select=name,value&name=in.(notice,closed_dates,closed_now,open_hours)', {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/app_config?select=name,value&name=in.(notice,closed_dates,closed_now,open_hours,wait_minutes)', {
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
     });
     if (!res.ok) return;
@@ -2830,6 +2812,9 @@ async function syncShopConfig() {
     SHOP_CLOSED = (cfg.closed_now === today) || dates.includes(today);
     SHOP_CLOSED_UPCOMING = dates.filter(d => d >= today).sort();
     // 🕔 接單時段：格式 HH:MM-HH:MM（24:00＝收到半夜）；沒設定＝整天可點
+    // ⏱ 等待時間：雲端有值就換上（老闆在看單台改，10 秒內全客同步）
+    const w = parseInt(cfg.wait_minutes, 10);
+    if (w >= 1 && w <= 180 && w !== waitMinutes) { waitMinutes = w; updateWaitDisplay(); }
     SHOP_OFFHOURS = false;
     const m = /^(\d{2}:\d{2})-(\d{2}:\d{2})$/.exec((cfg.open_hours || '').trim());
     if (m) {
@@ -3369,6 +3354,16 @@ function doCoverQuery() {
 // 老闆設定（右鍵電話號碼開啟）
 // ────────────────────────────────
 let selectedWait=null;
+/* ── 等待時間 v2：來自雲端 app_config（老闆在看單台改，所有客人同步看到）──
+   舊版「長按電話開設定」已拆除（只存各自手機，老闆嫌難用又只有單機生效） */
+function updateWaitDisplay(){
+  const c = document.getElementById('coverWaitText');
+  if (c) c.innerHTML = `目前等待時間：約 <strong>${waitMinutes} 分鐘</strong>`;
+  const o = document.getElementById('orderWaitNum');
+  if (o) o.textContent = waitMinutes;
+}
+
+/* 舊版遺跡（已停用）：
 function openBossPanel(e){
   e.preventDefault();
   document.getElementById('boss-panel').classList.add('open');
@@ -3414,6 +3409,7 @@ bossEl.addEventListener('touchstart',()=>{
 });
 bossEl.addEventListener('touchend',()=>clearTimeout(pressTimer));
 bossEl.addEventListener('touchmove',()=>clearTimeout(pressTimer));
+—— 舊版遺跡結束 */
 
 // ────────────────────────────────
 // Scroll to section

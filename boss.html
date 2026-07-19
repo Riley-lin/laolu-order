@@ -641,7 +641,7 @@ async function commitEdit() {
    「今日暫停」的聰明設計：存的是今天的日期，明天自動失效——按了不用記得關。 */
 async function openShopSettings() {
   const { data, error } = await db.from('app_config')
-    .select('name,value').in('name', ['notice', 'closed_dates', 'closed_now', 'open_hours']);
+    .select('name,value').in('name', ['notice', 'closed_dates', 'closed_now', 'open_hours', 'wait_minutes']);
   if (error || !data) { alert('讀取失敗——還沒跑 setup-config.sql？'); return; }
   const cfg = {}; data.forEach(r => cfg[r.name] = r.value || '');
   const today = taipeiToday();
@@ -669,6 +669,9 @@ async function openShopSettings() {
     +     '<input type="time" id="cfgOpenTo" value="' + openTo + '" style="flex:1;padding:9px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);color-scheme:dark;">'
     +   '</div>'
     +   '<div class="lp-note" style="text-align:left">時段外客人頁顯示「尚未營業」並擋單；結束時間選 00:00＝收單到半夜</div>'
+    +   '<div class="dr-sec">⏱ 目前等待時間（分鐘）</div>'
+    +   '<input type="number" id="cfgWait" min="1" max="180" value="' + esc(cfg.wait_minutes || '15') + '" style="width:100%;padding:9px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);">'
+    +   '<div class="lp-note" style="text-align:left">顯示在客人首頁「目前等待時間：約 X 分鐘」；生意忙就調高（取代舊的長按電話設定，改這裡所有客人同步看到）</div>'
     +   '<div class="dr-sec">📅 未來公休日</div>'
     +   '<div style="display:flex;gap:8px;">'
     +     '<input type="date" id="cfgDatePick" min="' + today + '" value="' + today + '" style="flex:1;padding:9px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);color-scheme:dark;">'
@@ -731,11 +734,14 @@ async function saveShopSettings() {
   const from = document.getElementById('cfgOpenFrom')?.value || '17:00';
   const toRaw = document.getElementById('cfgOpenTo')?.value || '00:00';
   const hours = from + '-' + (toRaw === '00:00' ? '24:00' : toRaw); // 00:00 存成 24:00＝收到半夜
+  const wait = Math.min(180, Math.max(1, parseInt(document.getElementById('cfgWait')?.value, 10) || 15));
   const r1 = await db.from('app_config').update({ value: dates }).eq('name', 'closed_dates').select();
   const r2 = await db.from('app_config').update({ value: notice }).eq('name', 'notice').select();
   const r3 = await db.from('app_config').update({ value: hours }).eq('name', 'open_hours').select();
-  if (r1.error || r2.error || r3.error || !r1.data?.length || !r2.data?.length || !r3.data?.length) {
-    alert('儲存失敗——若是接單時段存不進去，先重跑一次 setup-config.sql（要含 open_hours 的版本）再試');
+  const r4 = await db.from('app_config').update({ value: String(wait) }).eq('name', 'wait_minutes').select();
+  if (r1.error || r2.error || r3.error || r4.error
+      || !r1.data?.length || !r2.data?.length || !r3.data?.length || !r4.data?.length) {
+    alert('儲存失敗——若是新欄位存不進去，先重跑一次 setup-config.sql（最新版含 wait_minutes）再試');
     return;
   }
   alert('✅ 已儲存！客人頁 10 秒內生效');
