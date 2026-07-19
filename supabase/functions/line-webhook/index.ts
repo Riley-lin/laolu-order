@@ -263,7 +263,10 @@ Deno.serve(async (req) => {
       let msg = '🍢 老滷仙營業資訊\n\n'
       if (cfg.closed_now === today || upcoming.includes(today)) msg += '⚠️ 今日公休，明天見！\n\n'
       msg += upcoming.length
-        ? '近期公休日：\n' + upcoming.map(d => '・' + d.slice(5).replace('-', '/')).join('\n')
+        ? '近期公休日：\n' + upcoming.map(d => {
+            const p = d.split('-')  // 顯示 7/19 短格式（Riley 裁示）
+            return '・' + parseInt(p[1], 10) + '/' + parseInt(p[2], 10)
+          }).join('\n')
         : '近期未排定公休 😊'
       if ((cfg.notice ?? '').trim()) msg += '\n\n📢 ' + cfg.notice.trim()
       await reply(ev.replyToken, msg)

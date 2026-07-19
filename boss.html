@@ -660,8 +660,12 @@ async function openShopSettings() {
     +   '</button>'
     +   '<div class="lp-note" style="text-align:left">按下後客人點餐頁立刻顯示「今日公休」且無法下單；明天自動恢復，不用記得回來關</div>'
     +   '<div class="dr-sec">📅 未來公休日</div>'
-    +   '<input id="cfgDates" class="query-phone-input" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);" value="' + esc(cfg.closed_dates) + '" placeholder="例：2026-07-21,2026-07-28">'
-    +   '<div class="lp-note" style="text-align:left">用逗號分隔的日期（年-月-日）；到了那天自動打烊、隔天自動恢復</div>'
+    +   '<div style="display:flex;gap:8px;">'
+    +     '<input type="date" id="cfgDatePick" min="' + today + '" value="' + today + '" style="flex:1;padding:9px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);color-scheme:dark;">'
+    +     '<button class="btn-wait" onclick="addCfgDate()">➕ 加入</button>'
+    +   '</div>'
+    +   '<div id="cfgDateChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>'
+    +   '<div class="lp-note" style="text-align:left">用日曆選日期按「加入」；到了那天自動打烊、隔天自動恢復；點日期籤上的 ✕ 移除</div>'
     +   '<div class="dr-sec">📢 公告文字</div>'
     +   '<textarea id="cfgNotice" rows="3" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);font-size:14px;">' + esc(cfg.notice) + '</textarea>'
     +   '<div class="lp-note" style="text-align:left">顯示在客人點餐頁最上方（例：7/21(二)、7/28(二) 公休）；留空＝不顯示</div>'
@@ -673,7 +677,33 @@ async function openShopSettings() {
     + '</div>';
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   document.body.appendChild(overlay);
+  // 公休日改「用選的」：既有日期還原成日期籤（過期的自動剔除）
+  _cfgDates = (cfg.closed_dates || '').split(/[,，\s]+/).filter(d => d && d >= today);
+  renderCfgDateChips();
 }
+
+/* 📅 公休日期籤（Riley 裁示：用日曆選、顯示 7/19 短格式；儲存格式仍是完整日期） */
+let _cfgDates = [];
+function fmtMD(d) { const p = d.split('-'); return parseInt(p[1], 10) + '/' + parseInt(p[2], 10); }
+function renderCfgDateChips() {
+  const box = document.getElementById('cfgDateChips');
+  if (!box) return;
+  _cfgDates.sort();
+  box.innerHTML = _cfgDates.length
+    ? _cfgDates.map((d, i) =>
+        '<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--gold);border-radius:14px;color:var(--gold2);font-size:13px;">'
+        + fmtMD(d)
+        + '<button onclick="rmCfgDate(' + i + ')" style="border:none;background:none;color:var(--red);cursor:pointer;font-size:13px;">✕</button></span>'
+      ).join('')
+    : '<span style="color:var(--dim);font-size:12px;">（尚未排定公休日）</span>';
+}
+function addCfgDate() {
+  const v = document.getElementById('cfgDatePick')?.value;
+  if (!v) return;
+  if (!_cfgDates.includes(v)) _cfgDates.push(v);
+  renderCfgDateChips();
+}
+function rmCfgDate(i) { _cfgDates.splice(i, 1); renderCfgDateChips(); }
 
 /* 今日暫停開關：立即生效（不用按儲存） */
 async function togglePauseToday(currentlyPaused) {
@@ -686,11 +716,8 @@ async function togglePauseToday(currentlyPaused) {
 }
 
 async function saveShopSettings() {
-  const dates = (document.getElementById('cfgDates')?.value || '').trim();
+  const dates = _cfgDates.join(',');  // 日期籤選好的（存完整格式，顯示才用 7/19）
   const notice = (document.getElementById('cfgNotice')?.value || '').trim();
-  // 日期格式體檢：擋掉打錯的（例：2026/07/21 或少了年份）
-  const bad = dates.split(/[,，\s]+/).filter(Boolean).filter(d => !/^\d{4}-\d{2}-\d{2}$/.test(d));
-  if (bad.length) { alert('這些日期格式不對（要像 2026-07-21）：\n' + bad.join('、')); return; }
   const r1 = await db.from('app_config').update({ value: dates }).eq('name', 'closed_dates').select();
   const r2 = await db.from('app_config').update({ value: notice }).eq('name', 'notice').select();
   if (r1.error || r2.error || !r1.data?.length || !r2.data?.length) { alert('儲存失敗，請確認已登入再試'); return; }
