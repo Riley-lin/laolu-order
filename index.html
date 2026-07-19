@@ -2504,14 +2504,15 @@ function openCheckout(e){
   else if(o.prefs.utensils==='no') prefLines.push('不需要餐具');
   if(o.prefs.note) prefLines.push(`備註：${o.prefs.note}`);
       }
-      const savedO = cartCalc(o.cart).saved;
+      const calcO = cartCalc(o.cart); // 折抵總額＋分區明細（跟 LINE 卡片同一份帳）
       return `<div class="split-order-block">
         <div class="split-order-name">
           <span>訂單：${o.name}</span>
           <span>$${o.total}</span>
         </div>
         ${Object.values(o.cart).map(v=>`<div class="recap-row"><span>${v.name} × ${v.qty}</span><span>$${v.price*v.qty}</span></div>`).join('')}
-        ${savedO>0?`<div class="recap-row" style="color:var(--gold2);font-weight:700"><span>🎁 任選優惠折抵</span><span>−$${savedO}</span></div>`:''}
+        ${calcO.saved>0?`<div class="recap-row" style="color:var(--gold2);font-weight:700"><span>🎁 優惠折抵</span><span>−$${calcO.saved}</span></div>
+        ${calcO.lines.map(l=>`<div style="font-size:11px;color:rgba(255,255,255,0.5);padding:1px 0 1px 12px;letter-spacing:0.3px;">${l}</div>`).join('')}`:''}
         ${prefLines.length>0?`<div style="margin-top:6px;font-size:11px;color:rgba(255,255,255,0.45);letter-spacing:0.5px">🌿 ${prefLines.join('、')}</div>`:''}
       </div>`;
     }).join('');
