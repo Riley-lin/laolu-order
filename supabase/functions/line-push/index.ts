@@ -76,8 +76,8 @@ function totalBlock(r: any): string {
 
 // ---------- 客人訊息：跟 boss.html 預覽視窗同一份格式 ----------
 function buildCustomerMessage(r: any): string {
-  return '🍢 老滷仙\n'
-    + '✅ 訂單確認！（取餐編號 #' + r.order_no + '）\n\n'
+  // 開頭不放「🍢 老滷仙」——訊息本來就是老滷仙官方帳號發的，名字重複（2026-07-19 Riley 拍板）
+  return '✅ 訂單確認！（取餐編號 #' + r.order_no + '）\n\n'
     + '食材新鮮現滷，等候時間約 ' + r.wait_minutes + ' 分鐘，\n'
     + '請於 ' + fmtHM(r.pickup_at) + ' 前往現場取餐。\n\n'
     + '📋 訂單內容\n' + itemLines(r) + '\n'
@@ -86,8 +86,7 @@ function buildCustomerMessage(r: any): string {
 
 // ---------- 客人訊息：取餐時間更新（M3：改時間終於會通知了）----------
 function buildRetimedMessage(r: any, oldPickup?: string): string {
-  return '🍢 老滷仙\n'
-    + '⏰ 取餐時間更新（取餐編號 #' + r.order_no + '）\n\n'
+  return '⏰ 取餐時間更新（取餐編號 #' + r.order_no + '）\n\n'
     + '新的取餐時間：' + fmtHM(r.pickup_at)
     + (oldPickup ? '（原 ' + fmtHM(oldPickup) + '）' : '') + '\n\n'
     + '如有疑問請致電 0939-955-888'
@@ -96,8 +95,7 @@ function buildRetimedMessage(r: any, oldPickup?: string): string {
 // ---------- 客人訊息：訂單內容更新（跟 boss.html 編輯預覽同一份格式）----------
 function buildEditedMessage(r: any, oldTotal?: number): string {
   const oldNote = (typeof oldTotal === 'number' && oldTotal !== r.total) ? '（原 $' + oldTotal + '）' : ''
-  return '🍢 老滷仙\n'
-    + '✏️ 訂單內容更新（取餐編號 #' + r.order_no + '）\n\n'
+  return '✏️ 訂單內容更新（取餐編號 #' + r.order_no + '）\n\n'
     + '📋 新內容\n' + itemLines(r) + '\n'
     + totalBlock(r) + oldNote + '\n'
     + (r.pickup_at ? '⏰ 取餐時間不變：' + fmtHM(r.pickup_at) + '\n' : '')

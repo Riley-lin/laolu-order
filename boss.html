@@ -451,8 +451,8 @@ function totalBlock(r) {
 }
 
 function buildCustomerMessage(r) {
-  return '🍢 老滷仙\n'
-    + '✅ 訂單確認！（取餐編號 #' + r.order_no + '）\n\n'
+  // 開頭不放「🍢 老滷仙」——訊息本來就是官方帳號發的，名字重複（跟 line-push 同步）
+  return '✅ 訂單確認！（取餐編號 #' + r.order_no + '）\n\n'
     + '食材新鮮現滷，等候時間約 ' + r.wait_minutes + ' 分鐘，\n'
     + '請於 ' + fmtHM(r.pickup_at) + ' 前往現場取餐。\n\n'
     + '📋 訂單內容\n' + itemLines(r) + '\n'
@@ -633,8 +633,7 @@ function edAdd() {
 /* 跟推播員（line-push）同一份格式：客人收到的「訂單內容更新」訊息 */
 function buildEditedMessage(r, oldTotal) {
   const oldNote = (typeof oldTotal === 'number' && oldTotal !== r.total) ? '（原 $' + oldTotal + '）' : '';
-  return '🍢 老滷仙\n'
-    + '✏️ 訂單內容更新（取餐編號 #' + r.order_no + '）\n\n'
+  return '✏️ 訂單內容更新（取餐編號 #' + r.order_no + '）\n\n'
     + '📋 新內容\n' + itemLines(r) + '\n'
     + totalBlock(r) + oldNote + '\n'
     + (r.pickup_at ? '⏰ 取餐時間不變：' + fmtHM(r.pickup_at) + '\n' : '')

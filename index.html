@@ -34,7 +34,7 @@ body{
   background-image:
     radial-gradient(ellipse 80% 50% at 50% -10%, rgba(192,39,45,0.12) 0%, transparent 60%),
     radial-gradient(ellipse 40% 40% at 90% 90%, rgba(212,165,32,0.04) 0%, transparent 50%);
-  font-family:'Noto Sans TC',sans-serif;
+  font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
   color:var(--cream);
   min-height:100vh;
 }
@@ -354,7 +354,7 @@ body::before{
 .back-btn{
   margin-left:auto;background:rgba(212,165,32,0.12);border:1px solid var(--gold3);
   color:var(--gold2);padding:6px 12px;font-size:13px;cursor:pointer;border-radius:2px;
-  font-family:'Noto Sans TC',sans-serif;white-space:nowrap;
+  font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;white-space:nowrap;
 }
 .back-btn:hover{background:rgba(212,165,32,0.25);}
 
@@ -365,7 +365,7 @@ body::before{
   padding:9px 16px;text-align:center;
   font-size:12px;color:rgba(252,233,160,0.7);letter-spacing:2px;
 }
-.wait-bar span{color:var(--gold2);font-weight:900;font-family:'CashSign','Noto Serif TC',serif;font-size:16px;}
+.wait-bar span{color:var(--gold2);font-weight:900;font-size:16px;}
 
 /* 分類導覽 */
 .cat-nav{
@@ -384,7 +384,7 @@ body::before{
   color:rgba(255,255,255,0.45);font-size:12px;cursor:pointer;
   border-radius:20px;white-space:nowrap;
   transition: var(--transition);
-  font-family:'Noto Sans TC',sans-serif;
+  font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
   letter-spacing:0.5px;
 }
 .cat-btn:hover{
@@ -429,7 +429,7 @@ body::before{
 }
 .combo-progress-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
 .combo-progress-label{font-size:13px;color:var(--goldlight);letter-spacing:1px;}
-.combo-progress-count{font-family:'CashSign','Noto Serif TC',serif;font-size:16px;font-weight:900;color:var(--gold2);}
+.combo-progress-count{font-size:16px;font-weight:900;color:var(--gold2);}
 .combo-progress-bar-bg{height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;}
 .combo-progress-bar{height:5px;background:linear-gradient(90deg,var(--gold3),var(--gold2),var(--goldlight));border-radius:3px;transition:width 0.4s cubic-bezier(0.4,0,0.2,1);box-shadow:0 0 8px rgba(212,165,32,0.4);}
 .combo-progress-hint{font-size:11px;color:rgba(255,255,255,0.35);margin-top:6px;letter-spacing:0.5px;}
@@ -511,7 +511,7 @@ body::before{
 
 .item-name{font-size:13px;font-weight:500;color:rgba(253,246,227,0.9);line-height:1.4;letter-spacing:0.3px;}
 .item-bottom{display:flex;align-items:center;justify-content:space-between;}
-.item-price{font-family:'CashSign','Noto Serif TC',serif;font-size:14px;font-weight:700;color:var(--gold2);letter-spacing:0.5px;}
+.item-price{font-size:14px;font-weight:700;color:var(--gold2);letter-spacing:0.5px;}
 
 /* 🚫 關閉「連點兩下放大」（狂按＋按太快會誤觸縮放）；兩指捏合縮放保留 */
 *{touch-action:manipulation;}
@@ -577,7 +577,7 @@ body::before{
   color:var(--gold2);font-size:17px;
   cursor:pointer;display:flex;align-items:center;justify-content:center;
   transition: var(--transition);flex-shrink:0;
-  font-family:'Noto Sans TC',sans-serif;
+  font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
   -webkit-user-select:none;user-select:none;
 }
 .qty-btn:hover{background:var(--gold);color:var(--dark);}
@@ -613,7 +613,7 @@ body::before{
 .cart-row{display:flex;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);gap:8px;font-size:14px;}
 .cart-row-name{flex:1;color:var(--cream);}
 .cart-row-qty{color:rgba(255,255,255,0.38);font-size:13px;}
-.cart-row-sub{font-family:'CashSign','Noto Serif TC',serif;font-weight:700;color:var(--gold2);min-width:46px;text-align:right;}
+.cart-row-sub{font-weight:700;color:var(--gold2);min-width:46px;text-align:right;}
 .cart-del{background:none;border:none;color:rgba(255,255,255,0.2);cursor:pointer;font-size:15px;padding:0 4px;transition:color 0.15s;}
 .cart-del:hover{color:#e74c3c;}
 .cart-empty-msg{text-align:center;color:rgba(255,255,255,0.22);font-size:13px;padding:14px 0;}
@@ -631,7 +631,7 @@ body::before{
 }
 .cart-info{flex:1;}
 .cart-label{font-size:12px;color:rgba(255,255,255,0.42);letter-spacing:1px;}
-.cart-total-num{font-family:'CashSign','Noto Serif TC',serif;font-size:22px;font-weight:900;color:var(--gold2);}
+.cart-total-num{font-size:22px;font-weight:900;color:var(--gold2);}
 .checkout-btn{
   background: linear-gradient(135deg, #f0c84a 0%, #d4a520 50%, #b8891a 100%);
   color:var(--dark);border:none;padding:12px 26px;
@@ -687,7 +687,7 @@ body::before{
   width:100%;
   background: rgba(0,0,0,0.3);
   border:1px solid rgba(212,165,32,0.25);color:var(--cream);
-  padding:11px 14px;font-family:'Noto Sans TC',sans-serif;font-size:14px;
+  padding:11px 14px;font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;font-size:14px;
   border-radius:8px;outline:none;
   transition: var(--transition);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
@@ -709,7 +709,7 @@ body::before{
   background: rgba(255,255,255,0.03);
   color:rgba(255,255,255,0.45);font-size:13px;
   cursor:pointer;transition: var(--transition);
-  font-family:'Noto Sans TC',sans-serif;
+  font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
   -webkit-user-select:none;user-select:none;
   letter-spacing:0.5px;
 }
@@ -729,7 +729,7 @@ body::before{
   padding:6px 12px;border:1px solid rgba(192,39,45,0.4);border-radius:20px;
   background:rgba(192,39,45,0.06);color:rgba(255,255,255,0.5);
   font-size:12px;cursor:pointer;transition:all 0.18s;
-  font-family:'Noto Sans TC',sans-serif;
+  font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
 }
 .spice-btn:hover{border-color:var(--red);color:var(--cream);}
 .spice-btn.selected{background:var(--red);border-color:var(--red);color:#fff;font-weight:700;}
@@ -742,7 +742,7 @@ body::before{
 }
 .wait-confirm-dot{width:10px;height:10px;border-radius:50%;background:#4caf50;flex-shrink:0;animation:blink 1.5s infinite;}
 .wait-confirm-text{font-size:13px;color:var(--goldlight);line-height:1.6;}
-.wait-confirm-time{font-family:'CashSign','Noto Serif TC',serif;font-size:18px;font-weight:900;color:var(--gold2);}
+.wait-confirm-time{font-size:18px;font-weight:900;color:var(--gold2);}
 
 /* 訂單明細 */
 .order-recap{
@@ -753,7 +753,7 @@ body::before{
 .recap-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:var(--cream);}
 .recap-total{
   display:flex;justify-content:space-between;
-  font-family:'CashSign','Noto Serif TC',serif;font-size:18px;font-weight:900;color:var(--gold2);
+  font-size:18px;font-weight:900;color:var(--gold2);
   border-top:1px solid rgba(212,165,32,0.22);margin-top:8px;padding-top:8px;
 }
 
@@ -761,7 +761,7 @@ body::before{
 .btn-back{
   background:transparent;border:1px solid rgba(212,165,32,0.3);color:var(--goldlight);
   padding:11px;font-size:14px;cursor:pointer;border-radius:3px;
-  font-family:'Noto Sans TC',sans-serif;transition:border-color 0.2s;
+  font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;transition:border-color 0.2s;
 }
 .btn-back:hover{border-color:var(--gold2);}
 .btn-order{
@@ -818,7 +818,7 @@ body::before{
   color: rgba(252,233,160,0.7);
   font-size: 12px;
   cursor: pointer;
-  font-family: 'Noto Sans TC', sans-serif;
+  font-family: 'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
   transition: var(--transition);
   white-space: nowrap;
   letter-spacing: 0.5px;
@@ -865,7 +865,7 @@ body::before{
   cursor: pointer;
   white-space: nowrap;
   transition: var(--transition);
-  font-family: 'Noto Sans TC', sans-serif;
+  font-family: 'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
   flex-shrink: 0;
   letter-spacing: 0.5px;
 }
@@ -960,7 +960,7 @@ body::before{
   border-radius: 4px;
   outline: none;
   text-align: center;
-  font-family: 'Noto Sans TC', sans-serif;
+  font-family: 'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
   margin-bottom: 16px;
   transition: border-color 0.2s;
 }
@@ -975,7 +975,7 @@ body::before{
   border-radius: 4px;
   font-size: 14px;
   cursor: pointer;
-  font-family: 'Noto Sans TC', sans-serif;
+  font-family: 'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
   transition: all 0.18s;
   border: none;
 }
@@ -1117,7 +1117,6 @@ body::before{
 .confirm-grand-total {
   display: flex;
   justify-content: space-between;
-  font-family: 'CashSign','Noto Serif TC', serif;
   font-size: 19px;
   font-weight: 900;
   color: var(--gold2);
@@ -1166,7 +1165,7 @@ body::before{
   color: rgba(255,255,255,0.45);
   cursor: pointer;
   transition: all 0.18s;
-  font-family: 'Noto Sans TC', sans-serif;
+  font-family: 'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
   letter-spacing: 1px;
   background: transparent;
   border: none;
@@ -1191,7 +1190,7 @@ body::before{
   font-size: 14px;
   border-radius: 6px;
   outline: none;
-  font-family: 'Noto Sans TC', sans-serif;
+  font-family: 'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
   transition: border-color 0.2s;
 }
 .query-phone-input::placeholder { color: rgba(255,255,255,0.25); }
@@ -1298,7 +1297,6 @@ body::before{
   margin-bottom: 8px;
 }
 .split-order-name {
-  font-family: 'CashSign','Noto Serif TC', serif;
   font-size: 14px;
   font-weight: 700;
   color: var(--gold2);
@@ -1322,7 +1320,7 @@ body::before{
   cursor: pointer;
   text-align: center;
   transition: all 0.18s;
-  font-family: 'Noto Sans TC', sans-serif;
+  font-family: 'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
   line-height: 1.5;
 }
 .split-mode-btn:hover { border-color: var(--gold); color: var(--goldlight); }
@@ -1354,7 +1352,7 @@ body::before{
   border:1px solid rgba(212,165,32,0.25);border-radius:4px;
   background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.55);
   font-size:13px;cursor:pointer;text-align:center;
-  transition:all 0.18s;font-family:'Noto Sans TC',sans-serif;
+  transition:all 0.18s;font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
 }
 .boss-opt:hover{border-color:var(--gold);color:var(--goldlight);}
 .boss-opt.selected{background:rgba(212,165,32,0.18);border-color:var(--gold2);color:var(--goldlight);font-weight:700;}
@@ -1362,7 +1360,7 @@ body::before{
 .boss-custom input{
   flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(212,165,32,0.3);
   color:var(--cream);padding:8px 10px;font-size:14px;border-radius:3px;outline:none;
-  font-family:'Noto Sans TC',sans-serif;
+  font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
 }
 .boss-custom input:focus{border-color:var(--gold2);}
 .boss-save{
@@ -1374,7 +1372,7 @@ body::before{
 .boss-close{
   width:100%;background:transparent;border:1px solid rgba(212,165,32,0.2);
   color:rgba(255,255,255,0.4);padding:9px;font-size:13px;cursor:pointer;
-  border-radius:3px;font-family:'Noto Sans TC',sans-serif;transition:border-color 0.2s;
+  border-radius:3px;font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;transition:border-color 0.2s;
 }
 .boss-close:hover{border-color:rgba(212,165,32,0.4);}
 
@@ -1489,7 +1487,7 @@ body::before{
       font-size:13px;
       letter-spacing:2px;
       cursor:pointer;
-      font-family:'Noto Sans TC',sans-serif;
+      font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
       transition:all 0.22s;
       margin-top:2px;
     " onmouseover="this.style.borderColor='rgba(212,165,32,0.7)';this.style.color='rgba(252,233,160,0.9)'"
@@ -2533,10 +2531,10 @@ function openCheckout(e){
       }
       const calcO = cartCalc(o.cart); // 折抵總額＋分區明細（跟 LINE 卡片同一份帳）
       return `<div class="split-order-block">
-        <div class="split-order-name">
+        ${ordersToShow.length>1?`<div class="split-order-name">
           <span>訂單：${o.name}</span>
           <span>$${o.total}</span>
-        </div>
+        </div>`:''}
         ${Object.values(o.cart).map(v=>`<div class="recap-row"><span>${v.name} × ${v.qty}</span><span>$${v.price*v.qty}</span></div>`).join('')}
         ${calcO.saved>0?`<div class="recap-row" style="color:var(--gold2);font-weight:700"><span>🎁 優惠折抵</span><span>−$${calcO.saved}</span></div>
         ${calcO.lines.map(l=>`<div style="font-size:11px;color:rgba(255,255,255,0.5);padding:1px 0 1px 12px;letter-spacing:0.3px;">${l}</div>`).join('')}`:''}
@@ -2760,7 +2758,8 @@ function showFinalConfirm(total, mode) {
       ? '<div class="confirm-pref">🌿 '+prefLines.join('、')+'</div>'
       : '';
     orderBlocksHtml += '<div class="confirm-section">'
-      + '<div class="confirm-section-title">訂單：'+o.name+'</div>'
+      // 只有一張訂單時不顯示「訂單：×××」標題（Riley：沒有合併什麼，寫了反而怪）
+      + (ordersToShow.length>1 ? '<div class="confirm-section-title">訂單：'+o.name+'</div>' : '')
       + itemRows + prefHtml
       + '<div style="text-align:right;font-size:13px;color:var(--gold3);margin-top:6px;font-weight:700">小計 $'+o.total+'</div>'
       + '</div>';
