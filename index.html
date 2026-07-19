@@ -1720,11 +1720,11 @@ const FALLBACK_MENU = [
   { id:'b15', label:'15元區', bundle:{qty:2,price:25}, items:[
     {name:'蘿蔔',price:15,unit:'一個'},{name:'黑輪',price:15,unit:'一條'},{name:'海帶',price:15,unit:'一個'},
     {name:'甜不辣',price:15,unit:'一片'},{name:'年糕',price:15,unit:'一份4條'},{name:'鳥蛋',price:15,unit:'一份4顆'} ] },
-  { id:'wan', label:'丸類', bundle:{qty:2,price:25}, items:[
+  { id:'wan', label:'鍋物', bundle:{qty:2,price:25}, items:[
     {name:'貢丸',price:15,unit:'一個'},{name:'香菇貢丸',price:15,unit:'一個'},{name:'魚包蛋',price:15,unit:'一個'},
     {name:'龍蝦沙拉',price:15,unit:'一個'},{name:'花枝丸',price:15,unit:'一個'},{name:'北海貝',price:15,unit:'一個'},
     {name:'麻糬燒',price:15,unit:'一個'} ] },
-  { id:'jiao', label:'餃類', bundle:{qty:4,price:35}, items:[
+  { id:'jiao', label:'鍋物', bundle:{qty:4,price:35}, items:[
     {name:'小豆干',price:10,unit:'一個'},{name:'凍豆腐',price:10,unit:'一個'},{name:'起司燒',price:10,unit:'一個'},
     {name:'水晶餃',price:10,unit:'一個'},{name:'魚餃',price:10,unit:'一個'},{name:'魚豆腐',price:10,unit:'一個'},
     {name:'鑫鑫腸',price:10,unit:'一個'},{name:'鱈魚丸',price:10,unit:'一個'},{name:'蟹肉棒',price:10,unit:'一個'} ] },
@@ -1738,7 +1738,7 @@ const FALLBACK_MENU = [
   { id:'b30', label:'30元區', bundle:{qty:2,price:55}, items:[
     {name:'大熱狗',price:30,unit:'一根'},{name:'德國香腸',price:30,unit:'一根'},{name:'豆皮',price:30,unit:'一個'},
     {name:'蘭花干',price:30,unit:'一個'},{name:'大豆干',price:30,unit:'一個'} ] },
-  { id:'solo', label:'招牌單品', bundle:null, items:[
+  { id:'solo', label:'單品', bundle:null, items:[
     {name:'鴨血',price:35,unit:'一份'},{name:'大腸',price:50,unit:'一份'} ] },
   { id:'meat', label:'肉類', bundle:{qty:2,price:75}, items:[
     {name:'豬肉片',price:40,unit:'一份'},{name:'嘴邊肉',price:40,unit:'一份'},{name:'肝連肉',price:40,unit:'一份'},
@@ -1971,28 +1971,38 @@ function showCover(){
 // ────────────────────────────────
 function buildOrderPage(){
   if (groupMode) renderOrderTabs();
-  // 分類Nav
+  // 相同標籤的相鄰分區合併成一個大區顯示（例：丸類＋餃類都叫「鍋物」→ 一個標題、
+  // 各自的優惠說明照舊分開標；計價引擎仍按內部分區各自湊優惠，不互湊）
+  const groups = [];
+  MENU.forEach(cat => {
+    const last = groups[groups.length - 1];
+    if (last && last.label === cat.label) last.cats.push(cat);
+    else groups.push({ label: cat.label, id: cat.id, cats: [cat] });
+  });
+  // 分類Nav（一個標籤一顆按鈕）
   const nav=document.getElementById('catNav');
-  nav.innerHTML=MENU.map((c,i)=>
-    `<button class="cat-btn ${i===0?'active':''}" onclick="scrollToSec('${c.id}',this)">${c.label}</button>`
+  nav.innerHTML=groups.map((g,i)=>
+    `<button class="cat-btn ${i===0?'active':''}" onclick="scrollToSec('${g.id}',this)">${g.label}</button>`
   ).join('');
   // 菜單
-  document.getElementById('orderBody').innerHTML=MENU.map(buildSection).join('');
+  document.getElementById('orderBody').innerHTML=groups.map(buildGroupSection).join('');
   updateCartBar();
 }
 
-function buildSection(cat){
-  // v2：每個品項自帶價格與單位；有優惠的區在標題下顯示規則
+function buildGroupSection(g){
+  // v2：每個品項自帶價格與單位；有優惠的子區在自己的格子上方標規則
   // （優惠是「自動湊」：客人自由加，購物車自動用最便宜算法，不用選盤）
-  const inner=`<div class="items-grid">${cat.items.map(it=>itemCardHTML(`${cat.id}:${it.name}`,it.name,it.price,it.unit)).join('')}</div>`;
-  const note = cat.bundle
-    ? `<div class="combo-note">💡 單點 $${cat.items[0].price}・任選 ${cat.bundle.qty} 樣 $${cat.bundle.price}（自動折抵，直接加就好）</div>`
-    : '';
-  return `<div class="menu-section" id="sec-${cat.id}">
+  const inner = g.cats.map(cat => {
+    const note = cat.bundle
+      ? `<div class="combo-note">💡 單點 $${cat.items[0].price}・任選 ${cat.bundle.qty} 樣 $${cat.bundle.price}（自動折抵，直接加就好）</div>`
+      : '';
+    return note + `<div class="items-grid" style="margin-bottom:12px">${cat.items.map(it=>itemCardHTML(`${cat.id}:${it.name}`,it.name,it.price,it.unit)).join('')}</div>`;
+  }).join('');
+  return `<div class="menu-section" id="sec-${g.id}">
     <div class="section-hd">
-      <span class="section-title">${cat.label}</span>
+      <span class="section-title">${g.label}</span>
       <span class="section-line"></span>
-    </div>${note}${inner}</div>`;
+    </div>${inner}</div>`;
 }
 
 function buildComboSection(cat){
