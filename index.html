@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"><!-- 禁止點輸入框時自動放大（畫面歪掉的元兇），手動雙指縮放不受影響 -->
 <meta name="theme-color" content="#0e0400"><!-- 告訴 LINE 瀏覽器：頁面周圍請塗深色，不要白 -->
 <title>老滷仙 道地滷味 ─ 八德廣福店</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500;700;900&family=Noto+Sans+TC:wght@300;400;500;700&family=Playfair+Display:wght@400;700;900&display=swap" rel="stylesheet">
@@ -689,7 +689,8 @@ body::before{
   width:100%;
   background: rgba(0,0,0,0.3);
   border:1px solid rgba(212,165,32,0.25);color:var(--cream);
-  padding:11px 14px;font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;font-size:14px;
+  padding:11px 14px;font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
+  font-size:16px; /* 一定要 ≥16px：小於 16 的輸入框 iPhone 點下去會自動放大，畫面歪掉回不來 */
   border-radius:8px;outline:none;
   transition: var(--transition);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
@@ -1189,7 +1190,7 @@ body::before{
   border: 1px solid rgba(212,165,32,0.3);
   color: var(--cream);
   padding: 10px 14px;
-  font-size: 14px;
+  font-size: 16px; /* ≥16px 防 iPhone 聚焦自動放大 */
   border-radius: 6px;
   outline: none;
   font-family: 'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;

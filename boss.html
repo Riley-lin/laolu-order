@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"><!-- 禁止點輸入框時自動放大（畫面歪掉的元兇） -->
 <title>老滷仙・老闆看單</title>
 <!-- supabase-js：Supabase 官方的前端工具包（從 CDN 載入，不用安裝） -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -31,7 +31,8 @@
 
   /* ====== 登入卡 ====== */
   .login-card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:24px;max-width:360px;margin:40px auto;}
-  .login-card input{width:100%;padding:12px;margin-bottom:10px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);font-size:15px;}
+  .login-card input{width:100%;padding:12px;margin-bottom:10px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);font-size:16px;} /* ≥16px 防 iPhone 聚焦自動放大 */
+  input,textarea{font-size:16px;} /* 後台所有輸入框一律達標 */
   .login-card button{width:100%;padding:12px;border:none;border-radius:6px;background:var(--gold);color:#1a1611;font-weight:900;font-size:15px;letter-spacing:3px;cursor:pointer;}
   .login-card button:disabled{opacity:0.5;}
   .login-err{color:var(--red);font-size:13px;text-align:center;margin-top:10px;min-height:18px;}
