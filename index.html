@@ -736,6 +736,8 @@ body::before{
 }
 .spice-btn:hover{border-color:var(--red);color:var(--cream);}
 .spice-btn.selected{background:var(--red);border-color:var(--red);color:#fff;font-weight:700;}
+/* 另外裝時微辣/微微辣不開放（老闆裁定）：變灰、不能點 */
+.spice-btn.disabled{opacity:0.3;filter:grayscale(1);pointer-events:none;}
 
 /* 等待時間確認區 */
 .wait-confirm-box{
@@ -1602,9 +1604,10 @@ body::before{
     </div>
     <div style="margin-bottom:14px">
       <div class="form-label">辣 度</div>
-      <div class="pref-grid">
-        <div class="pref-btn" id="gp-spicy-yes" onclick="setGroupPref('spicy','yes');document.getElementById('gpSpiceRow').style.display='flex'">🌶️ 要加辣</div>
-        <div class="pref-btn" id="gp-spicy-no" onclick="setGroupPref('spicy','no');document.getElementById('gpSpiceRow').style.display='none'">不要辣</div>
+      <div class="pref-grid" style="grid-template-columns:1fr 1fr 1fr;">
+        <div class="pref-btn" id="gp-spicy-yes" onclick="setGroupPref('spicy','yes');updateGroupSpiceUI()">🌶️ 要加辣</div>
+        <div class="pref-btn" id="gp-spicy-side" onclick="setGroupPref('spicy','side');updateGroupSpiceUI()">🥡 辣另外裝</div>
+        <div class="pref-btn" id="gp-spicy-no" onclick="setGroupPref('spicy','no');updateGroupSpiceUI()">不要辣</div>
       </div>
       <div id="gpSpiceRow" class="spice-row" style="display:none;margin-top:8px">
         <div class="spice-btn" onclick="setGroupSpice('大辣',this)">大辣</div>
@@ -2251,15 +2254,32 @@ function showGroupNextModal(currentName) {
 
 // 設定揪團口味偏好
 function setGroupPref(key, val) {
-  const yesEl = document.getElementById(`gp-${key}-yes`);
-  const noEl  = document.getElementById(`gp-${key}-no`);
-  if(yesEl) yesEl.classList.toggle('selected', val==='yes');
-  if(noEl)  noEl.classList.toggle('selected', val==='no');
+  const yesEl  = document.getElementById(`gp-${key}-yes`);
+  const noEl   = document.getElementById(`gp-${key}-no`);
+  const sideEl = document.getElementById(`gp-${key}-side`);
+  if(yesEl)  yesEl.classList.toggle('selected', val==='yes');
+  if(noEl)   noEl.classList.toggle('selected', val==='no');
+  if(sideEl) sideEl.classList.toggle('selected', val==='side');
 }
 
 function setGroupSpice(level, el) {
+  if (el.classList.contains('disabled')) return; // 灰掉的不給選
   document.getElementById('gpSpiceRow').querySelectorAll('.spice-btn').forEach(b=>b.classList.remove('selected'));
   el.classList.add('selected');
+}
+
+// 揪團版辣度列：跟主結帳同一套規矩（另外裝時微辣/微微辣灰掉）
+function updateGroupSpiceUI() {
+  const row = document.getElementById('gpSpiceRow');
+  if (!row) return;
+  const side = document.getElementById('gp-spicy-side')?.classList.contains('selected');
+  const on = side || document.getElementById('gp-spicy-yes')?.classList.contains('selected');
+  row.style.display = on ? 'flex' : 'none';
+  row.querySelectorAll('.spice-btn').forEach(b => {
+    const bad = !!side && (b.textContent === '微辣' || b.textContent === '微微辣');
+    b.classList.toggle('disabled', bad);
+    if (bad || !on) b.classList.remove('selected');
+  });
 }
 
 // 儲存當前訂單的偏好
@@ -2267,6 +2287,7 @@ function saveCurrentGroupPref() {
   const getVal = (key) => {
     if(document.getElementById(`gp-${key}-yes`)?.classList.contains('selected')) return 'yes';
     if(document.getElementById(`gp-${key}-no`)?.classList.contains('selected')) return 'no';
+    if(document.getElementById(`gp-${key}-side`)?.classList.contains('selected')) return 'side';
     return null;
   };
   const spiceEl = document.querySelector('#gpSpiceRow .spice-btn.selected');
@@ -2527,6 +2548,7 @@ function openCheckout(e){
         if(o.prefs.pepper==='yes') prefLines.push('加胡椒');
         else if(o.prefs.pepper==='no') prefLines.push('不要胡椒');
         if(o.prefs.spicy==='yes' && o.prefs.spiceLevel) prefLines.push(`辣度：${o.prefs.spiceLevel}`);
+        else if(o.prefs.spicy==='side') prefLines.push(o.prefs.spiceLevel?`辣度：${o.prefs.spiceLevel}（另外裝）`:'辣另外裝');
         else if(o.prefs.spicy==='no') prefLines.push('不加辣');
         if(o.prefs.utensils==='yes') prefLines.push('需要餐具🥢');
   else if(o.prefs.utensils==='no') prefLines.push('不需要餐具');
@@ -2611,12 +2633,16 @@ function openCheckout(e){
       </div>
       <div style="margin-bottom:14px">
         <div class="form-label">辣 度</div>
-        <div class="pref-grid">
-          <div class="pref-btn ${prefs.spicy==='yes'?'selected':''}" onclick="setPref('spicy','yes',this);showSpice(true)">🌶️ 要加辣</div>
-          <div class="pref-btn ${prefs.spicy==='no'?'selected':''}" onclick="setPref('spicy','no',this);showSpice(false)">不要辣</div>
+        <div class="pref-grid" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="pref-btn ${prefs.spicy==='yes'?'selected':''}" onclick="setPref('spicy','yes',this);updateSpiceUI()">🌶️ 要加辣</div>
+          <div class="pref-btn ${prefs.spicy==='side'?'selected':''}" onclick="setPref('spicy','side',this);updateSpiceUI()">🥡 辣另外裝</div>
+          <div class="pref-btn ${prefs.spicy==='no'?'selected':''}" onclick="setPref('spicy','no',this);updateSpiceUI()">不要辣</div>
         </div>
-        <div id="spiceRow" class="spice-row" style="display:${prefs.spicy==='yes'?'flex':'none'}">
-          ${['大辣','中辣','小辣','微辣','微微辣'].map(l=>'<div class="spice-btn '+(prefs.spiceLevel===l?'selected':'')+'" onclick="setSpiceLevel(\''+l+'\',this)">'+l+'</div>').join('')}
+        <div id="spiceRow" class="spice-row" style="display:${(prefs.spicy==='yes'||prefs.spicy==='side')?'flex':'none'}">
+          ${['大辣','中辣','小辣','微辣','微微辣'].map(l=>{
+            const ban = prefs.spicy==='side' && (l==='微辣'||l==='微微辣');
+            return '<div class="spice-btn '+(prefs.spiceLevel===l?'selected':'')+(ban?' disabled':'')+'" onclick="setSpiceLevel(\''+l+'\',this)">'+l+'</div>';
+          }).join('')}
         </div>
       </div>` : ''}
 
@@ -2644,10 +2670,19 @@ function setPref(key,val,el,otherId){
   el.parentElement.querySelectorAll('.pref-btn').forEach(b=>b.classList.remove('selected'));
   el.classList.add('selected');
 }
-function showSpice(show){
+// 辣度列開關＋另外裝灰化：微辣/微微辣在「另外裝」時不開放
+// （分量太少沒必要另外裝——老闆的裁定，畫面上只灰掉不解釋）
+function updateSpiceUI(){
   const r=document.getElementById('spiceRow');
-  if(r) r.style.display=show?'flex':'none';
-  if(!show){ prefs.spiceLevel=null; }
+  const on = prefs.spicy==='yes' || prefs.spicy==='side';
+  if(r) r.style.display=on?'flex':'none';
+  if(!on){ prefs.spiceLevel=null; return; }
+  const banned = prefs.spicy==='side' ? ['微辣','微微辣'] : [];
+  if(r) r.querySelectorAll('.spice-btn').forEach(b=>{
+    const bad = banned.includes(b.textContent);
+    b.classList.toggle('disabled', bad);
+    if(bad && b.classList.contains('selected')){ b.classList.remove('selected'); prefs.spiceLevel=null; }
+  });
 }
 function setSpiceLevel(level,el){
   prefs.spiceLevel=level;
@@ -2748,6 +2783,7 @@ function showFinalConfirm(total, mode) {
       if(o.prefs.pepper==='yes') prefLines.push('加胡椒');
       else if(o.prefs.pepper==='no') prefLines.push('不要胡椒');
       if(o.prefs.spicy==='yes' && o.prefs.spiceLevel) prefLines.push('辣度：'+o.prefs.spiceLevel);
+      else if(o.prefs.spicy==='side') prefLines.push(o.prefs.spiceLevel?'辣度：'+o.prefs.spiceLevel+'（另外裝）':'辣另外裝');
       else if(o.prefs.spicy==='no') prefLines.push('不加辣');
       if(o.prefs.utensils==='yes') prefLines.push('需要餐具🥢');
       else if(o.prefs.utensils==='no') prefLines.push('不需要餐具');
@@ -3219,6 +3255,7 @@ function prefLinesHTML(prefs) {
   if (prefs.pepper === 'yes') pLines.push('加胡椒');
   else if (prefs.pepper === 'no') pLines.push('不要胡椒');
   if (prefs.spicy === 'yes' && prefs.spiceLevel) pLines.push(prefs.spiceLevel);
+  else if (prefs.spicy === 'side') pLines.push(prefs.spiceLevel ? prefs.spiceLevel + '（另外裝）' : '辣另外裝');
   else if (prefs.spicy === 'no') pLines.push('不加辣');
   if (prefs.note) pLines.push('備註：' + prefs.note);
   if (!pLines.length) return '';

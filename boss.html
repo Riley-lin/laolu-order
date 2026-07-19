@@ -327,7 +327,9 @@ function formatPrefs(p) {
   if (p.scallion === 'yes') out.push('加蔥'); else if (p.scallion === 'no') out.push('不要蔥');
   if (p.garlic === 'yes') out.push('加蒜'); else if (p.garlic === 'no') out.push('不要蒜');
   if (p.pepper === 'yes') out.push('加胡椒'); else if (p.pepper === 'no') out.push('不要胡椒');
-  if (p.spicy === 'yes' && p.spiceLevel) out.push('辣度：' + p.spiceLevel); else if (p.spicy === 'no') out.push('不加辣');
+  if (p.spicy === 'yes' && p.spiceLevel) out.push('辣度：' + p.spiceLevel);
+  else if (p.spicy === 'side') out.push(p.spiceLevel ? '辣度：' + p.spiceLevel + '（另外裝）' : '辣另外裝');
+  else if (p.spicy === 'no') out.push('不加辣');
   if (p.utensils === 'yes') out.push('要餐具🥢'); else if (p.utensils === 'no') out.push('不用餐具');
   if (p.note) out.push('備註：' + esc(p.note));
   return out.join('、');
