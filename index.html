@@ -1757,7 +1757,7 @@ const FALLBACK_MENU = [
   { id:'noodle', label:'麵類', bundle:null, items:[
     {name:'王子麵',price:15,unit:'一包'},{name:'滷味麵',price:15,unit:'一包'},{name:'細冬粉',price:15,unit:'一卷'},
     {name:'寬冬粉',price:15,unit:'一卷'},{name:'烏龍麵',price:20,unit:'一包'},{name:'蒸煮麵',price:25,unit:'一包'} ] },
-  { id:'extra', label:'餐具加購', bundle:null,
+  { id:'extra', label:'餐具', bundle:null,
     note:'🌱 環保小提醒：餐點不附碗筷，需要的話在這裡加購就好囉',
     items:[
     {name:'紙碗',price:2,unit:'一個'},{name:'免洗筷',price:1,unit:'一雙'} ] }
@@ -2439,6 +2439,12 @@ function openCheckout(e){
   e.stopPropagation();
   if(!hasAnyItems()) return;
 
+  // 🥢 餐具攔截：購物車沒餐具且還沒問過 → 先問，答完再進結帳
+  if (needUtensilPrompt()) {
+    showUtensilPrompt(() => openCheckout({ stopPropagation: () => {} }));
+    return;
+  }
+
   // 有多張訂單時，先讓用戶選擇結帳模式
   const multiOrder = groupMode && orders.length > 1;
 
@@ -2588,15 +2594,6 @@ function openCheckout(e){
       ${orderBlocks}
       <div class="recap-total"><span>總 計</span><span>$${grandTotal}</span></div>
 
-      ${orders.some(o=>Object.keys(o.cart).some(k=>k.startsWith('extra:'))) ? '' : `
-      <div class="combo-note" style="margin-top:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;justify-content:space-between;">
-        <span>🌱 餐點不附碗筷，需要嗎？</span>
-        <span style="display:flex;gap:6px;">
-          <button class="btn-back" style="padding:7px 12px;font-size:12px;" onclick="quickAddExtra('紙碗')">＋紙碗 $2</button>
-          <button class="btn-back" style="padding:7px 12px;font-size:12px;" onclick="quickAddExtra('免洗筷')">＋筷子 $1</button>
-        </span>
-      </div>`}
-
       <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
         <button class="btn-order" onclick="showFinalConfirm(${grandTotal},'${mode||'single'}')">確 認 下 單</button>
         <button class="btn-back" onclick="backToMenu()" style="padding:11px;">← 返 回 修 改</button>
@@ -2628,23 +2625,52 @@ function setSpiceLevel(level,el){
   el.classList.add('selected');
 }
 
-/* 🥢 結帳頁餐具一鍵加購（沒買餐具才會出現的提醒）
-   加完重繪結帳明細；已填的姓名/電話/備註要先收好再放回去，不能讓客人重打 */
-function quickAddExtra(name){
+/* 🥢 餐具攔截彈窗（2026-07-19 Riley 設計）：按結帳時先問一次餐具
+   ——碗筷各有 ＋−，加多少都行；菜單先加過的人不彈；同次點餐只彈一次 */
+let _utensilPromptDone = false;
+function needUtensilPrompt(){
+  const has = orders.some(o => Object.keys(o.cart).some(k => k.startsWith('extra:')));
+  return !has && !_utensilPromptDone;
+}
+function utensilQty(name){ const e = getCart()['extra:' + name]; return e ? e.qty : 0; }
+function utensilRowHTML(name, price){
+  return `<div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0;">
+    <span style="font-size:15px;color:rgba(253,246,227,0.9);">${name} <span style="color:var(--gold2);font-weight:700;">$${price}</span></span>
+    <span class="qty-ctrl">
+      <button class="qty-btn" onclick="utensilStep('${name}',${price},-1)">－</button>
+      <span class="qty-num" id="uq-${name}">${utensilQty(name)}</span>
+      <button class="qty-btn" onclick="utensilStep('${name}',${price},1)">＋</button>
+    </span></div>`;
+}
+function utensilStep(name, price, d){
+  chQty('extra:' + name, name, price, d);
+  const el = document.getElementById('uq-' + name);
+  if (el) el.textContent = utensilQty(name);
+}
+function showUtensilPrompt(next){
   const cat = MENU.find(c => c.id === 'extra');
-  const it = cat && cat.items.find(i => i.name === name);
-  if (!it) { alert('目前沒有提供 ' + name); return; }
-  if (SOLD_OUT.has(name)) { alert(name + ' 今日售完囉'); return; }
-  const keep = {
-    name: document.getElementById('fName')?.value,
-    phone: document.getElementById('fPhone')?.value,
-    note: document.getElementById('fNote')?.value,
-  };
-  chQty('extra:' + name, name, it.price, 1);
-  window.renderCheckoutInModal(window._checkoutMode ?? null);
-  if (keep.name  != null && document.getElementById('fName'))  document.getElementById('fName').value  = keep.name;
-  if (keep.phone != null && document.getElementById('fPhone')) document.getElementById('fPhone').value = keep.phone;
-  if (keep.note  != null && document.getElementById('fNote'))  document.getElementById('fNote').value  = keep.note;
+  const items = cat ? cat.items.filter(i => !SOLD_OUT.has(i.name)) : [];
+  if (!items.length) { _utensilPromptDone = true; next(); return; }  // 餐具全下架就別問了
+  const ov = document.createElement('div');
+  ov.id = 'utensilPrompt';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.68);display:flex;align-items:center;justify-content:center;z-index:99;padding:20px;';
+  ov.innerHTML = `<div style="background:#1f1b17;border:1px solid rgba(212,165,32,0.45);border-radius:12px;max-width:340px;width:100%;padding:22px;box-shadow:0 10px 32px rgba(0,0,0,0.4);">
+      <div style="font-size:16px;font-weight:900;color:var(--gold2);letter-spacing:2px;margin-bottom:8px;">🌱 環保小提醒</div>
+      <div style="font-size:13.5px;line-height:1.7;color:rgba(253,246,227,0.85);">響應環保，餐點不附免洗碗筷，<br>需要請在這邊加購喔！</div>
+      <div style="margin-top:10px;border-top:1px dashed rgba(212,165,32,0.3);padding-top:4px;">
+        ${items.map(i => utensilRowHTML(i.name, i.price)).join('')}
+      </div>
+      <button class="btn-order" style="width:100%;margin-top:12px;" onclick="closeUtensilPrompt()">繼 續 結 帳</button>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) closeUtensilPrompt(); });
+  window._utensilNext = next;
+  document.body.appendChild(ov);
+}
+function closeUtensilPrompt(){
+  document.getElementById('utensilPrompt')?.remove();
+  _utensilPromptDone = true;  // 同一次點餐不再問（送出成功重置）
+  const n = window._utensilNext; window._utensilNext = null;
+  if (n) n();
 }
 
 
@@ -3255,6 +3281,7 @@ async function refreshQueryStatuses(container) {
 
 function finishOrder(){
   // 清空所有訂單，重設
+  _utensilPromptDone = false; // 下一張單重新詢問餐具
   orders = [ createOrder('A') ];
   currentOrderIdx = 0;
   groupMode = false;
