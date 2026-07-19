@@ -2031,7 +2031,7 @@ function buildGroupSection(g){
   // （優惠是「自動湊」：客人自由加，購物車自動用最便宜算法，不用選盤）
   const inner = g.cats.map(cat => {
     const note = cat.bundle
-      ? `<div class="combo-note">💡 單點 $${cat.items[0].price}・任選 ${cat.bundle.qty} 樣 $${cat.bundle.price}（自動折抵，直接加就好）</div>`
+      ? `<div class="combo-note">💡 單點 $${cat.items[0].price}・此區任選 ${cat.bundle.qty} 樣 $${cat.bundle.price}（自動折抵，直接加就好）</div>`
       : (cat.note ? `<div class="combo-note">${cat.note}</div>` : '');
     return note + `<div class="items-grid" style="margin-bottom:12px">${cat.items.map(it=>itemCardHTML(`${cat.id}:${it.name}`,it.name,it.price,it.unit)).join('')}</div>`;
   }).join('');
