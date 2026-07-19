@@ -1444,7 +1444,7 @@ body{
     <!-- 🕔 時段外看板（還沒到接單時間；同樣是唯一焦點） -->
     <div id="coverOffhours" class="closed-box" style="display:none">
       <div class="closed-title">尚 未 營 業</div>
-      <div class="closed-sub" id="offhoursSub">今日接單時間 17:00 – 00:00</div>
+      <div class="closed-sub" id="offhoursSub">營業時間 17:00 – 00:00</div>
     </div>
     <!-- 📢 公告條（有公告才現身） -->
     <div id="coverNotice" class="notice-bar" style="display:none"></div>
@@ -1899,7 +1899,7 @@ const ENABLE_GROUP_MODE = false;
 function openModeSelect() {
   // 🚪 打烊日／時段外：連菜單都不給進（不看字的客人也擋得住）
   if (SHOP_CLOSED) { alert('🍢 今日公休，感謝支持，明天見！'); return; }
-  if (SHOP_OFFHOURS) { alert('🕔 還沒開始接單喔！今日接單時間 ' + (SHOP_HOURS_LABEL || '17:00 – 00:00')); return; }
+  if (SHOP_OFFHOURS) { alert('🕔 還沒開始營業喔！營業時間 ' + (SHOP_HOURS_LABEL || '17:00 – 00:00')); return; }
   if (!ENABLE_GROUP_MODE) {
     // 揪團關閉中：跳過「選擇點餐方式」，直接以個人模式進點餐頁
     selectOrderMode('personal');
@@ -2859,7 +2859,7 @@ function renderShopStatus() {
   const offEl = document.getElementById('coverOffhours');
   if (offEl) offEl.style.display = (!SHOP_CLOSED && SHOP_OFFHOURS) ? 'block' : 'none';
   const offSub = document.getElementById('offhoursSub');
-  if (offSub && SHOP_HOURS_LABEL) offSub.textContent = '今日接單時間 ' + SHOP_HOURS_LABEL;
+  if (offSub && SHOP_HOURS_LABEL) offSub.textContent = '營業時間 ' + SHOP_HOURS_LABEL;
   const waitBanner = document.getElementById('coverWaitBanner');
   if (waitBanner) waitBanner.style.display = blocked ? 'none' : '';
   const startBtn = document.querySelector('.start-btn');
@@ -2953,7 +2953,7 @@ async function submitOrder() {
     if (btn) { btn.disabled = false; btn.textContent = '送 出 訂 單'; }
     alert(SHOP_CLOSED
       ? '🍢 今日公休無法接單，感謝支持，明天見！'
-      : '🕔 目前非接單時段（' + (SHOP_HOURS_LABEL || '17:00 – 00:00') + '），時間到了再來喔！');
+      : '🕔 目前非營業時間（' + (SHOP_HOURS_LABEL || '17:00 – 00:00') + '），時間到了再來喔！');
     return;
   }
 
