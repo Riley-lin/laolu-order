@@ -146,6 +146,7 @@
       <button class="tab" data-f="done" onclick="setFilter('done',this)">✅ 已完成</button>
       <button class="tab" data-f="all" onclick="setFilter('all',this)">全部</button>
       <span class="spacer"></span>
+      <button class="btn-plain" onclick="openShopSettings()">🚪 營業</button>
       <button class="btn-plain" onclick="openDailyReport()">📊 日報</button>
       <button class="btn-plain" onclick="openMenuManager()">🍢 菜單</button>
       <button class="btn-plain" onclick="loadOrders()">↻ 重新整理</button>
@@ -632,6 +633,69 @@ async function commitEdit() {
   if (error || !data || !data.length) { alert('儲存失敗，請重試'); renderEditModal(); return; }
   _editState = null;
   loadOrders();
+}
+
+/* ---------- 🚪 營業設定（打烊系統，2026-07-19） ----------
+   三格設定住在 app_config：公告文字／未來公休日／今日暫停。
+   改了之後客人的點餐頁 10 秒內反應：公告條亮起、公休日整頁打烊擋單。
+   「今日暫停」的聰明設計：存的是今天的日期，明天自動失效——按了不用記得關。 */
+async function openShopSettings() {
+  const { data, error } = await db.from('app_config')
+    .select('name,value').in('name', ['notice', 'closed_dates', 'closed_now']);
+  if (error || !data) { alert('讀取失敗——還沒跑 setup-config.sql？'); return; }
+  const cfg = {}; data.forEach(r => cfg[r.name] = r.value || '');
+  const today = taipeiToday();
+  const pausedToday = cfg.closed_now === today;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'line-preview-overlay';
+  overlay.id = 'shopSettings';
+  overlay.innerHTML =
+    '<div class="menu-mgr">'
+    + '<div class="lp-title">🚪 營業設定</div>'
+    + '<div class="mm-list">'
+    +   '<div class="dr-sec">⏸ 臨時打烊</div>'
+    +   '<button id="pauseBtn" class="' + (pausedToday ? 'btn-accept' : 'btn-cancel') + '" style="width:100%;padding:12px;font-size:15px;" onclick="togglePauseToday(' + pausedToday + ')">'
+    +     (pausedToday ? '▶️ 恢復接單（目前：今日暫停中）' : '⏸️ 今日暫停接單')
+    +   '</button>'
+    +   '<div class="lp-note" style="text-align:left">按下後客人點餐頁立刻顯示「今日公休」且無法下單；明天自動恢復，不用記得回來關</div>'
+    +   '<div class="dr-sec">📅 未來公休日</div>'
+    +   '<input id="cfgDates" class="query-phone-input" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);" value="' + esc(cfg.closed_dates) + '" placeholder="例：2026-07-21,2026-07-28">'
+    +   '<div class="lp-note" style="text-align:left">用逗號分隔的日期（年-月-日）；到了那天自動打烊、隔天自動恢復</div>'
+    +   '<div class="dr-sec">📢 公告文字</div>'
+    +   '<textarea id="cfgNotice" rows="3" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);font-size:14px;">' + esc(cfg.notice) + '</textarea>'
+    +   '<div class="lp-note" style="text-align:left">顯示在客人點餐頁最上方（例：7/21(二)、7/28(二) 公休）；留空＝不顯示</div>'
+    + '</div>'
+    + '<div class="dr-actions">'
+    +   '<button class="btn-plain" style="flex:1;padding:10px;" onclick="document.getElementById(\'shopSettings\').remove()">關 閉</button>'
+    +   '<button class="btn-accept" style="flex:2;padding:10px;" onclick="saveShopSettings()">💾 儲存公休日與公告</button>'
+    + '</div>'
+    + '</div>';
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+/* 今日暫停開關：立即生效（不用按儲存） */
+async function togglePauseToday(currentlyPaused) {
+  const val = currentlyPaused ? '' : taipeiToday();
+  const { data, error } = await db.from('app_config')
+    .update({ value: val }).eq('name', 'closed_now').select();
+  if (error || !data?.length) { alert('切換失敗，請確認已登入再試'); return; }
+  document.getElementById('shopSettings')?.remove();
+  openShopSettings(); // 重開＝看到最新狀態
+}
+
+async function saveShopSettings() {
+  const dates = (document.getElementById('cfgDates')?.value || '').trim();
+  const notice = (document.getElementById('cfgNotice')?.value || '').trim();
+  // 日期格式體檢：擋掉打錯的（例：2026/07/21 或少了年份）
+  const bad = dates.split(/[,，\s]+/).filter(Boolean).filter(d => !/^\d{4}-\d{2}-\d{2}$/.test(d));
+  if (bad.length) { alert('這些日期格式不對（要像 2026-07-21）：\n' + bad.join('、')); return; }
+  const r1 = await db.from('app_config').update({ value: dates }).eq('name', 'closed_dates').select();
+  const r2 = await db.from('app_config').update({ value: notice }).eq('name', 'notice').select();
+  if (r1.error || r2.error || !r1.data?.length || !r2.data?.length) { alert('儲存失敗，請確認已登入再試'); return; }
+  alert('✅ 已儲存！客人頁 10 秒內生效');
+  document.getElementById('shopSettings')?.remove();
 }
 
 /* ---------- 📊 老闆日報（M0.9-A） ----------

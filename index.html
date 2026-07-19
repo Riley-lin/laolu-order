@@ -502,6 +502,21 @@ body{
 /* 單位小標（一份4條、半個…）＝說明份量，跟在品名後面 */
 .unit-tag{margin-left:5px;font-size:10px;color:rgba(253,246,227,0.45);letter-spacing:0.5px;}
 
+/* 📢 公告條＆🚪 打烊看板（內容來自雲端 app_config，老闆店務頁可改） */
+.notice-bar{
+  margin:10px 14px;padding:10px 14px;border-radius:8px;
+  background:rgba(212,165,32,0.12);border:1px solid rgba(212,165,32,0.45);
+  color:var(--gold2,#e8c358);font-size:13.5px;line-height:1.6;letter-spacing:0.5px;
+  white-space:pre-line;text-align:center;
+}
+.closed-box{
+  margin:14px auto;padding:18px 26px;max-width:320px;border-radius:10px;
+  background:rgba(224,122,95,0.12);border:2px solid rgba(224,122,95,0.65);
+  color:#ffb09a;font-family:'Noto Serif TC',serif;font-size:26px;font-weight:900;
+  letter-spacing:4px;text-align:center;line-height:1.5;
+}
+.closed-box .closed-sub{font-size:13px;font-weight:400;letter-spacing:2px;color:rgba(255,176,154,0.8);}
+
 /* 🚫 今日售完：整卡變灰、按不了（狀態來自雲端 menu_items.sold_out） */
 .item-card.sold-out{opacity:0.45;filter:grayscale(0.85);}
 .item-card.sold-out:hover{transform:none;border-color:rgba(212,165,32,0.12);background:var(--surface1);box-shadow:none;}
@@ -1411,6 +1426,11 @@ body{
       <span id="coverWaitText">目前等待時間：約 <strong>15 分鐘</strong></span>
     </div>
 
+    <!-- 🚪 打烊看板（休假日才現身，蓋在開始鈕上方） -->
+    <div id="coverClosed" class="closed-box" style="display:none">🍢 今日公休<br><span class="closed-sub">感謝支持，明天見！</span></div>
+    <!-- 📢 公告條（有公告才現身） -->
+    <div id="coverNotice" class="notice-bar" style="display:none"></div>
+
     <button class="start-btn" onclick="openModeSelect()">立 即 點 餐</button>
 
     <button onclick="openCoverQuery()" style="
@@ -1439,6 +1459,8 @@ body{
 
 <!-- ══════════ ORDER PAGE ══════════ -->
 <div id="order-page">
+  <!-- 📢 公告條（點餐頁版，有公告才現身） -->
+  <div id="orderNotice" class="notice-bar" style="display:none"></div>
   <!-- 全部固定在最上方的 sticky wrapper -->
   <div class="sticky-header">
     <div class="order-header">
@@ -1875,6 +1897,8 @@ function showOrderPage(){
 const ENABLE_GROUP_MODE = false;
 
 function openModeSelect() {
+  // 🚪 打烊日：連菜單都不給進（不看字的客人也擋得住）
+  if (SHOP_CLOSED) { alert('🍢 今日公休，感謝支持，明天見！'); return; }
   if (!ENABLE_GROUP_MODE) {
     // 揪團關閉中：跳過「選擇點餐方式」，直接以個人模式進點餐頁
     selectOrderMode('personal');
@@ -2758,6 +2782,52 @@ async function syncMenu() {
   } catch (e) { /* 讀不到就先用手上這份，客人照樣能點（可用性優先） */ }
 }
 
+/* ── 🚪 打烊系統（2026-07-19）─────────────────────────
+   店況住在雲端 app_config 三格：notice（公告）、closed_dates（未來公休日）、
+   closed_now（臨時打烊：值＝今天日期才算數，隔天自動失效）。
+   老闆在店務頁改 → 這裡每 10 秒同步 → 公告條/打烊看板/擋單即時反應。
+   對「什麼都不看」的客人：打烊日連「立即點餐」都按不下去（第三層防禦）。 */
+let SHOP_NOTICE = '';
+let SHOP_CLOSED = false;
+
+function taipeiTodayStr() {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' });
+}
+
+async function syncShopConfig() {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/app_config?select=name,value&name=in.(notice,closed_dates,closed_now)', {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+    });
+    if (!res.ok) return;
+    const cfg = {};
+    (await res.json()).forEach(r => { cfg[r.name] = r.value || ''; });
+    SHOP_NOTICE = (cfg.notice || '').trim();
+    const today = taipeiTodayStr();
+    const dates = (cfg.closed_dates || '').split(/[,，\s]+/).filter(Boolean);
+    SHOP_CLOSED = (cfg.closed_now === today) || dates.includes(today);
+    renderShopStatus();
+  } catch (e) { /* 讀不到就維持現狀，不影響點餐 */ }
+}
+
+function renderShopStatus() {
+  ['coverNotice', 'orderNotice'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = '📢 ' + SHOP_NOTICE;
+    el.style.display = (SHOP_NOTICE && !SHOP_CLOSED) ? 'block' : 'none';
+  });
+  const closedEl = document.getElementById('coverClosed');
+  if (closedEl) closedEl.style.display = SHOP_CLOSED ? 'block' : 'none';
+  const startBtn = document.querySelector('.start-btn');
+  if (startBtn) {
+    startBtn.disabled = SHOP_CLOSED;
+    startBtn.style.opacity = SHOP_CLOSED ? '0.3' : '';
+    startBtn.style.pointerEvents = SHOP_CLOSED ? 'none' : '';
+    startBtn.textContent = SHOP_CLOSED ? '今 日 公 休' : '立 即 點 餐';
+  }
+}
+
 // 送出前的售完清查：回傳購物車裡踩到售完的品名（去重）
 function findSoldOutInOrders(list) {
   const hit = new Set();
@@ -2827,6 +2897,14 @@ async function submitOrder() {
   // 防手滑連點：上傳期間先鎖住送出鈕，避免同一單送兩次
   const btn = document.querySelector('#modalBox .btn-order');
   if (btn) { btn.disabled = true; btn.textContent = '傳送中…'; }
+
+  // 🚪 打烊最後把關：開著頁面跨到公休日的邊角也擋（先同步一次店況）
+  await syncShopConfig();
+  if (SHOP_CLOSED) {
+    if (btn) { btn.disabled = false; btn.textContent = '送 出 訂 單'; }
+    alert('🍢 今日公休無法接單，感謝支持，明天見！');
+    return;
+  }
 
   // 🛡 售完最後把關：送出瞬間再問一次雲端，堵「加進購物車之後才被下架」的時間差
   try {
@@ -3079,8 +3157,9 @@ document.getElementById('modeSelectBg').addEventListener('click',function(e){if(
 // 注意：輪詢只管「畫面多快變灰」，防錯單的正主是 submitOrder 裡的送出前再驗；
 // 未來升級 Supabase Realtime（做訂單編輯器時一起）可讓這裡變即時推播。
 syncMenu();
-setInterval(syncMenu, 10000);
-document.addEventListener('visibilitychange', function(){ if (!document.hidden) syncMenu(); });
+syncShopConfig();
+setInterval(function(){ syncMenu(); syncShopConfig(); }, 10000);
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) { syncMenu(); syncShopConfig(); } });
 
 /* ── 📱 LIFF 啟動（M3）：客人從 LINE 打開時自動認人 ──
    LIFF_ID 留空＝一般網頁模式，整段直接跳過（上線前的安全預設）。

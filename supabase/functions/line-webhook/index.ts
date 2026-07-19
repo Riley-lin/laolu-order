@@ -251,12 +251,22 @@ Deno.serve(async (req) => {
       continue
     }
 
-    // ②.5 傳「休假日」（圖文選單按鈕代送）→ 回店務設定檔裡的公告
-    //     內容存 app_config 表，老闆改休假 → Table Editor 改一格字即生效，不用重部署
+    // ②.5 傳「休假日」／「公休」→ 回店務設定檔的公告＋近期公休日
+    //     資料來自 app_config（老闆在店務頁維護），改了即生效不用重部署
     if (text === '休假日' || text === '公休') {
-      const { data: cfg } = await db.from('app_config')
-        .select('value').eq('name', 'holiday_notice').maybeSingle()
-      await reply(ev.replyToken, cfg?.value ?? '休假資訊請洽 0939-955-888 🍢')
+      const { data: rows } = await db.from('app_config')
+        .select('name,value').in('name', ['notice', 'closed_dates', 'closed_now'])
+      const cfg: Record<string, string> = {}
+      for (const r of rows ?? []) cfg[r.name] = r.value ?? ''
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date())
+      const upcoming = (cfg.closed_dates ?? '').split(/[,，\s]+/).filter(d => d && d >= today)
+      let msg = '🍢 老滷仙營業資訊\n\n'
+      if (cfg.closed_now === today || upcoming.includes(today)) msg += '⚠️ 今日公休，明天見！\n\n'
+      msg += upcoming.length
+        ? '近期公休日：\n' + upcoming.map(d => '・' + d.slice(5).replace('-', '/')).join('\n')
+        : '近期未排定公休 😊'
+      if ((cfg.notice ?? '').trim()) msg += '\n\n📢 ' + cfg.notice.trim()
+      await reply(ev.replyToken, msg)
       continue
     }
 
