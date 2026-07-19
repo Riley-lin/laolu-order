@@ -2443,6 +2443,7 @@ function openCheckout(e){
   const multiOrder = groupMode && orders.length > 1;
 
   function renderCheckoutModal(mode) {
+    window._checkoutMode = mode; // 記住目前模式，餐具一鍵加購後重繪用
     // mode: 'split' | 'merge' | null(單張)
     let ordersToShow = [];
     if (!multiOrder || mode === 'merge') {
@@ -2587,6 +2588,15 @@ function openCheckout(e){
       ${orderBlocks}
       <div class="recap-total"><span>總 計</span><span>$${grandTotal}</span></div>
 
+      ${orders.some(o=>Object.keys(o.cart).some(k=>k.startsWith('extra:'))) ? '' : `
+      <div class="combo-note" style="margin-top:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;justify-content:space-between;">
+        <span>🌱 餐點不附碗筷，需要嗎？</span>
+        <span style="display:flex;gap:6px;">
+          <button class="btn-back" style="padding:7px 12px;font-size:12px;" onclick="quickAddExtra('紙碗')">＋紙碗 $2</button>
+          <button class="btn-back" style="padding:7px 12px;font-size:12px;" onclick="quickAddExtra('免洗筷')">＋筷子 $1</button>
+        </span>
+      </div>`}
+
       <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
         <button class="btn-order" onclick="showFinalConfirm(${grandTotal},'${mode||'single'}')">確 認 下 單</button>
         <button class="btn-back" onclick="backToMenu()" style="padding:11px;">← 返 回 修 改</button>
@@ -2616,6 +2626,25 @@ function setSpiceLevel(level,el){
   prefs.spiceLevel=level;
   el.parentElement.querySelectorAll('.spice-btn').forEach(b=>b.classList.remove('selected'));
   el.classList.add('selected');
+}
+
+/* 🥢 結帳頁餐具一鍵加購（沒買餐具才會出現的提醒）
+   加完重繪結帳明細；已填的姓名/電話/備註要先收好再放回去，不能讓客人重打 */
+function quickAddExtra(name){
+  const cat = MENU.find(c => c.id === 'extra');
+  const it = cat && cat.items.find(i => i.name === name);
+  if (!it) { alert('目前沒有提供 ' + name); return; }
+  if (SOLD_OUT.has(name)) { alert(name + ' 今日售完囉'); return; }
+  const keep = {
+    name: document.getElementById('fName')?.value,
+    phone: document.getElementById('fPhone')?.value,
+    note: document.getElementById('fNote')?.value,
+  };
+  chQty('extra:' + name, name, it.price, 1);
+  window.renderCheckoutInModal(window._checkoutMode ?? null);
+  if (keep.name  != null && document.getElementById('fName'))  document.getElementById('fName').value  = keep.name;
+  if (keep.phone != null && document.getElementById('fPhone')) document.getElementById('fPhone').value = keep.phone;
+  if (keep.note  != null && document.getElementById('fNote'))  document.getElementById('fNote').value  = keep.note;
 }
 
 
