@@ -1778,7 +1778,8 @@ function bundleRuleOf(catId){
   return { qty: c.bundle.qty, price: c.bundle.price, unit: (c.items[0] || {}).price || 0 };
 }
 
-// 算一個購物車：{ gross 原價總和, saved 優惠折抵, total 實付 }
+// 算一個購物車：{ gross 原價總和, saved 優惠折抵, total 實付, lines 折扣明細 }
+// lines＝對帳版的心臟：每區湊成幾組、各折多少（例：蔬食青菜 任3樣$100 ×1（−$5））
 function cartCalc(cart){
   let gross = 0;
   const cnt = {}; // 每區件數
@@ -1788,11 +1789,18 @@ function cartCalc(cart){
     cnt[c] = (cnt[c] || 0) + v.qty;
   });
   let saved = 0;
+  const lines = [];
   Object.entries(cnt).forEach(([c, n]) => {
     const r = bundleRuleOf(c);
-    if (r) saved += Math.floor(n / r.qty) * (r.qty * r.unit - r.price);
+    if (!r) return;
+    const times = Math.floor(n / r.qty);
+    if (times < 1) return;
+    const s = times * (r.qty * r.unit - r.price);
+    saved += s;
+    const cat = MENU.find(x => x.id === c);
+    lines.push((cat ? cat.label : c) + ' 任' + r.qty + '樣$' + r.price + ' ×' + times + '（−$' + s + '）');
   });
-  return { gross, saved, total: gross - saved };
+  return { gross, saved, total: gross - saved, lines };
 }
 
 // ────────────────────────────────
@@ -2346,7 +2354,31 @@ function hasAnyItems() {
   return orders.some(o => Object.keys(o.cart).length > 0);
 }
 
+/* ── 🛟 購物車自動存檔（2026-07-19 Riley 拍板）──
+   邊點邊存進手機瀏覽器；誤關頁面/重新整理回來購物車都在。
+   只認「今天」的存檔（隔天自動作廢——菜價菜色可能變）；送出成功後清空。 */
+const CART_STORE_KEY = 'laolu_cart_v1';
+function saveCartLocal(){
+  try {
+    localStorage.setItem(CART_STORE_KEY, JSON.stringify({
+      d: taipeiTodayStr(),
+      orders: orders.map(o => ({ name: o.name, cart: o.cart }))
+    }));
+  } catch (e) {}
+}
+function restoreCartLocal(){
+  try {
+    const s = JSON.parse(localStorage.getItem(CART_STORE_KEY) || 'null');
+    if (!s || s.d !== taipeiTodayStr() || !Array.isArray(s.orders) || !s.orders.length) return;
+    const hasItems = s.orders.some(o => o.cart && Object.keys(o.cart).length);
+    if (!hasItems) return;
+    orders = s.orders.map(o => Object.assign(createOrder(o.name || 'A'), { cart: o.cart || {} }));
+    currentOrderIdx = 0;
+  } catch (e) {}
+}
+
 function updateCartBar(){
+  saveCartLocal(); // 每次購物車有動靜都順手存一份
   const lbl = document.getElementById('cartOrderLabel');
   if(lbl) lbl.textContent = groupMode ? ('訂單：' + currentOrder().name) : '購物車';
   const entries=Object.entries(getCart());
@@ -2905,13 +2937,17 @@ function buildCloudRecords(orderNo, name, phone, total, ordersToShow, mode) {
   // 單張訂單的內容物：品項、小計、口味偏好（存成 JSON 進 items 欄位）
   // v2：每個品項多存 cat（分區代號）＋整包存 discount（優惠折抵）——
   // 老闆端改單時才能用同一套規則重算優惠
-  const pack = o => ({
-    name: o.name,
-    items: Object.entries(o.cart).map(([k, v]) => ({ name: v.name, qty: v.qty, price: v.price, cat: catOfKey(k) })),
-    total: o.total,
-    discount: cartCalc(o.cart).saved,
-    prefs: o.prefs
-  });
+  const pack = o => {
+    const calc = cartCalc(o.cart);
+    return {
+      name: o.name,
+      items: Object.entries(o.cart).map(([k, v]) => ({ name: v.name, qty: v.qty, price: v.price, cat: catOfKey(k) })),
+      total: o.total,
+      discount: calc.saved,
+      discount_lines: calc.lines,  // 對帳版：卡片與訊息直接印，不用誰再算第二次
+      prefs: o.prefs
+    };
+  };
   // 📱 LIFF 自動綁定：從 LINE 開的客人，訂單直接記住他的 LINE
   // （＝老闆接單時通知直達，客人免傳取餐編號；一般瀏覽器客人此欄為空，照舊用編號綁）
   const lineId = LINE_USER ? LINE_USER.id : null;
@@ -3202,6 +3238,10 @@ function closeModal(){
 document.getElementById('modalBg').addEventListener('click',function(e){if(e.target===this)closeModal();});
 document.getElementById('coverQueryBg').addEventListener('click',function(e){if(e.target===this)closeCoverQuery();});
 document.getElementById('modeSelectBg').addEventListener('click',function(e){if(e.target===this)closeModeSelect();});
+
+// 🛟 開頁先撈回今天的購物車存檔（誤關頁面的救援）
+restoreCartLocal();
+updateCartBar();
 
 // 🍢 雲端菜單同步：開頁先抓一次，之後每 10 秒巡一次；
 // 客人切去別的 App 再切回來也立刻補抓（售完狀態不能是舊的）。

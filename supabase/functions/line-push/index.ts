@@ -48,11 +48,30 @@ function fmtHM(iso: string): string {
     { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
-// ---------- 品項條列：一行一項（2026-07-19 Riley 裁示：一條龍難讀）----------
+// ---------- 品項條列（對帳版）：一行一項＋每行金額（2026-07-19 Riley 拍板）----------
+function flatItems(r: any): any[] {
+  return (r.items ?? []).flatMap((o: any) => (o.items ?? []))
+}
 function itemLines(r: any): string {
-  return (r.items ?? [])
-    .flatMap((o: any) => (o.items ?? []).map((v: any) => `・${v.name} ×${v.qty}`))
-    .join('\n')
+  return flatItems(r).map((v: any) => `・${v.name} ×${v.qty}　$${v.price * v.qty}`).join('\n')
+}
+// 折扣總額＋分區明細（下單當下由點餐頁算好存進訂單＝單一真相來源；舊單沒有就略過）
+function discountInfo(r: any): { saved: number; lines: string[] } {
+  const packs = r.items ?? []
+  const saved = packs.reduce((s: number, o: any) => s + (o.discount || 0), 0)
+  const lines = packs.flatMap((o: any) => o.discount_lines ?? [])
+  return { saved, lines }
+}
+// 折扣＋合計的文字段（客人訊息與老闆卡片共用同一套內容）
+function totalBlock(r: any): string {
+  const d = discountInfo(r)
+  let s = ''
+  if (d.saved > 0) {
+    s += '🎁 優惠折抵 −$' + d.saved + '\n'
+    d.lines.forEach(l => { s += '　' + l + '\n' })
+  }
+  s += '💰 合計 $' + r.total
+  return s
 }
 
 // ---------- 客人訊息：跟 boss.html 預覽視窗同一份格式 ----------
@@ -62,7 +81,7 @@ function buildCustomerMessage(r: any): string {
     + '食材新鮮現滷，等候時間約 ' + r.wait_minutes + ' 分鐘，\n'
     + '請於 ' + fmtHM(r.pickup_at) + ' 前往現場取餐。\n\n'
     + '📋 訂單內容\n' + itemLines(r) + '\n'
-    + '💰 合計 $' + r.total
+    + totalBlock(r)
 }
 
 // ---------- 客人訊息：取餐時間更新（M3：改時間終於會通知了）----------
@@ -76,13 +95,11 @@ function buildRetimedMessage(r: any, oldPickup?: string): string {
 
 // ---------- 客人訊息：訂單內容更新（跟 boss.html 編輯預覽同一份格式）----------
 function buildEditedMessage(r: any, oldTotal?: number): string {
-  const totalLine = (typeof oldTotal === 'number' && oldTotal !== r.total)
-    ? '💰 合計 $' + r.total + '（原 $' + oldTotal + '）'
-    : '💰 合計 $' + r.total
+  const oldNote = (typeof oldTotal === 'number' && oldTotal !== r.total) ? '（原 $' + oldTotal + '）' : ''
   return '🍢 老滷仙\n'
     + '✏️ 訂單內容更新（取餐編號 #' + r.order_no + '）\n\n'
     + '📋 新內容\n' + itemLines(r) + '\n'
-    + totalLine + '\n'
+    + totalBlock(r) + oldNote + '\n'
     + (r.pickup_at ? '⏰ 取餐時間不變：' + fmtHM(r.pickup_at) + '\n' : '')
     + '\n如有疑問請致電 0939-955-888'
 }
@@ -92,7 +109,23 @@ function buildEditedMessage(r: any, oldTotal?: number): string {
 // 所以新單直接給按鈕：✅25/30/35分＝一鍵接單（客人自動收到取餐時間）；❌＝取消（會再問一次防手滑）。
 // 按鈕按下去由接待員（line-webhook）處理，只有名簿裡的老闆按了有效。
 function buildNewOrderCard(r: any) {
-  const items = itemLines(r)  // 一行一項，好讀（Flex 文字設 wrap 即可吃換行）
+  // 對帳版（2026-07-19 Riley 拍板）：品名靠左、金額靠右、折扣明細、合計——跟網頁明細同款
+  const d = discountInfo(r)
+  const itemRows = flatItems(r).map((v: any) => ({
+    type: 'box', layout: 'horizontal', contents: [
+      { type: 'text', text: '・' + v.name + ' ×' + v.qty, size: 'sm', weight: 'bold', wrap: true, flex: 5 },
+      { type: 'text', text: '$' + (v.price * v.qty), size: 'sm', align: 'end', flex: 2, color: '#B8860B' },
+    ],
+  }))
+  const discountRows = d.saved > 0 ? [
+    {
+      type: 'box', layout: 'horizontal', margin: 'sm', contents: [
+        { type: 'text', text: '🎁 優惠折抵', size: 'sm', weight: 'bold', color: '#C0392B', flex: 5 },
+        { type: 'text', text: '−$' + d.saved, size: 'sm', align: 'end', flex: 2, color: '#C0392B' },
+      ],
+    },
+    ...d.lines.map((l: string) => ({ type: 'text', text: '　' + l, size: 'xs', color: '#999999', wrap: true })),
+  ] : []
   // 按鈕文字只放「25分」三個字——三顆擠一排，帶 emoji 會被手機截成「2...」
   const acceptBtn = (m: number) => ({
     type: 'button', style: 'primary', height: 'sm', color: '#B8860B',
@@ -112,8 +145,16 @@ function buildNewOrderCard(r: any) {
         type: 'box', layout: 'vertical', spacing: 'sm', contents: [
           { type: 'text', text: '🔔 新訂單 #' + r.order_no, weight: 'bold', size: 'lg', color: '#B8860B' },
           { type: 'text', text: '👤 ' + (r.customer_name ?? '') + '　📞 ' + (r.customer_phone ?? ''), size: 'sm', wrap: true },
-          { type: 'text', text: items, size: 'sm', wrap: true, weight: 'bold' },
-          { type: 'text', text: '💰 合計 $' + r.total, weight: 'bold', margin: 'md' },
+          { type: 'separator', margin: 'sm' },
+          ...itemRows,
+          ...discountRows,
+          { type: 'separator', margin: 'sm' },
+          {
+            type: 'box', layout: 'horizontal', margin: 'sm', contents: [
+              { type: 'text', text: '💰 合計', weight: 'bold', flex: 5 },
+              { type: 'text', text: '$' + r.total, weight: 'bold', align: 'end', flex: 2, color: '#B8860B' },
+            ],
+          },
           { type: 'text', text: '👇 選等候分鐘＝接單，客人自動收到取餐時間', size: 'xs', color: '#999999', wrap: true, margin: 'md' },
         ],
       },

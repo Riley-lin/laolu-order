@@ -408,9 +408,26 @@ function fmtHM(iso) {
    line-push 雲端函式，把「同一份訊息」真的推進綁定 LINE 的客人手機。
    訊息內容以下面 buildCustomerMessage 為準（與 line-push/index.ts 同步維護）。
    未綁定 LINE 的客人不受影響，照舊用查詢頁看狀態（優雅降級）。 */
-/* 品項條列：一行一項（2026-07-19 Riley 裁示，與 line-push 同步維護）*/
+/* 品項條列（對帳版）：一行一項＋金額（2026-07-19 Riley 拍板，與 line-push 同步維護）*/
 function itemLines(r) {
-  return (r.items || []).flatMap(o => (o.items || []).map(v => '・' + v.name + ' ×' + v.qty)).join('\n');
+  return (r.items || []).flatMap(o => (o.items || []).map(v => '・' + v.name + ' ×' + v.qty + '　$' + (v.price * v.qty))).join('\n');
+}
+function discountInfo(r) {
+  const packs = r.items || [];
+  return {
+    saved: packs.reduce((s, o) => s + (o.discount || 0), 0),
+    lines: packs.flatMap(o => o.discount_lines || []),
+  };
+}
+function totalBlock(r) {
+  const d = discountInfo(r);
+  let s = '';
+  if (d.saved > 0) {
+    s += '🎁 優惠折抵 −$' + d.saved + '\n';
+    d.lines.forEach(l => { s += '　' + l + '\n'; });
+  }
+  s += '💰 合計 $' + r.total;
+  return s;
 }
 
 function buildCustomerMessage(r) {
@@ -419,7 +436,7 @@ function buildCustomerMessage(r) {
     + '食材新鮮現滷，等候時間約 ' + r.wait_minutes + ' 分鐘，\n'
     + '請於 ' + fmtHM(r.pickup_at) + ' 前往現場取餐。\n\n'
     + '📋 訂單內容\n' + itemLines(r) + '\n'
-    + '💰 合計 $' + r.total;
+    + totalBlock(r);
 }
 
 /* 送出前的最後把關：看到訊息長相才決定要不要放行
@@ -494,6 +511,22 @@ function edPackDiscount(p) {
 function edPackTotal(p)  { return edPackGross(p) - edPackDiscount(p); }
 function edGrandTotal()  { return _editState.packs.reduce((s, p) => s + edPackTotal(p), 0); }
 function edGrandSaved()  { return _editState.packs.reduce((s, p) => s + edPackDiscount(p), 0); }
+/* 折扣明細（對帳版）：跟點餐頁 cartCalc.lines 同一格式 */
+function edPackDiscountLines(p) {
+  const rules = edBundleRules();
+  const cnt = {};
+  (p.items || []).forEach(v => { if (v.cat) cnt[v.cat] = (cnt[v.cat] || 0) + v.qty; });
+  const lines = [];
+  Object.entries(cnt).forEach(([c, n]) => {
+    const r = rules[c];
+    if (!r) return;
+    const times = Math.floor(n / r.qty);
+    if (times < 1) return;
+    const s = times * (r.qty * r.unit - r.price);
+    lines.push((CAT_LABELS[c] || c) + ' 任' + r.qty + '樣$' + r.price + ' ×' + times + '（−$' + s + '）');
+  });
+  return lines;
+}
 
 function renderEditModal() {
   document.getElementById('editModal')?.remove();
@@ -579,13 +612,11 @@ function edAdd() {
 
 /* 跟推播員（line-push）同一份格式：客人收到的「訂單內容更新」訊息 */
 function buildEditedMessage(r, oldTotal) {
-  const totalLine = (typeof oldTotal === 'number' && oldTotal !== r.total)
-    ? '💰 合計 $' + r.total + '（原 $' + oldTotal + '）'
-    : '💰 合計 $' + r.total;
+  const oldNote = (typeof oldTotal === 'number' && oldTotal !== r.total) ? '（原 $' + oldTotal + '）' : '';
   return '🍢 老滷仙\n'
     + '✏️ 訂單內容更新（取餐編號 #' + r.order_no + '）\n\n'
     + '📋 新內容\n' + itemLines(r) + '\n'
-    + totalLine + '\n'
+    + totalBlock(r) + oldNote + '\n'
     + (r.pickup_at ? '⏰ 取餐時間不變：' + fmtHM(r.pickup_at) + '\n' : '')
     + '\n如有疑問請致電 0939-955-888';
 }
@@ -599,7 +630,8 @@ function edPreview() {
   }
   const preview = {
     order_no: st.order_no, pickup_at: st.pickup_at,
-    items: st.packs, total: edGrandTotal()
+    items: st.packs.map(p => Object.assign({}, p, { discount: edPackDiscount(p), discount_lines: edPackDiscountLines(p) })),
+    total: edGrandTotal()
   };
   const msg = buildEditedMessage(preview, st.oldTotal);
   document.getElementById('editModal')?.remove();
@@ -626,7 +658,9 @@ async function commitEdit() {
   const st = _editState;
   const packs = st.packs
     .filter(p => (p.items || []).length > 0)             // 空包不留
-    .map(p => Object.assign({}, p, { total: edPackTotal(p), discount: edPackDiscount(p) }));
+    .map(p => Object.assign({}, p, {
+      total: edPackTotal(p), discount: edPackDiscount(p), discount_lines: edPackDiscountLines(p)
+    }));
   const total = packs.reduce((s, p) => s + p.total, 0);
   const { data, error } = await db.from('orders')
     .update({ items: packs, total }).eq('id', st.id).select();
@@ -670,8 +704,17 @@ async function openShopSettings() {
     +   '</div>'
     +   '<div class="lp-note" style="text-align:left">時段外客人頁顯示「尚未營業」並擋單；結束時間選 00:00＝收單到半夜</div>'
     +   '<div class="dr-sec">⏱ 目前等待時間（分鐘）</div>'
-    +   '<input type="number" id="cfgWait" min="1" max="180" value="' + esc(cfg.wait_minutes || '15') + '" style="width:100%;padding:9px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);">'
-    +   '<div class="lp-note" style="text-align:left">顯示在客人首頁「目前等待時間：約 X 分鐘」；生意忙就調高（取代舊的長按電話設定，改這裡所有客人同步看到）</div>'
+    +   '<div class="cm-presets" id="cfgWaitPresets" style="flex-wrap:wrap;gap:6px;">'
+    +     [15, 20, 25, 30, 35, 40].map(m =>
+            '<button class="btn-wait cm-preset" data-m="' + m + '" style="min-width:52px;flex:none;padding:9px 0 ;" onclick="cfgWaitSet(' + m + ')">' + m + '</button>').join('')
+    +   '</div>'
+    +   '<div class="cm-stepper" style="margin-top:8px;">'
+    +     '<button class="cm-step" onclick="cfgWaitStep(-5)">−</button>'
+    +     '<input type="number" id="cfgWait" min="1" max="180" step="5" value="' + esc(cfg.wait_minutes || '15') + '" oninput="cfgWaitHighlight()" style="width:76px;padding:8px;text-align:center;font-size:20px;font-weight:900;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--gold2);">'
+    +     '<span style="color:var(--dim);font-size:13px;">分鐘</span>'
+    +     '<button class="cm-step" onclick="cfgWaitStep(5)">＋</button>'
+    +   '</div>'
+    +   '<div class="lp-note" style="text-align:left">顯示在客人首頁「目前等待時間：約 X 分鐘」；快選、±5、或直接打數字都行，按儲存生效</div>'
     +   '<div class="dr-sec">📅 未來公休日</div>'
     +   '<div style="display:flex;gap:8px;">'
     +     '<input type="date" id="cfgDatePick" min="' + today + '" value="' + today + '" style="flex:1;padding:9px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);color-scheme:dark;">'
@@ -693,6 +736,7 @@ async function openShopSettings() {
   // 公休日改「用選的」：既有日期還原成日期籤（過期的自動剔除）
   _cfgDates = (cfg.closed_dates || '').split(/[,，\s]+/).filter(d => d && d >= today);
   renderCfgDateChips();
+  cfgWaitHighlight(); // 等待時間快選鈕標示目前值
 }
 
 /* 📅 公休日期籤（Riley 裁示：用日曆選、顯示 7/19 短格式；儲存格式仍是完整日期） */
@@ -717,6 +761,24 @@ function addCfgDate() {
   renderCfgDateChips();
 }
 function rmCfgDate(i) { _cfgDates.splice(i, 1); renderCfgDateChips(); }
+
+/* ⏱ 等待時間的三種輸入（快選/±5/手打）都匯進同一個數字框 */
+function cfgWaitSet(m) {
+  const el = document.getElementById('cfgWait');
+  if (el) el.value = m;
+  cfgWaitHighlight();
+}
+function cfgWaitStep(d) {
+  const el = document.getElementById('cfgWait');
+  if (!el) return;
+  el.value = Math.min(180, Math.max(5, (parseInt(el.value, 10) || 15) + d));
+  cfgWaitHighlight();
+}
+function cfgWaitHighlight() {
+  const v = parseInt(document.getElementById('cfgWait')?.value, 10);
+  document.querySelectorAll('#cfgWaitPresets .cm-preset').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.m, 10) === v));
+}
 
 /* 今日暫停開關：立即生效（不用按儲存） */
 async function togglePauseToday(currentlyPaused) {
