@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0e0400"><!-- 告訴 LINE 瀏覽器：頁面周圍請塗深色，不要白 -->
 <title>老滷仙 道地滷味 ─ 八德廣福店</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500;700;900&family=Noto+Sans+TC:wght@300;400;500;700&family=Playfair+Display:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
@@ -27,7 +28,7 @@
   src:local('PingFang TC'),local('Helvetica Neue'),local('Roboto'),local('Arial');
   unicode-range:U+0024;
 }
-html{scroll-behavior:smooth;background:var(--dark);} /* 補底色：滑到底不露白邊 */
+html{scroll-behavior:smooth;background:var(--dark);overscroll-behavior-y:none;} /* 補底色＋關掉往下拉過頭的橡皮筋 */
 body{
   background: var(--dark);
   background-image:
@@ -664,6 +665,7 @@ body::before{
   border-radius:16px;
   padding:28px 24px 24px;
   width:100%;max-width:440px;max-height:92vh;overflow-y:auto;
+  overscroll-behavior:contain; /* 彈窗滑到底就停，不把「拉過頭」傳染給底下的頁面 */
   box-shadow: 0 24px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(212,165,32,0.1);
 }
 .modal-box::-webkit-scrollbar{width:3px;}
@@ -3347,6 +3349,20 @@ function showToast(msg){
     Math.min(6000, Math.max(2400, String(msg).length * 55)));
 }
 window.alert = showToast;
+
+// 📱 鍵盤退場扶正器：iPhone 的 LINE 瀏覽器有個怪毛病——
+// 打完名字/電話收鍵盤後，畫面會被推過頭「回不來」，上下露出白色。
+// 每次輸入框失焦，就把捲動位置夾回合法範圍（不會影響正常瀏覽）。
+document.addEventListener('focusout', () => {
+  setTimeout(() => {
+    const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    if (window.scrollY > maxY || window.scrollY < 0) {
+      window.scrollTo(0, Math.min(Math.max(0, window.scrollY), maxY));
+    } else {
+      window.scrollTo(0, window.scrollY); // 原地輕點一下，逼瀏覽器把視窗歸位
+    }
+  }, 80);
+});
 
 // 🛟 開頁先撈回今天的購物車存檔（誤關頁面的救援）
 restoreCartLocal();
