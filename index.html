@@ -1758,7 +1758,6 @@ const FALLBACK_MENU = [
     {name:'王子麵',price:15,unit:'一包'},{name:'滷味麵',price:15,unit:'一包'},{name:'細冬粉',price:15,unit:'一卷'},
     {name:'寬冬粉',price:15,unit:'一卷'},{name:'烏龍麵',price:20,unit:'一包'},{name:'蒸煮麵',price:25,unit:'一包'} ] },
   { id:'extra', label:'餐具', bundle:null,
-    note:'🌱 環保小提醒：餐點不附碗筷，需要的話在這裡加購就好囉',
     items:[
     {name:'紙碗',price:2,unit:'一個'},{name:'免洗筷',price:1,unit:'一雙'} ] }
 ];
@@ -2439,11 +2438,13 @@ function openCheckout(e){
   e.stopPropagation();
   if(!hasAnyItems()) return;
 
-  // 🥢 餐具攔截：購物車沒餐具且還沒問過 → 先問，答完再進結帳
+  // 🥢 餐具攔截：購物車沒餐具 → 先問，答完再進結帳
+  // （每次按結帳都會問；返回修改後再結帳＝重新詢問——Riley 規格）
   if (needUtensilPrompt()) {
     showUtensilPrompt(() => openCheckout({ stopPropagation: () => {} }));
     return;
   }
+  _skipUtensilOnce = false; // 這次放行用掉了，下次結帳重新把關
 
   // 有多張訂單時，先讓用戶選擇結帳模式
   const multiOrder = groupMode && orders.length > 1;
@@ -2627,10 +2628,10 @@ function setSpiceLevel(level,el){
 
 /* 🥢 餐具攔截彈窗（2026-07-19 Riley 設計）：按結帳時先問一次餐具
    ——碗筷各有 ＋−，加多少都行；菜單先加過的人不彈；同次點餐只彈一次 */
-let _utensilPromptDone = false;
+let _skipUtensilOnce = false; // 彈窗答完後放行一次；下次按結帳重新詢問
 function needUtensilPrompt(){
-  const has = orders.some(o => Object.keys(o.cart).some(k => k.startsWith('extra:')));
-  return !has && !_utensilPromptDone;
+  if (_skipUtensilOnce) return false;
+  return !orders.some(o => Object.keys(o.cart).some(k => k.startsWith('extra:')));
 }
 function utensilQty(name){ const e = getCart()['extra:' + name]; return e ? e.qty : 0; }
 function utensilRowHTML(name, price){
@@ -2650,7 +2651,7 @@ function utensilStep(name, price, d){
 function showUtensilPrompt(next){
   const cat = MENU.find(c => c.id === 'extra');
   const items = cat ? cat.items.filter(i => !SOLD_OUT.has(i.name)) : [];
-  if (!items.length) { _utensilPromptDone = true; next(); return; }  // 餐具全下架就別問了
+  if (!items.length) { _skipUtensilOnce = true; next(); return; }  // 餐具全下架就別問了
   const ov = document.createElement('div');
   ov.id = 'utensilPrompt';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.68);display:flex;align-items:center;justify-content:center;z-index:99;padding:20px;';
@@ -2662,14 +2663,14 @@ function showUtensilPrompt(next){
       </div>
       <button class="btn-order" style="width:100%;margin-top:14px;" onclick="closeUtensilPrompt()">繼 續 結 帳</button>
     </div>`;
-  ov.addEventListener('click', e => { if (e.target === ov) closeUtensilPrompt(); });
+  // 點背景不放行——只有「繼續結帳」能過（Riley 抓的漏洞：亂點旁邊就溜進結帳）
   window._utensilNext = next;
   document.body.appendChild(ov);
 }
 function closeUtensilPrompt(){
   // 要幾份客人自己用 ＋− 決定（0 份＝不需要），單一按鈕不猜心
   document.getElementById('utensilPrompt')?.remove();
-  _utensilPromptDone = true;  // 同一次點餐不再問（送出成功重置）
+  _skipUtensilOnce = true;  // 只放行接下來這一次；返回修改再結帳會重新詢問
   const n = window._utensilNext; window._utensilNext = null;
   if (n) n();
 }
@@ -3282,7 +3283,7 @@ async function refreshQueryStatuses(container) {
 
 function finishOrder(){
   // 清空所有訂單，重設
-  _utensilPromptDone = false; // 下一張單重新詢問餐具
+  _skipUtensilOnce = false; // 下一張單重新詢問餐具
   orders = [ createOrder('A') ];
   currentOrderIdx = 0;
   groupMode = false;
