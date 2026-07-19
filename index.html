@@ -499,6 +499,9 @@ body{
 .item-bottom{display:flex;align-items:center;justify-content:space-between;}
 .item-price{font-family:'Noto Serif TC',serif;font-size:14px;font-weight:700;color:var(--gold2);letter-spacing:0.5px;}
 
+/* 🚫 關閉「連點兩下放大」（狂按＋按太快會誤觸縮放）；兩指捏合縮放保留 */
+*{touch-action:manipulation;}
+
 /* 單位小標（一份4條、半個…）＝說明份量，跟在品名後面 */
 .unit-tag{margin-left:5px;font-size:10px;color:rgba(253,246,227,0.45);letter-spacing:0.5px;}
 
