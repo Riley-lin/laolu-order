@@ -2750,11 +2750,17 @@ let _pendingOrder = null;
 function showFinalConfirm(total, mode) {
   const ordersToShow = window._currentOrdersToShow || [];
   const name = document.getElementById('fName')?.value.trim();
-  const phone = document.getElementById('fPhone')?.value.trim();
+  // 電話先洗成純數字（客人打 0912-345-678 也吃得下），再驗完整性
+  const phone = (document.getElementById('fPhone')?.value || '').replace(/\D/g, '');
   const note = document.getElementById('fNote')?.value.trim() || '';
 
   if (!name) { alert('請輸入姓名'); return; }
   if (!phone) { alert('請輸入電話'); return; }
+  // 不完整視同沒填（Riley 拍板）：少一碼老闆就找不到人，寧可擋在這裡
+  if (!/^09\d{8}$/.test(phone)) {
+    alert('電話號碼不完整，請輸入 10 碼手機號碼\n（例：0977666777）');
+    return;
+  }
 
   // 個人點餐：把偏好（含備註）存進 ordersToShow[0].prefs
   if (!groupMode && ordersToShow.length > 0) {
@@ -3328,7 +3334,7 @@ async function runOrderQuery(name, phone, el) {
 
 function queryOrder() {
   const name = document.getElementById('queryName')?.value.trim();
-  const phone = document.getElementById('queryPhone2')?.value.trim();
+  const phone = (document.getElementById('queryPhone2')?.value || '').replace(/\D/g, '');
   if (!name || !phone) { alert('請輸入姓名和電話'); return; }
   runOrderQuery(name, phone, document.getElementById('queryResult'));
 }
@@ -3488,7 +3494,7 @@ function switchCoverQueryTab(mode) {
 
 function doCoverQuery() {
   const name = document.getElementById('coverQueryName')?.value.trim();
-  const phone = document.getElementById('coverQueryPhone')?.value.trim();
+  const phone = (document.getElementById('coverQueryPhone')?.value || '').replace(/\D/g, '');
   if (!name || !phone) { alert('請輸入姓名和電話'); return; }
   runOrderQuery(name, phone, document.getElementById('coverQueryResult'));
 }
