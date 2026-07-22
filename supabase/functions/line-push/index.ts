@@ -59,6 +59,41 @@ function discountInfo(r: any): { saved: number; lines: string[] } {
   return { saved, lines }
 }
 
+// ---------- 口味偏好 → 中文一行（不含備註）----------
+// 規則跟 boss.html 的 formatPrefs、點餐頁的 prefLines 完全一致，三邊同步維護
+// 備註刻意不放進來：它要獨立一行印，才不會被一長串「不要蔥、加蒜…」蓋過去
+function formatPrefs(p: any): string {
+  if (!p) return ''
+  const out: string[] = []
+  if (p.scallion === 'yes') out.push('加蔥'); else if (p.scallion === 'no') out.push('不要蔥')
+  if (p.garlic === 'yes') out.push('加蒜'); else if (p.garlic === 'no') out.push('不要蒜')
+  if (p.pepper === 'yes') out.push('加胡椒'); else if (p.pepper === 'no') out.push('不要胡椒')
+  if (p.spicy === 'yes' && p.spiceLevel) out.push('辣度：' + p.spiceLevel)
+  else if (p.spicy === 'side') out.push(p.spiceLevel ? '辣度：' + p.spiceLevel + '（另外裝）' : '辣另外裝')
+  else if (p.spicy === 'no') out.push('不加辣')
+  if (p.utensils === 'yes') out.push('要餐具🥢'); else if (p.utensils === 'no') out.push('不用餐具')
+  return out.join('、')
+}
+
+// ---------- 偏好＋備註的 Flex 列（2026-07-22 補：以前 LINE 卡片根本沒印這段）----------
+// 訂單可能有多包（分開結帳＝一人一包），所以逐包印；多包時前面加人名才分得清誰要不要蔥
+function flexPrefRows(r: any): any[] {
+  const packs = r.items ?? []
+  const rows: any[] = []
+  packs.forEach((o: any) => {
+    const who = packs.length > 1 && o.name ? o.name + '：' : ''
+    const taste = formatPrefs(o.prefs)
+    if (taste) {
+      rows.push({ type: 'text', text: '🌿 ' + who + taste, size: 'sm', wrap: true, color: '#2E7D32', margin: 'sm' })
+    }
+    // 備註獨立一行、加粗、用醒目的紅棕色——這是客人自己打的字，漏看代價最大
+    if (o.prefs?.note) {
+      rows.push({ type: 'text', text: '📝 ' + who + '備註：' + o.prefs.note, size: 'sm', weight: 'bold', wrap: true, color: '#C0392B', margin: 'sm' })
+    }
+  })
+  return rows
+}
+
 // ---------- 對帳版 Flex 列（品名靠左、金額靠右＋折扣明細＋合計）----------
 // 老闆卡片與客人卡片共用同一套——兩邊看到的帳永遠同款
 // （純文字在 LINE 沒辦法真靠右——字寬不固定；要對齊只能用卡片，2026-07-19 Riley 拍板升級）
@@ -79,6 +114,8 @@ function flexItemRows(r: any): any[] {
     })
     d.lines.forEach((l: string) => rows.push({ type: 'text', text: '　' + l, size: 'xs', color: '#999999', wrap: true }))
   }
+  // 口味偏好／備註接在品項後面、合計前面（老闆卡與客人卡共用，一改兩邊都到位）
+  rows.push(...flexPrefRows(r))
   rows.push({ type: 'separator', margin: 'sm' })
   rows.push({
     type: 'box', layout: 'horizontal', margin: 'sm', contents: [

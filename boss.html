@@ -25,7 +25,13 @@
   body{background:var(--bg);color:var(--text);font-family:"Noto Sans TC",system-ui,sans-serif;min-height:100vh;}
   /* iPhone 橡皮筋回彈防露白：固定深色底墊，上下各多鋪一個螢幕高 */
   body::before{content:'';position:fixed;left:0;right:0;top:-100vh;bottom:-100vh;z-index:-2;background:var(--bg);pointer-events:none;}
-  .wrap{max-width:720px;margin:0 auto;padding:16px;}
+  /* position:relative＝把 .wrap 設成「定位的基準點」，
+     裡面的登出鈕才知道要貼在「這一塊」的右上角，而不是整個螢幕 */
+  .wrap{max-width:720px;margin:0 auto;padding:16px;position:relative;}
+  /* 登出鈕獨立在右上角：離工具列那排按鈕遠遠的，忙起來才不會誤觸（Riley 2026-07-22 回報） */
+  .btn-logout{position:absolute;top:16px;right:16px;z-index:5;
+    padding:7px 12px;border-radius:6px;border:1px solid var(--line);
+    background:rgba(0,0,0,0.25);color:var(--dim);font-size:12px;letter-spacing:1px;cursor:pointer;}
   h1{font-family:'CashSign',"Noto Serif TC",serif;color:var(--gold2);font-size:22px;letter-spacing:4px;text-align:center;padding:14px 0 4px;}
   .sub{text-align:center;color:var(--dim);font-size:12px;letter-spacing:2px;margin-bottom:16px;}
 
@@ -137,6 +143,8 @@
 </head>
 <body>
 <div class="wrap">
+  <!-- 登出縮在右上角，登入後才出現（沒登入時按了也沒意義） -->
+  <button id="logoutBtn" class="btn-logout hidden" onclick="doLogout()">登出</button>
   <h1>🍢 老滷仙・看單台</h1>
   <div class="sub">BOSS ONLY・訂單即時瀏覽</div>
 
@@ -160,7 +168,6 @@
       <button class="btn-plain" onclick="openDailyReport()">📊 日報</button>
       <button class="btn-plain" onclick="openMenuManager()">🍢 菜單</button>
       <button class="btn-plain" id="refreshBtn" onclick="refreshOrders()">↻ 重新整理</button>
-      <button class="btn-plain" onclick="doLogout()">登出</button>
     </div>
     <div id="orderList"><div class="empty">載入中…</div></div>
   </div>
@@ -202,6 +209,7 @@ async function doLogout() {
   if (rtChannel) { db.removeChannel(rtChannel); rtChannel = null; }
   document.getElementById('boardView').classList.add('hidden');
   document.getElementById('loginView').classList.remove('hidden');
+  document.getElementById('logoutBtn').classList.add('hidden');  // 回到登入畫面就把登出鈕收起來
 }
 
 /* 進入看單模式：Realtime 即時廣播當主力（新單/改單瞬間跳出），
@@ -209,6 +217,7 @@ async function doLogout() {
 function showBoard() {
   document.getElementById('loginView').classList.add('hidden');
   document.getElementById('boardView').classList.remove('hidden');
+  document.getElementById('logoutBtn').classList.remove('hidden');  // 登入成功才亮出右上角登出鈕
   loadOrders();
   startRealtime();
   clearInterval(pollTimer);
@@ -453,12 +462,37 @@ function totalBlock(r) {
   return s;
 }
 
+/* 口味偏好／備註（純文字版，給預覽用；與 line-push 的 flexPrefRows 同步維護）
+   這裡不能用上面的 formatPrefs——那個有做 HTML 逸出，是給網頁畫面用的，
+   純文字訊息吃到 &amp; 會變成亂碼 */
+function prefTextBlock(r) {
+  const packs = r.items || [];
+  const out = [];
+  packs.forEach(o => {
+    const p = o.prefs;
+    if (!p) return;
+    const who = packs.length > 1 && o.name ? o.name + '：' : '';
+    const t = [];
+    if (p.scallion === 'yes') t.push('加蔥'); else if (p.scallion === 'no') t.push('不要蔥');
+    if (p.garlic === 'yes') t.push('加蒜'); else if (p.garlic === 'no') t.push('不要蒜');
+    if (p.pepper === 'yes') t.push('加胡椒'); else if (p.pepper === 'no') t.push('不要胡椒');
+    if (p.spicy === 'yes' && p.spiceLevel) t.push('辣度：' + p.spiceLevel);
+    else if (p.spicy === 'side') t.push(p.spiceLevel ? '辣度：' + p.spiceLevel + '（另外裝）' : '辣另外裝');
+    else if (p.spicy === 'no') t.push('不加辣');
+    if (p.utensils === 'yes') t.push('要餐具🥢'); else if (p.utensils === 'no') t.push('不用餐具');
+    if (t.length) out.push('🌿 ' + who + t.join('、'));
+    if (p.note) out.push('📝 ' + who + '備註：' + p.note);
+  });
+  return out.length ? out.join('\n') + '\n' : '';
+}
+
 function buildCustomerMessage(r) {
   // 開頭不放「🍢 老滷仙」——訊息本來就是官方帳號發的，名字重複（跟 line-push 同步）
   return '✅ 訂單確認！（取餐編號 #' + r.order_no + '）\n\n'
     + '食材新鮮現滷，等候時間約 ' + r.wait_minutes + ' 分鐘，\n'
     + '請於 ' + fmtHM(r.pickup_at) + ' 前往現場取餐。\n\n'
     + '📋 訂單內容\n' + itemLines(r) + '\n'
+    + prefTextBlock(r)
     + totalBlock(r);
 }
 
