@@ -86,9 +86,11 @@ function flexPrefRows(r: any): any[] {
     if (taste) {
       rows.push({ type: 'text', text: '🌿 ' + who + taste, size: 'sm', wrap: true, color: '#2E7D32', margin: 'sm' })
     }
-    // 備註獨立一行、加粗、用醒目的紅棕色——這是客人自己打的字，漏看代價最大
+    // 備註獨立一行、加粗——這是客人自己打的字，漏看代價最大
+    // 2026-07-22 改深藍：原本的紅棕 #C0392B 跟「🎁 優惠折抵」同色，兩行擠在一起會看成同一類
+    // 卡片配色分工：金＝金額、綠＝口味偏好、紅棕＝折扣、深藍＝客人交代的字
     if (o.prefs?.note) {
-      rows.push({ type: 'text', text: '📝 ' + who + '備註：' + o.prefs.note, size: 'sm', weight: 'bold', wrap: true, color: '#C0392B', margin: 'sm' })
+      rows.push({ type: 'text', text: '📝 ' + who + '備註：' + o.prefs.note, size: 'sm', weight: 'bold', wrap: true, color: '#1A5FB4', margin: 'sm' })
     }
   })
   return rows
