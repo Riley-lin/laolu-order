@@ -681,7 +681,10 @@ body::before{
 }
 .cart-info{flex:1;min-width:0;line-height:1.15;}
 .cart-count{font-size:12px;color:rgba(255,255,255,0.55);letter-spacing:1px;}
-.cart-total-num{font-size:27px;font-weight:900;color:var(--gold2);line-height:1.1;}
+.cart-total-num{font-size:27px;font-weight:900;color:var(--gold2);line-height:1.1;font-variant-numeric:tabular-nums;}
+@keyframes badgePop{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+.cart-badge.pop{animation:badgePop .28s ease;}
+@media (prefers-reduced-motion: reduce){ .cart-badge.pop{animation:none;} }
 .cart-saved{font-size:11.5px;color:#63cb88;font-weight:700;letter-spacing:0.3px;margin-top:1px;}
 .checkout-btn{
   background: linear-gradient(180deg, #f3b962 0%, #e9a64c 55%, #c7852f 100%);
@@ -2491,6 +2494,22 @@ function restoreCartLocal(){
   } catch (e) {}
 }
 
+/* 金額數字滾動動畫（count-up）＋徽章彈跳用的前值記錄 */
+let _prevCartTotal=0, _prevQty=0;
+function animateCount(el, from, to, dur){
+  if(!el) return;
+  if(from===to){ el.textContent='$'+to; return; }
+  // 尊重「減少動態」無障礙設定：直接顯示不跑動畫
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches){ el.textContent='$'+to; return; }
+  const start=performance.now();
+  function step(now){
+    const t=Math.min(1,(now-start)/dur);
+    const eased=1-Math.pow(1-t,3); // easeOutCubic
+    el.textContent='$'+Math.round(from+(to-from)*eased);
+    if(t<1){ requestAnimationFrame(step); } else { el.textContent='$'+to; }
+  }
+  requestAnimationFrame(step);
+}
 function updateCartBar(){
   saveCartLocal(); // 每次購物車有動靜都順手存一份
   const lbl = document.getElementById('cartOrderLabel');
@@ -2498,9 +2517,12 @@ function updateCartBar(){
   const entries=Object.entries(getCart());
   const totalQty=entries.reduce((s,[,v])=>s+v.qty,0);
   const calc=cartCalc(getCart()); // 自動湊優惠後的實付金額
-  document.getElementById('cartBadge').textContent=totalQty;
+  const _badge=document.getElementById('cartBadge');
+  _badge.textContent=totalQty;
+  if(totalQty!==_prevQty){ _badge.classList.remove('pop'); void _badge.offsetWidth; _badge.classList.add('pop'); _prevQty=totalQty; }
   const _cc=document.getElementById('cartCount'); if(_cc) _cc.textContent='共 '+totalQty+' 件';
-  document.getElementById('cartTotalNum').textContent='$'+calc.total;
+  animateCount(document.getElementById('cartTotalNum'), _prevCartTotal, calc.total, 280);
+  _prevCartTotal=calc.total;
   const _cs=document.getElementById('cartSaved'); if(_cs) _cs.textContent = calc.saved>0 ? ('已折 $'+calc.saved) : '';
   document.getElementById('checkoutBtn').disabled = groupMode ? !hasAnyItems() : Object.keys(getCart()).length===0;
   const el=document.getElementById('cartItems');
