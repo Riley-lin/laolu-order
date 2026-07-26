@@ -109,12 +109,12 @@ async function handleBossButton(ev: any, userId: string) {
       return
     }
     const r = rows[0]
-    // 這次更新會自動觸發資料庫門鈴 → 推播員通知綁定的客人（不用這裡多做事）
+    // 目前不主動推播客人（省 LINE 則數）；客人在「我的訂單」自己看取餐時間
     await replyMessages(ev.replyToken, [
       {
         type: 'text',
         text: '✅ 已接單 #' + r.order_no + '，取餐時間 ' + fmtHM(r.pickup_at) + '\n'
-          + (r.line_user_id ? '客人已自動收到通知 🔔' : '（這位客人沒綁 LINE，會用查詢頁看時間）'),
+          + '客人可在「我的訂單」看到取餐時間',
       },
       buildCookingCard(r),
     ])
@@ -338,7 +338,7 @@ Deno.serve(async (req) => {
       } else {
         await reply(ev.replyToken,
           '✅ 綁定成功！訂單 #' + order.order_no + ' 等老闆確認接單後，\n'
-          + '取餐時間會自動通知你 🔔')
+          + '可在點餐頁「我的訂單」查看取餐時間')
       }
       continue
     }
