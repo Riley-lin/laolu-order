@@ -3094,8 +3094,8 @@ function backToCheckout() {
 
 function backToMenu() {
   closeModal();
-  // 捲回頂部讓顧客看到品項
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  // 捲回頂部讓顧客看到品項（固定外殼：捲的是 #order-page）
+  (document.getElementById('order-page') || window).scrollTo({ top: 0, behavior: 'smooth' });
   // 短暫提示
   const hint = document.createElement('div');
   hint.textContent = '✏️ 請修改品項後再按結帳';
@@ -3920,10 +3920,11 @@ bossEl.addEventListener('touchmove',()=>clearTimeout(pressTimer));
 // ────────────────────────────────
 function scrollToSec(id,btn){
   _spyLock = true;                       // 點分類主動捲動時，先鎖住 scroll-spy 免打架
+  const op=document.getElementById('order-page');   // 捲動的是內部容器（固定外殼架構），不是 window
   const el=document.getElementById(`sec-${id}`);
-  if(el){
-    const top=el.getBoundingClientRect().top+window.scrollY-130;
-    window.scrollTo({top,behavior:'smooth'});
+  if(el && op){
+    // rect.top 是相對視窗；捲動容器移動「元素目前位置 − sticky 標頭高度」的差距，讓該區停在標頭下方
+    op.scrollBy({ top: el.getBoundingClientRect().top - 130, behavior:'smooth' });
   }
   document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
@@ -3951,7 +3952,11 @@ function activeCatByScroll(){
     nav.scrollTo({left:Math.max(0,target), behavior:'smooth'});
   }
 }
-window.addEventListener('scroll', ()=>{ requestAnimationFrame(activeCatByScroll); }, {passive:true});
+// 捲動的是 #order-page（固定外殼），scroll-spy 監聽掛在它身上（掛 window 不會觸發）
+(function(){
+  const op = document.getElementById('order-page');
+  (op || window).addEventListener('scroll', ()=>{ requestAnimationFrame(activeCatByScroll); }, {passive:true});
+})();
 </script>
 </body>
 </html>
