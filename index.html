@@ -3759,7 +3759,11 @@ document.addEventListener('visibilitychange', function(){ if (!document.hidden) 
    認出客人 → 結帳姓名自動帶入＋訂單自動綁定（免傳取餐編號）。
    任何一步出錯都靜默放棄——點餐永遠不能被 LIFF 卡住（可用性優先）。 */
 const LIFF_ID = '2010753920-y35aYY9d';  // 2026-07-19 開通（LINE Login channel「老滷仙點餐」）
-let LINE_USER = null; // 認出的客人：{ id, name }
+// 官方帳號「加好友」連結：沒加好友的客人收不到取餐通知 → 提示他加。
+// ⚠️ 換成老滷仙 OA 的加好友短連結（LINE Official Account Manager → 加入好友 → 網址，形如 https://lin.ee/xxxxxxx）
+const OA_ADD_URL = 'https://lin.ee/REPLACE_ME';
+let LINE_USER = null;      // 認出的客人：{ id, name }
+let LINE_IS_FRIEND = true; // 預設 true（非 LIFF 或偵測失敗都不打擾）；偵測到沒加好友才提示
 (async function initLiff() {
   jumpToSection();  // 先立刻進菜單（不等 LIFF），封面完全不會出現
   if (!LIFF_ID || typeof liff === 'undefined') return;
@@ -3769,8 +3773,28 @@ let LINE_USER = null; // 認出的客人：{ id, name }
       const p = await liff.getProfile();
       LINE_USER = { id: p.userId, name: p.displayName };
     }
+    // 加好友偵測：只在 LINE 裡開（isInClient）才查，沒加好友就掛提示條
+    if (liff.isInClient && liff.isInClient()) {
+      try {
+        const fs = await liff.getFriendship();
+        LINE_IS_FRIEND = !!(fs && fs.friendFlag);
+        if (!LINE_IS_FRIEND) showAddFriendBanner();
+      } catch (e) { /* 查不到就當已加好友，不打擾 */ }
+    }
   } catch (e) { /* LIFF 失敗＝一般網頁模式，不影響點餐 */ }
 })();
+
+// 沒加好友提示條：頂端一條金色提醒＋「加好友」按鈕（加了才收得到取餐通知）
+function showAddFriendBanner() {
+  if (document.getElementById('addFriendBanner')) return;
+  const b = document.createElement('div');
+  b.id = 'addFriendBanner';
+  b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:150;background:linear-gradient(180deg,#e9a64c,#c7852f);color:#1a0800;padding:calc(9px + env(safe-area-inset-top)) 14px 9px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 2px 12px rgba(0,0,0,0.4);';
+  b.innerHTML = '➕ 加老滷仙好友，取餐通知才收得到'
+    + '<a href="' + OA_ADD_URL + '" target="_blank" rel="noopener" style="background:#1a0800;color:#f3c869;padding:5px 12px;border-radius:14px;text-decoration:none;font-weight:800;white-space:nowrap;">加好友</a>'
+    + '<span onclick="this.parentElement.remove()" style="cursor:pointer;font-size:16px;opacity:0.7;padding:0 4px;">✕</span>';
+  document.body.appendChild(b);
+}
 
 /* 直達分區暗號（M1.5 圖文選單用）：
    網址帶 ?sec=veg → 自動進點餐頁＋捲到蔬食區（圖文選單「今日青菜」按鈕）。

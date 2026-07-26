@@ -86,10 +86,23 @@ Deno.serve(async (req) => {
     if (!defRes.ok) throw new Error('設預設選單失敗：' + (await defRes.text()))
     log.push(`客人選單建好並設為預設：${custId}`)
 
-    // ③ 老闆選單 → 綁到每位 line_admins
-    const bossId = await createMenu(menuDef('boss-console', '🧑‍🍳 店務台', BOSS_LIFF))
+    // ③ 老闆選單（2×2 四格）→ 綁到每位 line_admins
+    //    格子位置對應圖片：左上=即時看單 右上=菜單/售完 左下=店務設定 右下=客人點餐頁
+    const bossDef = {
+      size: { width: 2500, height: 1686 },
+      selected: false,
+      name: 'boss-console',
+      chatBarText: '🧑‍🍳 店務台',
+      areas: [
+        { bounds: { x: 0,    y: 0,   width: 1250, height: 843 }, action: { type: 'uri', uri: BOSS_LIFF } },                    // 即時看單（預設看單列表）
+        { bounds: { x: 1250, y: 0,   width: 1250, height: 843 }, action: { type: 'uri', uri: BOSS_LIFF + '?tab=menu' } },      // 菜單/售完
+        { bounds: { x: 0,    y: 843, width: 1250, height: 843 }, action: { type: 'uri', uri: BOSS_LIFF + '?tab=settings' } },  // 店務設定
+        { bounds: { x: 1250, y: 843, width: 1250, height: 843 }, action: { type: 'uri', uri: CUSTOMER_LIFF } },               // 客人點餐頁（老闆自己下單/預覽）
+      ],
+    }
+    const bossId = await createMenu(bossDef)
     await uploadImage(bossId, `${IMG_BASE}/richmenu-boss.png`)
-    log.push(`老闆選單建好：${bossId}`)
+    log.push(`老闆選單(4格)建好：${bossId}`)
 
     const { data: admins } = await db.from('line_admins').select('line_user_id')
     let linked = 0

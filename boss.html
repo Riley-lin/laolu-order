@@ -230,6 +230,21 @@ function showBoard() {
   startRealtime();
   clearInterval(pollTimer);
   pollTimer = setInterval(loadOrders, 60000);
+  handleBossDeepLink();   // 圖文選單 4 格：依 ?tab= 直開對應面板
+}
+
+/* 圖文選單深層連結：老闆從 Rich Menu 點某格 → 網址帶 ?tab= → 進看單台後自動開對應面板
+   tab=menu→菜單管理 / tab=settings→營業設定 / tab=report→日報 / 無或 orders→預設看單列表 */
+function handleBossDeepLink() {
+  try {
+    const tab = new URLSearchParams(location.search).get('tab');
+    if (!tab) return;
+    setTimeout(() => {   // 等看單台畫完再開面板
+      if (tab === 'menu') openMenuManager();
+      else if (tab === 'settings') openShopSettings();
+      else if (tab === 'report') openDailyReport();
+    }, 350);
+  } catch (e) { /* 跳轉失敗無傷，看單列表照常 */ }
 }
 
 /* ---------- ⚡ Realtime 即時跳單（M0.9-C） ----------
