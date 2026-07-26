@@ -24,7 +24,8 @@ const RATE_WINDOW_MIN = 10
 // CORS：允許客人端網頁/LIFF 跨網域呼叫
 const cors: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'content-type',
+  // 瀏覽器送出會帶 apikey/authorization（Supabase 慣例），預檢必須放行這幾個標頭，否則 fetch 被 CORS 擋
+  'Access-Control-Allow-Headers': 'content-type, apikey, authorization, x-client-info',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 function json(obj: unknown, status = 200) {
