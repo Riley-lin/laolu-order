@@ -1417,9 +1417,9 @@ body::before{
 .hero-order{background:linear-gradient(160deg,#241c17 0%,#1a1512 100%);border:1px solid rgba(212,165,32,0.3);border-radius:16px;padding:20px 18px;margin-bottom:16px;box-shadow:0 8px 28px rgba(0,0,0,0.4);}
 .hero-no{font-size:12px;color:rgba(255,255,255,0.45);letter-spacing:1px;}
 .hero-status{font-size:24px;font-weight:900;color:var(--gold2);margin:6px 0 10px;letter-spacing:1px;}
-/* 已完成大卡：綠色調，跟進行中(金色)明顯區隔，客人一眼看出「完成了」 */
-.hero-order.done{border-color:rgba(55,194,106,0.4);}
-.hero-order.done .hero-status{color:#4fd17f;}
+/* 已完成大卡：維持品牌金色（暖金 app 裡最和諧），靠文字「可以取餐囉」＋進度表全綠區分 */
+.hero-order.done{border-color:rgba(212,165,32,0.45);}
+.hero-order.done .hero-status{color:var(--gold2);}
 /* 窄螢幕時「預計取餐 / 約N分鐘」整塊換行、不要從字中間斷開（避免「約 9 / 分鐘」的擠壓感） */
 .hero-timewrap{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin-bottom:4px;}
 .hero-timelabel{font-size:13px;color:rgba(255,255,255,0.55);white-space:nowrap;flex-shrink:0;}
@@ -4094,7 +4094,7 @@ function heroOrderHTML(r) {
     extraCls = ' done';
     statusLabel = '🍜 可以取餐囉！';
     timeBlock = '<div class="hero-timewrap"><span class="hero-timelabel">取餐時間</span>'
-      + '<span class="hero-time">' + (pk || '—') + '</span></div>'
+      + '<span class="hero-time" style="font-size:26px">' + (pk || '—') + '</span></div>'   // 完成卡時間縮小，不突兀
       + '<div class="hero-wait-plain">餐點已製作完成，歡迎到店取餐。</div>';
   } else {
     statusLabel = '🍲 製作中';

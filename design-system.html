@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#14100D">
+<title>老滷仙 Design System</title>
+<style>
+/* ============================================================
+   老滷仙 Design System — 紅金精修版 Tokens
+   （保留招牌紅金溫度，柔化金色、玉綠語意色、統一圓角/陰影/間距）
+   ============================================================ */
+:root{
+  /* ── 背景（暖近黑，保留紅棕溫度，不用純黑） ── */
+  --bg:#12100F;
+  --card:#231B17;              /* 暖棕木質卡片 */
+  --card-elevated:#2D241F;     /* 選取/浮起卡片 */
+  --border:rgba(214,162,74,0.14);  /* 金調微透明邊框：保住紅金溫度（不用純白透明） */
+  --divider:rgba(214,162,74,0.10);
+
+  /* ── 品牌（老滷仙招牌紅金） ── */
+  --red:#b5121b;          /* 招牌紅：品牌/主視覺 hero */
+  --red-deep:#8a0d15;
+  --gold:#C8A25A;         /* 香檳金（收斂版）：主色 / 價格 / CTA */
+  --gold-2:#A88446;       /* 次金：次要金字/邊 */
+  --gold-hover:#DDB56A;   /* 金屬反光 hover，不變亮黃 */
+  --gold-deep:#9a5b12;    /* 深金：漸層腳 */
+
+  /* ── 文字（米白，非純白；次要色夠亮確保戶外可讀） ── */
+  --text:#F5F2ED;
+  --text-2:#B8AEA5;
+  --text-disabled:#8B837D;
+
+  /* ── 冷色點綴（暖金的分裂互補色：深玉青）＝整套的第二條腿，讓暖金跳出來 ── */
+  --teal:#3E9E8F;              /* 深玉青：資訊/接單/冷點綴 */
+  --teal-bright:#5FBCAD;       /* 亮玉青：深底上的字 */
+  --teal-bg:rgba(62,158,143,0.10);
+  --teal-border:rgba(62,158,143,0.38);
+
+  /* ── 語意色（依色相排：暖→冷，和諧不打架） ── */
+  --success:#4FB89E;          /* 完成/可取餐：藍綠玉青（珠寶感，非黃綠螢光） */
+  --success-text:#7FD3C0;
+  --success-bg:rgba(79,184,158,0.10);
+  --success-border:rgba(79,184,158,0.38);
+  --amber:#E0A264;            /* 等待：暖琥珀（與金同溫，和諧） */
+  --amber-bg:rgba(224,162,100,0.10);
+  --info:#6BA8DE;             /* 接單：柔藍（冷，資訊感） */
+  --info-bg:rgba(107,168,222,0.10);
+  /* 警告（售完） */
+  --warn-bg:#33231A;
+  --warn-text:#E2A85B;
+  /* 錯誤（缺貨/取消）：磚紅，與招牌紅區隔 */
+  --error-bg:rgba(212,106,99,0.10);
+  --error-text:#D46A63;
+
+  /* ── 圓角 ── */
+  --r-btn:18px;
+  --r-card:20px;
+  --r-chip:999px;
+  --r-bar:28px;
+  --r-dialog:24px;
+
+  /* ── 陰影 ── */
+  --sh-card:0 6px 20px rgba(0,0,0,0.28);
+  --sh-btn:0 4px 12px rgba(214,162,74,0.20);
+
+  /* ── 間距（8pt grid） ── */
+  --sp-1:8px; --sp-2:12px; --sp-3:16px; --sp-4:24px; --sp-5:32px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  background:var(--bg); color:var(--text); line-height:1.7;
+  padding:calc(var(--sp-5) + env(safe-area-inset-top)) var(--sp-4) calc(var(--sp-5) + env(safe-area-inset-bottom));
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:860px;margin:0 auto;}
+.num{font-family:"Inter","Noto Sans TC",sans-serif;font-variant-numeric:tabular-nums;}
+
+/* Header */
+.ds-head{text-align:center;padding-bottom:var(--sp-4);border-bottom:1px solid var(--border);margin-bottom:var(--sp-5);}
+.ds-logo{font-family:"Noto Serif TC",serif;font-size:34px;font-weight:900;color:var(--gold);letter-spacing:4px;}
+.ds-sub{color:var(--text-2);font-size:14px;letter-spacing:1px;margin-top:6px;}
+.ds-brandbar{height:4px;width:80px;margin:14px auto 0;border-radius:999px;background:linear-gradient(90deg,var(--red),var(--gold));}
+
+/* Section */
+section{margin-bottom:var(--sp-5);}
+h2{font-size:13px;letter-spacing:3px;color:var(--gold);text-transform:uppercase;margin-bottom:var(--sp-3);
+   padding-left:12px;border-left:3px solid var(--gold);font-weight:800;}
+.hint{font-size:12.5px;color:var(--text-2);margin-bottom:var(--sp-3);}
+
+/* Swatches */
+.sw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--sp-2);}
+.sw{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--card);}
+.sw .chip{height:64px;}
+.sw .meta{padding:9px 11px;}
+.sw .nm{font-size:12.5px;font-weight:700;}
+.sw .hex{font-size:11.5px;color:var(--text-2);letter-spacing:0.5px;}
+
+/* Type scale */
+.type-row{display:flex;align-items:baseline;gap:14px;padding:10px 0;border-bottom:1px solid var(--divider);}
+.type-row .lbl{width:120px;flex-shrink:0;font-size:11.5px;color:var(--text-2);letter-spacing:1px;}
+.t-display{font-family:"Noto Serif TC",serif;font-size:30px;font-weight:900;color:var(--gold);}
+.t-title{font-size:22px;font-weight:800;}
+.t-item{font-size:16px;font-weight:600;}
+.t-body{font-size:14px;color:var(--text);}
+.t-cap{font-size:12px;color:var(--text-2);}
+.t-price{font-family:"Inter",sans-serif;font-size:20px;font-weight:700;color:var(--gold);}
+
+/* Buttons */
+.btn-row{display:flex;flex-wrap:wrap;gap:var(--sp-2);align-items:center;}
+.btn{border:none;cursor:pointer;font-family:inherit;font-weight:800;font-size:15px;padding:13px 24px;border-radius:var(--r-btn);transition:all 0.18s ease;}
+.btn-primary{background:var(--gold);color:#1E1713;box-shadow:var(--sh-btn);}
+.btn-primary:hover{background:var(--gold-hover);}
+.btn-primary:active{transform:translateY(1px);}
+.btn-primary:disabled{background:#59462B;color:#8F7960;box-shadow:none;cursor:not-allowed;}
+.btn-secondary{background:#241D18;border:1px solid var(--border);color:var(--text-2);}
+.btn-secondary:hover{border-color:var(--gold-deep);color:var(--text);}
+/* ＋ 按鈕（Apple Wallet 風：外框金→hover 填滿） */
+.btn-plus{width:40px;height:40px;padding:0;border-radius:12px;border:2px solid var(--gold);background:transparent;color:var(--gold);font-size:22px;font-weight:700;line-height:1;display:inline-flex;align-items:center;justify-content:center;transition:all 0.18s ease;}
+.btn-plus:hover,.btn-plus.filled{background:var(--gold);color:#1E1713;}
+
+/* Category chips */
+.chip-row{display:flex;flex-wrap:wrap;gap:var(--sp-1);}
+.cat{padding:8px 18px;border-radius:var(--r-chip);font-size:14px;font-weight:600;background:#211B17;color:var(--text-2);border:1px solid var(--border);cursor:pointer;}
+.cat.active{background:var(--gold);color:#1E1713;border-color:var(--gold);}
+
+/* Product card */
+.card{background:linear-gradient(150deg,#26201C,#1F1915);border:1px solid var(--border);border-radius:var(--r-card);padding:22px 24px;box-shadow:var(--sh-card);}
+.card.sel{background:var(--card-elevated);border-color:var(--gold);}
+.card-top{display:flex;justify-content:space-between;align-items:center;gap:12px;}
+.card-name{font-size:16px;font-weight:700;}
+.card-desc{font-size:12.5px;color:var(--text-2);margin-top:4px;}
+
+/* Status badges */
+.badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--r-chip);font-size:13px;font-weight:700;}
+.st-wait{background:var(--amber-bg);color:var(--amber);}
+.st-taken{background:var(--info-bg);color:var(--info);}
+.st-making{background:rgba(200,162,90,0.12);color:var(--gold);}
+.st-done{background:var(--success-bg);color:var(--success-text);border:1px solid var(--success-border);}
+.st-cancel{background:var(--error-bg);color:var(--error-text);}
+
+/* Radius / shadow demo */
+.demo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:var(--sp-2);}
+.demo-box{background:var(--card);border:1px solid var(--border);padding:18px 12px;text-align:center;font-size:12px;color:var(--text-2);}
+
+/* spacing ruler */
+.sp-row{display:flex;align-items:center;gap:12px;margin:8px 0;font-size:12.5px;color:var(--text-2);}
+.sp-bar{background:var(--gold);height:14px;border-radius:3px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="ds-head">
+    <div class="ds-logo">老滷仙</div>
+    <div class="ds-sub">Design System · 紅金精修版 v1</div>
+    <div class="ds-brandbar"></div>
+  </div>
+
+  <!-- 0. 配色原理 -->
+  <section>
+    <h2>00 · 配色原理 Color Theory</h2>
+    <p class="hint">高級感不是「多顏色」，是「有紀律的和諧」。這套用 <b style="color:var(--gold)">60-30-10 法則</b>＋<b style="color:var(--teal-bright)">分裂互補</b>：</p>
+    <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px;">
+      <div style="display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;">
+        <div style="width:44px;height:44px;border-radius:10px;background:#14100D;border:1px solid var(--border);flex-shrink:0;"></div>
+        <div><b>60% 暖中性底</b><div class="hint" style="margin:0;">暖黑棕，穩住整體、襯托主色</div></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;">
+        <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#C8A25A,#b5121b);flex-shrink:0;"></div>
+        <div><b>30% 品牌暖色</b><div class="hint" style="margin:0;">香檳金＋招牌紅＝老滷仙靈魂</div></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;">
+        <div style="width:44px;height:44px;border-radius:10px;background:#3E9E8F;flex-shrink:0;"></div>
+        <div><b>10% 冷色點綴（玉青）</b><div class="hint" style="margin:0;">金的分裂互補色，讓暖金「跳」出來、整體變立體</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1. 色彩 -->
+  <section>
+    <h2>01 · 色彩 Color</h2>
+    <p class="hint">保留招牌紅金溫度；金色柔化成香檳金、加冷色玉青點綴、背景用暖近黑（非純黑）。</p>
+
+    <p class="hint" style="color:var(--gold);font-weight:700;margin-top:16px;">品牌 Brand</p>
+    <div class="sw-grid">
+      <div class="sw"><div class="chip" style="background:#b5121b"></div><div class="meta"><div class="nm">招牌紅</div><div class="hex num">#b5121b</div></div></div>
+      <div class="sw"><div class="chip" style="background:#D6A24A"></div><div class="meta"><div class="nm">香檳金 · 主色</div><div class="hex num">#D6A24A</div></div></div>
+      <div class="sw"><div class="chip" style="background:#E0B665"></div><div class="meta"><div class="nm">金 Hover</div><div class="hex num">#E0B665</div></div></div>
+      <div class="sw"><div class="chip" style="background:#9a5b12"></div><div class="meta"><div class="nm">深金 · 細邊</div><div class="hex num">#9a5b12</div></div></div>
+    </div>
+
+    <p class="hint" style="color:var(--gold);font-weight:700;margin-top:16px;">背景 & 結構 Surface</p>
+    <div class="sw-grid">
+      <div class="sw"><div class="chip" style="background:#14100D"></div><div class="meta"><div class="nm">背景</div><div class="hex num">#14100D</div></div></div>
+      <div class="sw"><div class="chip" style="background:#1F1915"></div><div class="meta"><div class="nm">卡片</div><div class="hex num">#1F1915</div></div></div>
+      <div class="sw"><div class="chip" style="background:#29211C"></div><div class="meta"><div class="nm">選取卡片</div><div class="hex num">#29211C</div></div></div>
+      <div class="sw"><div class="chip" style="background:#40352D"></div><div class="meta"><div class="nm">邊框 統一</div><div class="hex num">#40352D</div></div></div>
+    </div>
+
+    <p class="hint" style="color:var(--gold);font-weight:700;margin-top:16px;">文字 Text（米白，非純白）</p>
+    <div class="sw-grid">
+      <div class="sw"><div class="chip" style="background:#F2ECE4"></div><div class="meta"><div class="nm">主要</div><div class="hex num">#F2ECE4</div></div></div>
+      <div class="sw"><div class="chip" style="background:#B4A99D"></div><div class="meta"><div class="nm">次要 ✎調亮</div><div class="hex num">#B4A99D</div></div></div>
+      <div class="sw"><div class="chip" style="background:#7A7168"></div><div class="meta"><div class="nm">禁用 ✎調亮</div><div class="hex num">#7A7168</div></div></div>
+    </div>
+
+    <p class="hint" style="color:var(--teal-bright);font-weight:700;margin-top:16px;">冷色點綴 Accent（第二條腿）</p>
+    <div class="sw-grid">
+      <div class="sw"><div class="chip" style="background:#3E9E8F"></div><div class="meta"><div class="nm">深玉青</div><div class="hex num">#3E9E8F</div></div></div>
+      <div class="sw"><div class="chip" style="background:#5FBCAD"></div><div class="meta"><div class="nm">亮玉青 · 字</div><div class="hex num">#5FBCAD</div></div></div>
+    </div>
+
+    <p class="hint" style="color:var(--gold);font-weight:700;margin-top:16px;">語意 Semantic（依色相排序，和諧不打架）</p>
+    <div class="sw-grid">
+      <div class="sw"><div class="chip" style="background:#E0A264"></div><div class="meta"><div class="nm">等待 琥珀</div><div class="hex num">#E0A264</div></div></div>
+      <div class="sw"><div class="chip" style="background:#6BA8DE"></div><div class="meta"><div class="nm">接單 柔藍</div><div class="hex num">#6BA8DE</div></div></div>
+      <div class="sw"><div class="chip" style="background:#4FB89E"></div><div class="meta"><div class="nm">完成 玉青</div><div class="hex num">#4FB89E</div></div></div>
+      <div class="sw"><div class="chip" style="background:#D46A63"></div><div class="meta"><div class="nm">取消 磚紅</div><div class="hex num">#D46A63</div></div></div>
+    </div>
+  </section>
+
+  <!-- 2. 字體 -->
+  <section>
+    <h2>02 · 字體 Typography</h2>
+    <p class="hint">中文 Noto Sans TC；標題用 Noto Serif TC；數字（價格/時間）用 Inter，精品感更俐落。</p>
+    <div class="type-row"><span class="lbl">Display 34/900</span><span class="t-display">老滷仙</span></div>
+    <div class="type-row"><span class="lbl">Title 22/800</span><span class="t-title">確認訂單資料</span></div>
+    <div class="type-row"><span class="lbl">Item 16/600</span><span class="t-item">招牌豬頭皮</span></div>
+    <div class="type-row"><span class="lbl">Body 14</span><span class="t-body">道地古法滷製，入味不死鹹。</span></div>
+    <div class="type-row"><span class="lbl">Caption 12</span><span class="t-cap">15 元區 · 任 2 樣 $25</span></div>
+    <div class="type-row"><span class="lbl">Price Inter 20/700</span><span class="t-price num">$248</span></div>
+  </section>
+
+  <!-- 3. 按鈕 -->
+  <section>
+    <h2>03 · 按鈕 Buttons</h2>
+    <div class="btn-row" style="margin-bottom:14px;">
+      <button class="btn btn-primary">下一步</button>
+      <button class="btn btn-secondary">我的訂單</button>
+      <button class="btn btn-primary" disabled>已售完</button>
+    </div>
+    <p class="hint">＋ 按鈕（Apple Wallet 風：外框金 → 點擊填滿）：</p>
+    <div class="btn-row">
+      <button class="btn-plus">＋</button>
+      <button class="btn-plus filled">＋</button>
+      <span class="hint" style="margin:0;">左＝未按　右＝hover/按下</span>
+    </div>
+  </section>
+
+  <!-- 4. 分類 chip -->
+  <section>
+    <h2>04 · 分類 Category</h2>
+    <div class="chip-row">
+      <span class="cat active">全部</span>
+      <span class="cat">15 元區</span>
+      <span class="cat">30 元區</span>
+      <span class="cat">鍋物</span>
+      <span class="cat">飲料</span>
+    </div>
+  </section>
+
+  <!-- 5. 卡片 -->
+  <section>
+    <h2>05 · 卡片 Card</h2>
+    <p class="hint">圓角 20 · padding 22/24 · 極淡漸層（3%）· 統一陰影。選取時邊框轉金。</p>
+    <div style="display:grid;gap:var(--sp-2);">
+      <div class="card">
+        <div class="card-top"><div><div class="card-name">招牌大腸</div><div class="card-desc">古法滷製 · 軟嫩入味</div></div>
+        <div style="display:flex;align-items:center;gap:14px;"><span class="t-price num">$50</span><button class="btn-plus">＋</button></div></div>
+      </div>
+      <div class="card sel">
+        <div class="card-top"><div><div class="card-name">豬頭皮 <span style="color:var(--gold);font-size:13px;">已選 ×1</span></div><div class="card-desc">彈牙帶勁</div></div>
+        <div style="display:flex;align-items:center;gap:14px;"><span class="t-price num">$40</span><button class="btn-plus filled">＋</button></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. 狀態 -->
+  <section>
+    <h2>06 · 狀態 Status</h2>
+    <p class="hint">一致的狀態色系（客人看 3 種、老闆後台可擴充）。</p>
+    <div class="btn-row">
+      <span class="badge st-wait">🔔 等待確認</span>
+      <span class="badge st-taken">📋 已接單</span>
+      <span class="badge st-making">🍲 製作中</span>
+      <span class="badge st-done">🍜 可取餐</span>
+      <span class="badge st-cancel">✕ 已取消</span>
+    </div>
+  </section>
+
+  <!-- 7. 圓角 & 陰影 -->
+  <section>
+    <h2>07 · 圓角 & 陰影 Radius / Shadow</h2>
+    <div class="demo-grid">
+      <div class="demo-box" style="border-radius:18px;">Button 18</div>
+      <div class="demo-box" style="border-radius:20px;">Card 20</div>
+      <div class="demo-box" style="border-radius:999px;">Chip ∞</div>
+      <div class="demo-box" style="border-radius:24px;">Dialog 24</div>
+      <div class="demo-box" style="border-radius:28px;">Bar 28</div>
+    </div>
+    <div class="demo-grid" style="margin-top:12px;">
+      <div class="demo-box" style="border-radius:20px;box-shadow:var(--sh-card);">Card Shadow<br>0 6 20 · .28</div>
+      <div class="demo-box" style="border-radius:18px;box-shadow:var(--sh-btn);">Button Glow<br>0 4 12 · gold</div>
+    </div>
+  </section>
+
+  <!-- 8. 間距 -->
+  <section>
+    <h2>08 · 間距 Spacing（8pt Grid）</h2>
+    <div class="sp-row"><span style="width:80px;">文字上下</span><span class="sp-bar" style="width:8px;"></span><span class="num">8</span></div>
+    <div class="sp-row"><span style="width:80px;">Icon 與字</span><span class="sp-bar" style="width:12px;"></span><span class="num">12</span></div>
+    <div class="sp-row"><span style="width:80px;">卡與卡</span><span class="sp-bar" style="width:16px;"></span><span class="num">16</span></div>
+    <div class="sp-row"><span style="width:80px;">Logo/Header</span><span class="sp-bar" style="width:24px;"></span><span class="num">24</span></div>
+    <div class="sp-row"><span style="width:80px;">Section</span><span class="sp-bar" style="width:32px;"></span><span class="num">32</span></div>
+  </section>
+
+  <!-- 9. 今日訂單進度卡 實際套用預覽 -->
+  <section>
+    <h2>09 · 今日訂單進度卡（實際套用預覽）</h2>
+    <p class="hint">用上面這套 token 套進你的今日訂單頁，長這樣：</p>
+
+    <!-- 製作中（金色） -->
+    <div style="background:linear-gradient(150deg,#2A211B,#231B17);border:1px solid var(--border);border-radius:var(--r-card);padding:20px 22px;box-shadow:var(--sh-card);margin-bottom:16px;">
+      <div style="font-size:12px;color:var(--text-2);letter-spacing:1px;" class="num">訂單 #024</div>
+      <div style="font-size:24px;font-weight:900;color:var(--gold);margin:6px 0 10px;">🍲 製作中</div>
+      <div style="display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin-bottom:4px;">
+        <span style="font-size:13px;color:var(--text-2);">預計取餐</span>
+        <span class="num" style="font-size:34px;font-weight:900;color:var(--text);line-height:1;">19:26</span>
+        <span style="font-size:15px;font-weight:700;color:#E0A264;">約 9 分鐘</span>
+      </div>
+      <div style="height:8px;border-radius:5px;background:rgba(255,255,255,0.08);overflow:hidden;margin:14px 0 18px;">
+        <div style="height:100%;width:60%;border-radius:5px;background:linear-gradient(90deg,var(--gold-2),var(--gold));"></div>
+      </div>
+      <div style="border-top:1px solid var(--divider);border-bottom:1px solid var(--divider);padding:13px 2px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <span style="font-size:14px;color:var(--text);font-weight:600;">查看點餐內容（10 項）</span>
+        <span style="color:var(--gold);font-size:14px;">▼</span>
+      </div>
+      <!-- timeline -->
+      <div style="display:flex;flex-direction:column;gap:0;">
+        <div style="display:flex;gap:12px;padding-bottom:18px;position:relative;">
+          <div style="width:30px;height:30px;border-radius:50%;background:var(--success);color:#0d2a15;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">✓</div>
+          <div><div style="font-size:15px;font-weight:700;">已送出 <span class="num" style="font-size:12px;color:var(--text-2);margin-left:6px;">22:11</span></div><div style="font-size:12px;color:var(--text-2);">訂單成立</div></div>
+        </div>
+        <div style="display:flex;gap:12px;padding-bottom:18px;">
+          <div style="width:30px;height:30px;border-radius:50%;background:var(--success);color:#0d2a15;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">✓</div>
+          <div><div style="font-size:15px;font-weight:700;">老闆接單 <span class="num" style="font-size:12px;color:var(--text-2);margin-left:6px;">22:12</span></div><div style="font-size:12px;color:var(--text-2);">開始準備</div></div>
+        </div>
+        <div style="display:flex;gap:12px;padding-bottom:18px;">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--gold);color:#1a0800;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;box-shadow:0 0 0 4px rgba(200,162,90,0.18);">🍲</div>
+          <div><div style="font-size:16px;font-weight:800;color:var(--gold);">製作中</div><div style="font-size:12px;color:var(--text-2);">正在滷…預計 19:26 完成</div></div>
+        </div>
+        <div style="display:flex;gap:12px;opacity:0.5;">
+          <div style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.35);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">🍜</div>
+          <div><div style="font-size:15px;font-weight:700;color:var(--text-disabled);">可取餐</div><div style="font-size:12px;color:var(--text-disabled);">老闆製作完成即可取餐</div></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="hint" style="margin-top:22px;color:var(--gold);font-weight:700;">「可以取餐」完成卡（定案：金色、不發光、時間縮小）</p>
+
+    <div style="background:linear-gradient(150deg,#2A211B,#231B17);border:1px solid rgba(212,165,32,0.45);border-radius:var(--r-card);padding:20px 22px;box-shadow:var(--sh-card);">
+      <div style="font-size:12px;color:var(--text-2);letter-spacing:1px;" class="num">訂單 #024</div>
+      <div style="font-size:24px;font-weight:900;color:var(--gold);margin:6px 0 10px;">🍜 可以取餐囉！</div>
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px;">
+        <span style="font-size:13px;color:var(--text-2);">取餐時間</span>
+        <span class="num" style="font-size:26px;font-weight:900;color:var(--text);line-height:1;">19:26</span>
+      </div>
+      <div style="font-size:14px;color:var(--text-2);margin:8px 0 0;">餐點已製作完成，歡迎到店取餐。</div>
+    </div>
+  </section>
+
+  <div style="text-align:center;color:var(--text-2);font-size:12px;border-top:1px solid var(--border);padding-top:var(--sp-4);">
+    老滷仙 Design System v1 · 紅金精修版　—　核准後逐區套進 app
+  </div>
+
+</div>
+</body>
+</html>
