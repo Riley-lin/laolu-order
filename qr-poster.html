@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>老滷仙 掃碼點餐海報</title>
+<style>
+  :root{ --red:#b5121b; --deepred:#8a0d15; --gold:#c8962e; --cream:#fdf6e9; --ink:#2a1a14; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif; background:#ddd; display:flex; justify-content:center; padding:24px; }
+  .poster{
+    width:148mm; min-height:210mm;                 /* A5 直式 */
+    background:
+      radial-gradient(circle at 50% 0%, #c8171f 0%, var(--red) 45%, var(--deepred) 100%);
+    color:var(--cream); position:relative; overflow:hidden;
+    display:flex; flex-direction:column; align-items:center;
+    padding:14mm 12mm; text-align:center;
+  }
+  /* 邊框 */
+  .poster::before{ content:''; position:absolute; inset:6mm; border:2px solid rgba(255,240,200,0.4); border-radius:4mm; pointer-events:none; }
+  .kicker{ font-size:15px; letter-spacing:6px; color:#ffe6a8; font-weight:700; margin-top:4mm; }
+  .brand{ font-size:64px; font-weight:900; letter-spacing:8px; margin:3mm 0 1mm; text-shadow:0 2px 10px rgba(0,0,0,0.3); color:#fff; }
+  .store{ font-size:17px; letter-spacing:3px; color:#ffe6a8; margin-bottom:6mm; }
+  .cta{ font-size:34px; font-weight:900; letter-spacing:3px; margin:2mm 0; color:#fff; }
+  .cta .big{ color:#ffd764; }
+  .qrbox{ background:#fff; border-radius:5mm; padding:7mm; margin:5mm 0 4mm; box-shadow:0 8px 24px rgba(0,0,0,0.3); }
+  .qrbox img{ display:block; width:62mm; height:62mm; }
+  .sub{ font-size:16px; color:#ffe9c2; letter-spacing:1px; line-height:1.9; }
+  .steps{ display:flex; gap:5mm; margin:6mm 0 2mm; justify-content:center; }
+  .steps .s{ font-size:13px; color:#fff2d6; }
+  .steps .s .num{ display:block; width:9mm; height:9mm; line-height:9mm; margin:0 auto 2mm; border:2px solid #ffd764; border-radius:50%; color:#ffd764; font-weight:900; font-size:15px; }
+  .arrow{ align-self:center; color:#ffd764; font-size:18px; }
+  .foot{ margin-top:auto; font-size:13px; color:#ffddb0; letter-spacing:2px; padding-top:5mm; }
+  .foot .url{ color:#fff; font-weight:700; }
+  @media print{
+    body{ background:#fff; padding:0; }
+    .poster{ box-shadow:none; }
+    @page{ size:A5 portrait; margin:0; }
+  }
+</style>
+</head>
+<body>
+  <div class="poster">
+    <div class="kicker">線 上 點 餐</div>
+    <div class="brand">老滷仙</div>
+    <div class="store">道地滷味 · 八德廣福店</div>
+
+    <div class="cta">📱 掃 我 <span class="big">點 餐</span></div>
+
+    <div class="qrbox"><img src="qr-order.png" alt="掃碼點餐"></div>
+
+    <div class="sub">免下載 App · 免加 LINE<br>手機掃一掃，線上直接點</div>
+
+    <div class="steps">
+      <div class="s"><span class="num">1</span>掃碼</div>
+      <div class="arrow">›</div>
+      <div class="s"><span class="num">2</span>選餐</div>
+      <div class="arrow">›</div>
+      <div class="s"><span class="num">3</span>送出</div>
+      <div class="arrow">›</div>
+      <div class="s"><span class="num">4</span>到店取</div>
+    </div>
+
+    <div class="foot">或直接輸入：<span class="url">laolusian.pages.dev</span></div>
+  </div>
+</body>
+</html>
