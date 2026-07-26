@@ -188,7 +188,11 @@
    ================================================================ */
 const SUPABASE_URL = 'https://wwirnzsbqrqafyjrvgkn.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_eJLYMZhDGmE5dlYb4G5XbQ_DapXnnra';
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// 明確開啟「記住登入＋自動續期」（預設本就開，這裡固定住＋給穩定的 storageKey，
+// 讓桌面 App 開著或重開都盡量沿用登入，不用一直重打密碼）
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, storageKey: 'laolu-boss-auth' }
+});
 
 let currentFilter = 'new';   // 目前的分頁：new＝新單 / done＝已完成 / all＝全部
 let pollTimer = null;        // 自動刷新的計時器
@@ -208,8 +212,11 @@ async function doLogin() {
     document.getElementById('loginErr').textContent = '登入失敗：帳號或密碼不對';
     return;
   }
+  try { localStorage.setItem('laolu-boss-email', document.getElementById('email').value.trim()); } catch(e){}  // 記住 email，重登只需打密碼
   showBoard();
 }
+// 開頁時帶入上次登入的 email（少打一欄）
+try { const _be = localStorage.getItem('laolu-boss-email'); if (_be) { const _e = document.getElementById('email'); if (_e) _e.value = _be; } } catch(e){}
 
 async function doLogout() {
   await db.auth.signOut();
