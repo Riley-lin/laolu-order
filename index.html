@@ -1418,6 +1418,14 @@ body::before{
 .hero-bar{height:8px;border-radius:5px;background:rgba(255,255,255,0.1);overflow:hidden;margin:14px 0 18px;}
 .hero-bar-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,#e9a64c,#f3c869);transition:width 0.6s ease;}
 .hero-wait-plain{font-size:14px;color:rgba(255,255,255,0.6);margin:8px 0 16px;}
+/* Hero 餐點內容（收合，放進度條與時間軸之間） */
+.hero-items{border-top:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);margin:2px 0 16px;}
+.hi-toggle{display:flex;justify-content:space-between;align-items:center;padding:12px 2px;cursor:pointer;font-size:14px;color:var(--cream);}
+.hi-arrow{color:var(--gold3);font-size:11px;margin-left:3px;}
+.hi-summary{font-size:12.5px;color:rgba(255,255,255,0.5);}
+.hi-detail{padding:2px 2px 12px;}
+.hi-row{display:flex;justify-content:space-between;font-size:13px;color:rgba(253,246,227,0.85);padding:3px 0;}
+.hi-row.hi-total{border-top:1px solid rgba(212,165,32,0.25);margin-top:6px;padding-top:8px;font-weight:800;color:var(--gold2);font-size:15px;}
 
 /* ── 今天較早訂單（收合） ── */
 .past-orders{margin-top:6px;}
@@ -3560,8 +3568,8 @@ async function submitOrder() {
   // 儲存訂單（本機備份，給下面「查詢我的訂單」功能用）
   saveOrderToHistory(orderNo, name, phone, total, ordersToShow, mode);
 
-  // 📮 訂單摘要代貼：從 LINE 開的客人，送出後在聊天室貼一則訂單摘要（自己有記錄＋方便回查）
-  postOrderSummaryToLine(orderNo, name, total, ordersToShow);
+  // 📮 訂單摘要「不再」代貼到客人聊天室——今日訂單追蹤頁已能看完整明細，
+  //    省下聊天室洗版；老闆的新單通知(line-push)照舊。
 
   // 📱 LINE 客人：送出後直接跳「今日訂單」追蹤（免看舊成功畫面＋查詢表單）
   //    先清購物車/狀態（同 finishOrder），再打開追蹤；追蹤會自動用 LINE ID 撈到這張新單
@@ -3950,6 +3958,33 @@ function timelineStepsHTML(r, stage) {
   return rows;
 }
 
+// Hero 卡的「🍽 餐點內容」收合區（摘要行＋展開明細）；跨自動刷新記住展開狀態
+let _heroItemsOpen = new Set();
+function heroItemsHTML(r) {
+  const packs = Array.isArray(r.items) ? r.items : [];
+  let count = 0, saved = 0, rows = '';
+  packs.forEach(o => {
+    (o.items || []).forEach(v => { count += v.qty; rows += '<div class="hi-row"><span>' + v.name + ' ×' + v.qty + '</span><span>$' + (v.price * v.qty) + '</span></div>'; });
+    saved += (o.discount || 0);
+  });
+  if (saved > 0) rows += '<div class="hi-row" style="color:var(--gold2)"><span>優惠折抵</span><span>−$' + saved + '</span></div>';
+  rows += '<div class="hi-row hi-total"><span>總計</span><span>$' + r.total + '</span></div>';
+  const id = 'hi-' + r.order_no;
+  const open = _heroItemsOpen.has(id);
+  return '<div class="hero-items">'
+    + '<div class="hi-toggle" onclick="toggleHeroItems(\'' + id + '\',this)">'
+    +   '<span>🍽 餐點內容 <span class="hi-arrow">' + (open ? '▲' : '▼') + '</span></span>'
+    +   '<span class="hi-summary">' + count + ' 項商品｜$' + r.total + '</span></div>'
+    + '<div class="hi-detail" id="' + id + '"' + (open ? '' : ' style="display:none"') + '>' + rows + '</div></div>';
+}
+function toggleHeroItems(id, el) {
+  const d = document.getElementById(id);
+  const open = d.style.display === 'none';
+  d.style.display = open ? 'block' : 'none';
+  const a = el.querySelector('.hi-arrow'); if (a) a.textContent = open ? '▲' : '▼';
+  if (open) _heroItemsOpen.add(id); else _heroItemsOpen.delete(id);
+}
+
 // Hero 卡：進行中訂單（new／confirmed）放大顯示「餐好了沒」
 function heroOrderHTML(r) {
   const st = r.status, pk = r.pickup_at ? _hm(r.pickup_at) : '';
@@ -3978,6 +4013,7 @@ function heroOrderHTML(r) {
   const stage = st === 'new' ? 1 : 2;
   return '<div class="hero-order"><div class="hero-no">訂單 #' + r.order_no + '</div>'
     + '<div class="hero-status">' + statusLabel + '</div>' + timeBlock + bar
+    + heroItemsHTML(r)                    // 🍽 餐點內容（收合，進度條與時間軸之間）
     + timelineStepsHTML(r, stage) + '</div>';
 }
 
