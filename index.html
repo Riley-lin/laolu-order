@@ -451,7 +451,8 @@ body::before{
 .section-line{flex:1;height:1px;background:linear-gradient(90deg,rgba(212,165,32,0.25),rgba(212,165,32,0.05),transparent);}
 
 .combo-note{
-  background:rgba(99,203,136,0.10);border:1px solid rgba(99,203,136,0.4);
+  /* 優惠標記 tag：沉穩磚紅框＋金字（少量紅點綴＝餐飲質感，取代原本的綠框） */
+  background:rgba(178,42,42,0.12);border:1px solid rgba(178,42,42,0.45);
   border-radius:8px;padding:7px 12px;font-size:12.5px;color:#e9a64c;font-weight:600;
   margin-bottom:10px;letter-spacing:0.5px;
 }
@@ -859,16 +860,16 @@ body::before{
 /* 呼吸燈：75% 半透明、緩慢閃、擴散光暈；顏色由 --wd 依等待時間帶入 */
 .wait-dot{
   display:inline-block;width:10px;height:10px;border-radius:50%;
-  background:var(--wd,#37c26a);opacity:0.75;
+  background:var(--wd,#F2D98A);opacity:0.75;
   margin-right:8px;vertical-align:middle;
   animation:waitBreath 2.6s ease-in-out infinite;
 }
 @keyframes waitBreath{
-  0%,100%{ box-shadow:0 0 3px 0px var(--wd,#37c26a); opacity:0.55; }
-  50%    { box-shadow:0 0 7px 2px var(--wd,#37c26a); opacity:0.9; }
+  0%,100%{ box-shadow:0 0 3px 0px var(--wd,#F2D98A); opacity:0.55; }
+  50%    { box-shadow:0 0 7px 2px var(--wd,#F2D98A); opacity:0.9; }
 }
 @media (prefers-reduced-motion: reduce){
-  .wait-dot{ animation:none; box-shadow:0 0 4px 1px var(--wd,#37c26a); }
+  .wait-dot{ animation:none; box-shadow:0 0 4px 1px var(--wd,#F2D98A); }
 }
 /* 口味偏好說明（預設加蔥蒜胡椒）：琥珀金 banner，跟深色主題同家族又夠明顯 */
 .pref-hint{
@@ -4262,10 +4263,11 @@ function updateWaitDisplay(){
 // 呼吸燈顏色依等待分鐘：越久越紅，提醒客人心裡有底
 //  ≤10 綠｜11–20 黃｜21–35 橘｜36＋ 紅（涵蓋 Riley 給的 10內/15-20/25-35/40-60）
 function waitDotColor(m){
-  if (m <= 10) return '#37c26a';   // 綠：很快
-  if (m <= 20) return '#e8bf3c';   // 黃：普通
-  if (m <= 35) return '#ec8b2e';   // 橘：偏久
-  return '#e04b3c';                // 紅：要等一下
+  // 全暖色漸層（淺金→琥珀→橘→紅），越久越紅、無綠色、跟品牌金一致
+  if (m <= 10) return '#F2D98A';   // 淺金：很快
+  if (m <= 20) return '#E7A94C';   // 琥珀：普通
+  if (m <= 35) return '#E27B36';   // 橘：偏久
+  return '#DA4B3C';                // 紅：要等一下
 }
 
 /* 舊版遺跡（已停用）：
