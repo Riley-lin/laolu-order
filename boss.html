@@ -2,8 +2,15 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"><!-- 禁止點輸入框時自動放大（畫面歪掉的元兇） -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"><!-- 禁止點輸入框時自動放大（畫面歪掉的元兇） -->
 <title>老滷仙・老闆看單</title>
+<!-- 📲 PWA：老闆「加到主畫面」後像獨立 App，不開 LINE 也能一點進店務台 -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#151110">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="老滷仙店務">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <!-- supabase-js：Supabase 官方的前端工具包（從 CDN 載入，不用安裝） -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>

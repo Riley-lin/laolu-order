@@ -1,0 +1,16 @@
+{
+  "name": "老滷仙 店務台",
+  "short_name": "老滷仙店務",
+  "description": "老滷仙 八德廣福店 · 店務管理（看單／改單／設定／日報）",
+  "start_url": "/boss.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#151110",
+  "theme_color": "#151110",
+  "lang": "zh-Hant-TW",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
