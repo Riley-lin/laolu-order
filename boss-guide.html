@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>老滷仙 店務操作手冊</title>
+<style>
+  :root{ --gold:#b8860b; --ink:#2a2320; --line:#e5ddd0; --soft:#8a7d6b; --bg:#fbf8f2; --box:#fffdf8; }
+  *{ box-sizing:border-box; }
+  body{ font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif; color:var(--ink); background:#eee; margin:0; line-height:1.75; }
+  .page{ max-width:780px; margin:0 auto; background:var(--bg); padding:48px 56px; }
+  h1{ font-size:30px; margin:0 0 4px; letter-spacing:2px; }
+  h1 .sub{ display:block; font-size:15px; color:var(--soft); font-weight:400; letter-spacing:1px; margin-top:6px; }
+  .cover{ text-align:center; border-bottom:3px solid var(--gold); padding-bottom:24px; margin-bottom:8px; }
+  .cover .badge{ display:inline-block; background:var(--gold); color:#fff; font-weight:900; font-size:13px; padding:4px 14px; border-radius:20px; letter-spacing:3px; margin-bottom:14px; }
+  h2{ font-size:20px; color:var(--gold); border-left:5px solid var(--gold); padding-left:12px; margin:34px 0 14px; letter-spacing:1px; }
+  h3{ font-size:16px; margin:20px 0 8px; }
+  p,li{ font-size:15px; }
+  ol,ul{ padding-left:22px; }
+  ol li{ margin:8px 0; }
+  .step{ background:var(--box); border:1px solid var(--line); border-radius:10px; padding:16px 20px; margin:14px 0; }
+  .step .n{ display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; background:var(--gold); color:#fff; border-radius:50%; font-weight:900; font-size:14px; margin-right:8px; vertical-align:middle; }
+  .tip{ background:#fff7e6; border-left:4px solid var(--gold); padding:12px 16px; border-radius:6px; margin:14px 0; font-size:14px; }
+  .warn{ background:#fdeeee; border-left:4px solid #c0504d; padding:12px 16px; border-radius:6px; margin:14px 0; font-size:14px; }
+  .btn{ display:inline-block; background:var(--ink); color:#fff; border-radius:6px; padding:2px 10px; font-size:13px; font-weight:700; margin:0 2px; }
+  .btn.go{ background:#2e7d32; } .btn.gold{ background:var(--gold); } .btn.red{ background:#c0504d; }
+  table{ width:100%; border-collapse:collapse; margin:14px 0; font-size:14px; }
+  th,td{ border:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top; }
+  th{ background:#f3ecdd; }
+  .qa{ margin:12px 0; }
+  .qa .q{ font-weight:900; color:var(--ink); }
+  .qa .a{ color:#4a4038; margin-top:2px; }
+  .foot{ margin-top:40px; border-top:2px solid var(--gold); padding-top:16px; text-align:center; color:var(--soft); font-size:13px; }
+  .toc{ background:var(--box); border:1px solid var(--line); border-radius:10px; padding:16px 22px; margin:18px 0; }
+  .toc ol{ margin:6px 0; }
+  @media print{
+    body{ background:#fff; }
+    .page{ max-width:none; padding:0; margin:0; }
+    h2{ page-break-after:avoid; }
+    .step,.tip,.warn,table{ page-break-inside:avoid; }
+    .pagebreak{ page-break-before:always; }
+    @page{ margin:16mm 14mm; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="cover">
+    <span class="badge">店 務 操 作 手 冊</span>
+    <h1>老滷仙<span class="sub">道地滷味 · 八德廣福店 ｜ 線上點餐店務操作說明</span></h1>
+  </div>
+
+  <div class="toc">
+    <strong>這本手冊教你：</strong>
+    <ol>
+      <li>怎麼進「店務台」（兩種方式）</li>
+      <li>收到新訂單 → 接單 → 完成</li>
+      <li>要取消訂單怎麼辦</li>
+      <li>店務台裡能做什麼（看單／改單／改時間／營業設定／日報）</li>
+      <li>常見情況怎麼處理</li>
+    </ol>
+  </div>
+
+  <h2>一、怎麼進「店務台」</h2>
+  <p>店務台就是你管理訂單的地方。有兩個入口，用哪個都可以：</p>
+  <div class="step">
+    <p><span class="n">1</span><strong>從 LINE 進</strong>：打開跟老滷仙的 LINE 聊天室，點最下面的 <span class="btn gold">🧑‍🍳 店務台</span> 圖文選單 → 選「即時看單」。</p>
+    <p><span class="n">2</span><strong>從手機桌面進</strong>：桌面上的「老滷仙店務」App 圖示（logo），點一下就全螢幕打開，不用先開 LINE。</p>
+  </div>
+  <div class="tip">💡 第一次進要用<strong>帳號（email）＋密碼</strong>登入一次，之後通常會記住。帳密忘記 → 直接找 Riley 幫你重設。</div>
+
+  <h2>二、收到新訂單 → 接單 → 完成</h2>
+  <p>客人在線上送出訂單後，你的 LINE 會跳出一張 <strong>「🔔 新訂單」卡片</strong>（上面有客人、電話、品項、金額）。流程只有三步：</p>
+  <div class="step">
+    <p><span class="n">1</span><strong>接單</strong>：卡片下方有 <span class="btn go">25分</span> <span class="btn go">30分</span> <span class="btn go">35分</span> 三顆鈕，<u>估一下多久能好，點對應的分鐘</u>。點下去＝接單，系統會幫客人算好取餐時間。</p>
+    <p><span class="n">2</span><strong>製作中</strong>：接單後會再出現一張「🔥 製作中」卡片，上面有取餐時間。你就安心做。</p>
+    <p><span class="n">3</span><strong>完成</strong>：做好了，按製作中卡片上的 <span class="btn go">🏁 完成</span>，這張單就歸檔。</p>
+  </div>
+  <div class="tip">💡 客人不需要你打電話通知——他自己在手機「我的訂單」就看得到製作進度和取餐時間。</div>
+
+  <h2>三、要取消訂單</h2>
+  <div class="step">
+    <p><span class="n">1</span>在新訂單或製作中卡片上，按 <span class="btn red">❌ 取消</span>。</p>
+    <p><span class="n">2</span>系統會<strong>再問你一次</strong>防手滑：確定要取消就按 <span class="btn red">確定取消</span>，不想取消按「留著不取消」。</p>
+  </div>
+  <div class="warn">⚠️ 取消後客人那張單就作廢了，請確認真的要取消再按。</div>
+
+  <div class="pagebreak"></div>
+
+  <h2>四、店務台裡能做什麼</h2>
+  <p>進到店務台（看單台），你可以做這些事：</p>
+  <table>
+    <tr><th>功能</th><th>做什麼</th><th>怎麼用</th></tr>
+    <tr><td><strong>看單</strong></td><td>看所有訂單、依狀態篩選</td><td>上方有 <span class="btn">🆕 新單</span> <span class="btn">🔥 製作中</span> <span class="btn">✅ 已完成</span> <span class="btn">全部</span>，點切換</td></tr>
+    <tr><td><strong>改單</strong></td><td>改客人點的品項／數量（缺料、客人加點）</td><td>點該筆訂單的「編輯」→ 加減品項 → 送出前會先給你看客人會收到的訊息</td></tr>
+    <tr><td><strong>改時間</strong></td><td>來不及了，把取餐時間往後改</td><td>訂單裡改時間，客人端會自動更新</td></tr>
+    <tr><td><strong>營業設定</strong></td><td>暫停接單／臨時公休／未來公休／公告</td><td>店務台的「🚪 營業設定」（見下方第五點）</td></tr>
+    <tr><td><strong>日報</strong></td><td>看今天賣了什麼、熱賣排行、營收</td><td>點「📊 日報」</td></tr>
+  </table>
+
+  <h2>五、客人不想加 LINE，也能點餐！</h2>
+  <p>不是每個客人都愛加官方帳號。放心，<strong>不加 LINE 一樣能點、一樣能查進度</strong>，你這邊照樣收到單。分兩種：</p>
+  <table>
+    <tr><th>客人類型</th><th>怎麼點餐</th><th>怎麼看進度</th></tr>
+    <tr><td><strong>用 LINE 的客人</strong></td><td>LINE 裡點「🍢 我要點餐」</td><td>LINE 裡點「我的訂單」自動顯示進度</td></tr>
+    <tr><td><strong>不想加 LINE 的客人</strong></td><td>用手機瀏覽器打開<br><strong>點餐網址</strong>（見下）</td><td>送出後記下<strong>取餐編號</strong>，用網頁的「查詢我的訂單」打姓名＋電話查</td></tr>
+  </table>
+  <div class="step">
+    <p><span class="n">1</span><strong>準備一張「網址 QR 碼」貼在店裡</strong>：指向點餐網址 <strong>laolusian.pages.dev</strong>（不用 LINE，任何手機掃了就能點）。這張 QR 找 Riley 幫你產。</p>
+    <p><span class="n">2</span>不用 LINE 的客人 → 掃這張 QR → 直接點餐 → 送出後記住<strong>取餐編號</strong>。</p>
+    <p><span class="n">3</span>你這邊<strong>照樣收到訂單</strong>（不管客人從 LINE 還是網頁來，老闆端接單流程完全一樣）。</p>
+  </div>
+  <div class="tip">💡 一句話：<strong>加不加 LINE 都能點餐、都能查進度</strong>；差別只在「有沒有被主動通知」。店裡同時擺「LINE 加好友 QR」和「直接點餐 QR」，兩種客人都接得住。</div>
+
+  <h2>六、常見情況怎麼處理</h2>
+
+  <div class="qa">
+    <div class="q">Q1. 太忙了，暫時不想收單怎麼辦？</div>
+    <div class="a">營業設定 → <strong>「⏸️ 暫停接單」</strong>。客人會看到「老闆忙不過來啦，暫時無法接單」，就點不了餐。忙完按「▶️ 恢復接單」。（隔天會自動恢復）</div>
+  </div>
+  <div class="qa">
+    <div class="q">Q2. 今天要臨時公休？</div>
+    <div class="a">營業設定 → <strong>「🚪 臨時公休」</strong>。客人會看到「今日公休」，當天點不了餐。（隔天自動恢復）未來已知的公休日，也可以先在「公休日」設定好。</div>
+  </div>
+  <div class="qa">
+    <div class="q">Q3. 某樣菜賣完了？</div>
+    <div class="a">店務台「🍢 菜單」→ 把那樣點成<strong>售完</strong>，客人端立刻變灰、點不了。有貨了再點回來。</div>
+  </div>
+  <div class="qa">
+    <div class="q">Q4. 要改價格？</div>
+    <div class="a">價格改動找 Riley 處理（一分鐘搞定）。</div>
+  </div>
+  <div class="qa">
+    <div class="q">Q5. 新訂單通知沒跳出來？</div>
+    <div class="a">先確認你的 LINE 有「加老滷仙好友並綁定」（傳「老闆綁定 加上你的密語」給官方帳號）。若還是收不到，開店務台也看得到所有單。</div>
+  </div>
+  <div class="qa">
+    <div class="q">Q6. 客人在 LINE 傳訊息問問題？</div>
+    <div class="a">你可以直接在 LINE 官方帳號後台<strong>人工回覆</strong>他（機器人不會插話）。</div>
+  </div>
+
+  <div class="tip">💡 <strong>最重要的三步就是：收到「🔔新訂單」→ 點分鐘接單 → 做好按「🏁完成」。</strong> 其他都是輔助功能，用到再看這本手冊就好。</div>
+
+  <div class="foot">
+    有任何問題，直接找 Riley 🙌<br>
+    老滷仙 · 道地滷味 · 八德廣福店
+  </div>
+
+</div>
+</body>
+</html>
