@@ -16,13 +16,14 @@ returns table(
   status text,
   wait_minutes integer,
   pickup_at timestamptz,
+  confirmed_at timestamptz,
   created_at timestamptz
 )
 language sql
 security definer
 set search_path = public
 as $$
-  select o.order_no, o.items, o.total, o.status, o.wait_minutes, o.pickup_at, o.created_at
+  select o.order_no, o.items, o.total, o.status, o.wait_minutes, o.pickup_at, o.confirmed_at, o.created_at
   from public.orders o
   where o.line_user_id = p_line_user_id
     -- 只查當天（台北時間）：取餐編號每天重排，隔天舊單沒有查詢意義

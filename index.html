@@ -1379,6 +1379,29 @@ body::before{
   transition: border-color 0.2s;
 }
 .query-card:hover { border-color: rgba(212,165,32,0.35); }
+
+/* ── 我的訂單：直式進度時間軸 ── */
+.otl-head{margin:2px 2px 14px;}
+.otl-no{font-size:13px;color:rgba(255,255,255,0.5);letter-spacing:1px;}
+.otl-pickup{font-size:15px;color:var(--cream);margin-top:4px;}
+.otl-pickup b{font-size:22px;color:var(--gold2);font-weight:900;margin-left:8px;font-variant-numeric:tabular-nums;}
+.otl-cancel{color:#e07a5f;font-size:14px;font-weight:700;margin-top:6px;}
+.otl-step{display:flex;gap:12px;position:relative;padding-bottom:22px;}
+.otl-step:last-child{padding-bottom:0;}
+.otl-dot{flex-shrink:0;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;z-index:1;}
+/* 連接線：畫在圓點下方 */
+.otl-step:not(:last-child)::before{content:'';position:absolute;left:14px;top:30px;bottom:0;width:2px;background:rgba(255,255,255,0.12);}
+.otl-step.done:not(:last-child)::before{background:#4a9d5b;}
+.otl-dot.done{background:#37c26a;color:#0d2a15;}
+.otl-dot.current{background:var(--gold2);color:#1a0800;box-shadow:0 0 0 4px rgba(233,166,76,0.2);}
+.otl-dot.future{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.35);}
+.otl-body{flex:1;padding-top:3px;}
+.otl-t{font-size:15px;font-weight:700;}
+.otl-step.done .otl-t{color:var(--cream);}
+.otl-step.current .otl-t{color:var(--gold2);}
+.otl-step.future .otl-t{color:rgba(255,255,255,0.4);}
+.otl-sub{font-size:12px;color:rgba(255,255,255,0.45);margin-top:2px;}
+.otl-time{font-size:12px;color:rgba(255,255,255,0.4);margin-left:8px;font-variant-numeric:tabular-nums;}
 .query-card-header {
   display: flex;
   align-items: center;
@@ -3857,7 +3880,41 @@ function openCoverQuery() {
   }
 }
 
-// 用 LINE ID 撈自己當天訂單 → 進度卡（沿用 cloudOrderCardHTML／queryStatusLine）
+// 我的訂單：直式進度時間軸（已送出→老闆接單→製作中→可取餐）
+function lineOrderTimelineHTML(r) {
+  const t = iso => iso ? new Date(iso).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+  const st = r.status;
+  const pk = r.pickup_at ? t(r.pickup_at) : '';
+  if (st === 'cancelled') {
+    return '<div class="query-card" style="padding:16px"><div class="otl-no">訂單 #' + r.order_no + '</div>'
+      + '<div class="otl-cancel">❌ 訂單已取消（有疑問請致電 0939-955-888）</div></div>';
+  }
+  // 目前進行到第幾步：new=1(等接單)、confirmed=2(製作中)、done=4(全完成)
+  const stage = st === 'new' ? 1 : st === 'confirmed' ? 2 : 4;
+  const steps = [
+    { icon: '📤', t: '已送出',  time: t(r.created_at),   sub: '訂單成立' },
+    { icon: '🔔', t: '老闆接單', time: t(r.confirmed_at), sub: stage >= 2 ? '開始準備' : '等待老闆確認' },
+    { icon: '🔍', t: '製作中',  time: '', sub: st === 'done' ? '已完成' : (stage >= 2 ? ('正在滷…預計 ' + (pk || '—') + ' 完成') : '等待製作') },
+    { icon: '🍜', t: '可取餐',  time: '', sub: st === 'done' ? '餐點完成，請取餐' : '完成後 LINE 通知你' },
+  ];
+  let rows = '';
+  steps.forEach((s, i) => {
+    const cls = i < stage ? 'done' : (i === stage ? 'current' : 'future');
+    const dot = cls === 'done' ? '✓' : s.icon;
+    rows += '<div class="otl-step ' + cls + '">'
+      + '<div class="otl-dot ' + cls + '">' + dot + '</div>'
+      + '<div class="otl-body"><div class="otl-t">' + s.t + (s.time ? '<span class="otl-time">' + s.time + '</span>' : '') + '</div>'
+      + '<div class="otl-sub">' + s.sub + '</div></div></div>';
+  });
+  const head = '<div class="otl-head"><div class="otl-no">訂單 #' + r.order_no + '</div>'
+    + (stage >= 2 && pk
+        ? '<div class="otl-pickup">預計取餐時間<b>' + pk + '</b></div>'
+        : '<div class="otl-pickup" style="font-size:13px;color:rgba(255,255,255,0.5)">等待老闆確認取餐時間…</div>')
+    + '</div>';
+  return '<div class="query-card" style="padding:16px 16px 18px">' + head + rows + '</div>';
+}
+
+// 用 LINE ID 撈自己當天訂單 → 進度時間軸
 async function runLineOrderQuery(el) {
   if (!el) return;
   el.innerHTML = '<div class="query-result-empty">⏳ 載入你的訂單…</div>';
@@ -3873,7 +3930,7 @@ async function runLineOrderQuery(el) {
       el.innerHTML = '<div class="query-result-empty">你今天還沒有訂單<br><small style="opacity:0.7">下單後這裡會自動顯示進度</small></div>';
       return;
     }
-    el.innerHTML = rows.map(cloudOrderCardHTML).join('');
+    el.innerHTML = rows.map(lineOrderTimelineHTML).join('');
   } catch (e) {
     el.innerHTML = '<div class="query-result-empty">載入失敗，請再試一次<br><small style="opacity:0.7">或直接致電 0939-955-888</small></div>';
   }
