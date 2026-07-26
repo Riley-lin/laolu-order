@@ -50,8 +50,9 @@ async function uploadImage(richMenuId: string, imgUrl: string) {
   const imgRes = await fetch(imgUrl)
   if (!imgRes.ok) throw new Error('抓選單圖失敗：' + imgUrl + ' HTTP ' + imgRes.status)
   const bytes = new Uint8Array(await imgRes.arrayBuffer())
+  const ct = (imgUrl.endsWith('.jpg') || imgUrl.endsWith('.jpeg')) ? 'image/jpeg' : 'image/png'
   const res = await fetch(`https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content`, {
-    method: 'POST', headers: { 'Authorization': `Bearer ${ACCESS_TOKEN}`, 'Content-Type': 'image/png' }, body: bytes,
+    method: 'POST', headers: { 'Authorization': `Bearer ${ACCESS_TOKEN}`, 'Content-Type': ct }, body: bytes,
   })
   if (!res.ok) throw new Error('上傳選單圖失敗：' + (await res.text()))
 }
@@ -101,7 +102,7 @@ Deno.serve(async (req) => {
       ],
     }
     const bossId = await createMenu(bossDef)
-    await uploadImage(bossId, `${IMG_BASE}/richmenu-boss.png`)
+    await uploadImage(bossId, `${IMG_BASE}/richmenu-boss.jpg`)   // JPEG 壓過(PNG 太大超過 LINE 1MB 上限)
     log.push(`老闆選單(4格)建好：${bossId}`)
 
     const { data: admins } = await db.from('line_admins').select('line_user_id')
