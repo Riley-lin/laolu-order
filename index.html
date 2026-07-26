@@ -3563,7 +3563,17 @@ async function submitOrder() {
   // 📮 訂單摘要代貼：從 LINE 開的客人，送出後在聊天室貼一則訂單摘要（自己有記錄＋方便回查）
   postOrderSummaryToLine(orderNo, name, total, ordersToShow);
 
-  // 顯示成功畫面
+  // 📱 LINE 客人：送出後直接跳「今日訂單」追蹤（免看舊成功畫面＋查詢表單）
+  //    先清購物車/狀態（同 finishOrder），再打開追蹤；追蹤會自動用 LINE ID 撈到這張新單
+  if (LINE_USER && LINE_USER.id) {
+    finishOrder();                                   // 清購物車＋關結帳彈窗
+    document.getElementById('segMenu')?.classList.remove('active');
+    document.getElementById('segOrders')?.classList.add('active');
+    setTimeout(() => openCoverQuery(), 150);          // 給關閉動畫一點時間再開追蹤
+    return;
+  }
+
+  // 顯示成功畫面（一般瀏覽器客人：沒 LINE 自動追蹤，靠取餐編號＋查詢表單）
   document.getElementById('modalBox').innerHTML = `
     <div class="success-wrap">
       <span class="success-emoji"></span>
@@ -4040,6 +4050,8 @@ function closeCoverQuery() {
   document.getElementById('coverQueryBg').classList.remove('open');
   document.getElementById('coverQueryResult').innerHTML = '';
   clearInterval(_myOrdersTimer);   // 停掉自動刷新
+  document.getElementById('segMenu')?.classList.add('active');       // 分頁切回「點餐」
+  document.getElementById('segOrders')?.classList.remove('active');
   lockScroll(false);
 }
 
