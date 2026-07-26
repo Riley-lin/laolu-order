@@ -439,6 +439,8 @@ body::before{
 
 .menu-section{margin-bottom:28px;animation:fadeUp 0.3s ease both;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}} .menu-section{animation:fadeUp 0.4s cubic-bezier(0.4,0,0.2,1) both;}
+/* 第二次以後重畫菜單（雲端更新/售完）不再跑淡入＝不閃 */
+.order-body.built .menu-section{animation:none;}
 
 .section-hd{
   display:flex;align-items:center;gap:10px;
@@ -2238,6 +2240,7 @@ function showCover(){
 // ────────────────────────────────
 // 建立點餐頁
 // ────────────────────────────────
+let _menuBuiltOnce = false;   // 菜單是否已畫過第一次（控制淡入動畫只跑一次，避免雲端重畫時閃）
 function buildOrderPage(){
   if (groupMode) renderOrderTabs();
   // 相同標籤的相鄰分區合併成一個大區顯示（例：丸類＋餃類都叫「鍋物」→ 一個標題、
@@ -2254,7 +2257,11 @@ function buildOrderPage(){
     `<button class="cat-btn ${i===0?'active':''}" onclick="scrollToSec('${g.id}',this)">${g.label}</button>`
   ).join('');
   // 菜單
-  document.getElementById('orderBody').innerHTML=groups.map(buildGroupSection).join('');
+  const _ob = document.getElementById('orderBody');
+  // 第一次畫保留淡入動畫；第二次起（雲端更新/售完重畫）先掛 .built 關掉動畫＝不閃
+  if (_menuBuiltOnce) _ob.classList.add('built');
+  _ob.innerHTML=groups.map(buildGroupSection).join('');
+  _menuBuiltOnce = true;
   updateCartBar();
 }
 
@@ -3965,12 +3972,18 @@ function timelineStepsHTML(r, stage) {
 let _heroItemsOpen = new Set();
 function heroItemsHTML(r) {
   const packs = Array.isArray(r.items) ? r.items : [];
-  let count = 0, saved = 0, rows = '';
+  let count = 0, rows = '';
   packs.forEach(o => {
+    if (packs.length > 1 && o.name) rows += '<div class="hi-row" style="color:var(--gold3);font-weight:700;border-top:1px dashed rgba(212,165,32,0.15);margin-top:4px;padding-top:6px"><span>' + o.name + '</span><span></span></div>';
     (o.items || []).forEach(v => { count += v.qty; rows += '<div class="hi-row"><span>' + v.name + ' ×' + v.qty + '</span><span>$' + (v.price * v.qty) + '</span></div>'; });
-    saved += (o.discount || 0);
+    // 優惠折抵＋分區折抵明細（每湊成幾組、折多少）
+    if (o.discount > 0) {
+      rows += '<div class="hi-row" style="color:var(--gold2);font-weight:700"><span>優惠折抵</span><span>−$' + o.discount + '</span></div>';
+      (o.discount_lines || []).forEach(l => { rows += discLineHTML(l, 'disc-query'); });
+    }
+    // 口味偏好＋備註（不要蔥/辣度/備註…）
+    rows += prefLinesHTML(o.prefs);
   });
-  if (saved > 0) rows += '<div class="hi-row" style="color:var(--gold2)"><span>優惠折抵</span><span>−$' + saved + '</span></div>';
   rows += '<div class="hi-row hi-total"><span>總計</span><span>$' + r.total + '</span></div>';
   const id = 'hi-' + r.order_no;
   const open = _heroItemsOpen.has(id);
