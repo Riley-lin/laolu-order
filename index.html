@@ -635,19 +635,34 @@ body::before{
   position:fixed;bottom:0;left:0;right:0;
   background: linear-gradient(0deg, rgba(21,17,16,0.98) 0%, rgba(30,24,20,0.96) 100%);
   border-top:1px solid rgba(212,165,32,0.35);
+  border-radius:20px 20px 0 0;   /* 圓角頂＝像浮起來的 bottom sheet，不再是整片直角 */
   z-index:100;
   box-shadow: 0 -8px 40px rgba(0,0,0,0.8), 0 -1px 0 rgba(212,165,32,0.1);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   display:none;
 }
+/* 拖曳把手：暗示「這是可操作面板」；展開時黏在最上面不隨內容捲走 */
+.cart-handle{
+  position:sticky;top:0;z-index:2;
+  display:none;                       /* 只有展開時才顯示 */
+  justify-content:center;
+  padding:9px 0 7px;
+  background: rgba(24,19,16,0.98);
+  border-radius:20px 20px 0 0;
+}
+.cart-handle::before{
+  content:'';width:40px;height:4px;border-radius:2px;
+  background:rgba(212,165,32,0.45);
+}
+.cart-detail.open .cart-handle{display:flex;}
 .cart-detail{
   max-height:0;overflow:hidden;transition:max-height 0.35s ease;
   max-width:860px;margin:0 auto;
 }
 /* 依內容自動長高：內容少只佔需要的高度，內容多最高頂到接近滿版（扣掉底部購物車列＋頂端一點縫）*/
-.cart-detail.open{max-height:calc(92vh - 72px);overflow-y:auto;overscroll-behavior:contain;}          /* 舊瀏覽器 fallback */
-.cart-detail.open{max-height:calc(100dvh - 84px);overflow-y:auto;overscroll-behavior:contain;}       /* 手機動態視高，避免被網址列吃掉 */
+.cart-detail.open{max-height:calc(74vh - 72px);overflow-y:auto;overscroll-behavior:contain;}          /* 舊瀏覽器 fallback */
+.cart-detail.open{max-height:calc(80dvh - 72px);overflow-y:auto;overscroll-behavior:contain;}        /* 依內容長高，最高約 80%＝上方留一條暗背景，面板「浮」起來 */
 /* 購物車遮罩：蓋住背景菜單，展開時只能操作購物車 */
 .cart-backdrop{
   position:fixed;inset:0;background:rgba(0,0,0,0.5);
@@ -1649,6 +1664,7 @@ body::before{
 <!-- ══════════ CART BAR ══════════ -->
 <div class="cart-bar" id="cartBar">
   <div class="cart-detail" id="cartDetail">
+    <div class="cart-handle"></div>
     <div class="cart-detail-inner" id="cartItems"></div>
   </div>
   <div class="cart-summary" onclick="toggleCartDetail()">
