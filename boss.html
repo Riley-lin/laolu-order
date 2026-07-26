@@ -333,9 +333,10 @@ function renderCard(r) {
 function formatPrefs(p) {
   if (!p) return '';
   const out = [];
-  if (p.scallion === 'yes') out.push('加蔥'); else if (p.scallion === 'no') out.push('不要蔥');
-  if (p.garlic === 'yes') out.push('加蒜'); else if (p.garlic === 'no') out.push('不要蒜');
-  if (p.pepper === 'yes') out.push('加胡椒'); else if (p.pepper === 'no') out.push('不要胡椒');
+  // 蔥蒜胡椒預設加，只標客人選「不要」的（加是標配不印）
+  if (p.scallion === 'no') out.push('不要蔥');
+  if (p.garlic === 'no') out.push('不要蒜');
+  if (p.pepper === 'no') out.push('不要胡椒');
   if (p.spicy === 'yes' && p.spiceLevel) out.push('辣度：' + p.spiceLevel);
   else if (p.spicy === 'side') out.push(p.spiceLevel ? '辣度：' + p.spiceLevel + '（另外裝）' : '辣另外裝');
   else if (p.spicy === 'no') out.push('不加辣');
@@ -473,9 +474,10 @@ function prefTextBlock(r) {
     if (!p) return;
     const who = packs.length > 1 && o.name ? o.name + '：' : '';
     const t = [];
-    if (p.scallion === 'yes') t.push('加蔥'); else if (p.scallion === 'no') t.push('不要蔥');
-    if (p.garlic === 'yes') t.push('加蒜'); else if (p.garlic === 'no') t.push('不要蒜');
-    if (p.pepper === 'yes') t.push('加胡椒'); else if (p.pepper === 'no') t.push('不要胡椒');
+    // 蔥蒜胡椒預設加，只標客人選「不要」的
+    if (p.scallion === 'no') t.push('不要蔥');
+    if (p.garlic === 'no') t.push('不要蒜');
+    if (p.pepper === 'no') t.push('不要胡椒');
     if (p.spicy === 'yes' && p.spiceLevel) t.push('辣度：' + p.spiceLevel);
     else if (p.spicy === 'side') t.push(p.spiceLevel ? '辣度：' + p.spiceLevel + '（另外裝）' : '辣另外裝');
     else if (p.spicy === 'no') t.push('不加辣');

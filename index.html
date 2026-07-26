@@ -752,7 +752,7 @@ body::before{
 .form-input:focus,.form-select:focus,.form-textarea:focus{
   border-color:var(--gold2);
   background: var(--card-2);
-  box-shadow: 0 0 0 3px rgba(233,166,76,0.12);
+  box-shadow: 0 0 0 3px rgba(233,166,76,0.18), 0 0 12px rgba(233,166,76,0.15);
 }
 .form-input::placeholder,.form-textarea::placeholder{color:rgba(255,255,255,0.25);}
 .form-select option{background:#1e1814;}
@@ -796,12 +796,30 @@ body::before{
 /* 等待時間確認區 */
 .wait-confirm-box{
   background:var(--card);border:1px solid var(--line);
-  border-radius:12px;padding:12px 14px;margin-bottom:14px;
-  display:flex;align-items:center;gap:10px;
+  border-radius:12px;padding:14px;margin-bottom:14px;
+  display:flex;align-items:center;
 }
-.wait-confirm-dot{width:9px;height:9px;border-radius:50%;background:#63cb88;flex-shrink:0;animation:blink 1.5s infinite;}
-.wait-confirm-text{font-size:13px;color:rgba(253,246,227,0.8);line-height:1.6;}
-.wait-confirm-time{font-size:17px;font-weight:800;color:var(--gold2);}
+.wait-confirm-text{font-size:15px;color:rgba(253,246,227,0.85);white-space:nowrap;}
+.wait-confirm-time{font-size:18px;font-weight:800;color:var(--gold2);}
+/* 呼吸燈：75% 半透明、緩慢閃、擴散光暈；顏色由 --wd 依等待時間帶入 */
+.wait-dot{
+  display:inline-block;width:10px;height:10px;border-radius:50%;
+  background:var(--wd,#37c26a);opacity:0.75;
+  margin-right:8px;vertical-align:middle;
+  animation:waitBreath 2.6s ease-in-out infinite;
+}
+@keyframes waitBreath{
+  0%,100%{ box-shadow:0 0 5px 1px var(--wd,#37c26a); opacity:0.55; }
+  50%    { box-shadow:0 0 13px 5px var(--wd,#37c26a); opacity:0.9; }
+}
+@media (prefers-reduced-motion: reduce){
+  .wait-dot{ animation:none; box-shadow:0 0 8px 2px var(--wd,#37c26a); }
+}
+/* 口味偏好說明（預設加蔥蒜胡椒） */
+.pref-hint{
+  font-size:12px;color:rgba(253,246,227,0.5);
+  line-height:1.6;margin-bottom:10px;letter-spacing:0.3px;
+}
 
 /* 訂單明細 */
 .order-recap{
@@ -1986,9 +2004,10 @@ function getComboCartItems() { return currentOrder().comboCartItems; }
 
 // 偏好狀態
 const prefs = {
-  scallion: null,   // 'yes'|'no'
-  garlic: null,
-  pepper: null,
+  // 滷味店默認加蔥蒜胡椒＝預設 'yes'；客人只在「不要」時才反白退掉
+  scallion: 'yes',  // 'yes'|'no'
+  garlic: 'yes',
+  pepper: 'yes',
   spicy: null,      // 'yes'|'no'
   spiceLevel: null, // '大辣'|'中辣'|'小辣'|'微辣'|'微微辣'
   utensils: null    // 'yes'|'no'
@@ -2640,12 +2659,10 @@ function openCheckout(e){
     const orderBlocks = ordersToShow.map(o => {
       const prefLines = [];
       if(o.prefs) {
-        if(o.prefs.scallion==='yes') prefLines.push('加蔥');
-        else if(o.prefs.scallion==='no') prefLines.push('不要蔥');
-        if(o.prefs.garlic==='yes') prefLines.push('加蒜');
-        else if(o.prefs.garlic==='no') prefLines.push('不要蒜');
-        if(o.prefs.pepper==='yes') prefLines.push('加胡椒');
-        else if(o.prefs.pepper==='no') prefLines.push('不要胡椒');
+        // 蔥蒜胡椒預設加，只在客人選「不要」時才備註（加是標配不寫，免洗版）
+        if(o.prefs.scallion==='no') prefLines.push('不要蔥');
+        if(o.prefs.garlic==='no') prefLines.push('不要蒜');
+        if(o.prefs.pepper==='no') prefLines.push('不要胡椒');
         if(o.prefs.spicy==='yes' && o.prefs.spiceLevel) prefLines.push(`辣度：${o.prefs.spiceLevel}`);
         else if(o.prefs.spicy==='side') prefLines.push(o.prefs.spiceLevel?`辣度：${o.prefs.spiceLevel}（另外裝）`:'辣另外裝');
         else if(o.prefs.spicy==='no') prefLines.push('不加辣');
@@ -2667,8 +2684,8 @@ function openCheckout(e){
     }).join('');
 
     document.getElementById('modalBox').innerHTML = `
-      <div class="modal-title">確認訂單</div>
-      <div class="modal-sub">填寫資料後送出</div>
+      <div class="modal-title">填寫訂單資料</div>
+      <div class="modal-sub">確認資料後送出</div>
 
       ${multiOrder ? `
       <div class="modal-section-label">結 帳 方 式</div>
@@ -2682,19 +2699,18 @@ function openCheckout(e){
       </div>` : ''}
 
       <div class="form-group">
-        <label class="form-label">姓 名 <span class="req-mark">＊必填</span></label>
+        <label class="form-label">姓 名 <span class="req-mark">＊</span></label>
         <input class="form-input" id="fName" placeholder="請輸入姓名" type="text" value="${LINE_USER ? String(LINE_USER.name).replace(/"/g,'&quot;') : ''}">
       </div>
       <div class="form-group">
-        <label class="form-label">電 話 <span class="req-mark">＊必填</span></label>
+        <label class="form-label">電 話 <span class="req-mark">＊</span></label>
         <input class="form-input" id="fPhone" placeholder="請輸入聯絡電話" type="tel">
       </div>
 
       <div class="modal-section-label">等待時間確認</div>
       <div class="wait-confirm-box">
-        <div class="wait-confirm-dot"></div>
-        <div class="wait-confirm-text">目前等待時間約<br>
-          <span class="wait-confirm-time">${waitMinutes} 分鐘</span>
+        <div class="wait-confirm-text">
+          <span class="wait-dot" style="--wd:${waitDotColor(waitMinutes)}"></span>目前等待時間約 <span class="wait-confirm-time">${waitMinutes} 分鐘</span>
         </div>
       </div>
 
@@ -2709,25 +2725,12 @@ function openCheckout(e){
 
       ${!multiOrder ? `
       <div class="modal-section-label">口 味 偏 好</div>
-      <div style="margin-bottom:12px">
-        <div class="form-label">加蔥</div>
-        <div class="pref-grid">
-          <div class="pref-btn ${prefs.scallion==='yes'?'selected':''}" onclick="setPref('scallion','yes',this)">要加蔥</div>
-          <div class="pref-btn ${prefs.scallion==='no'?'selected':''}" onclick="setPref('scallion','no',this)">不要蔥</div>
-        </div>
-      </div>
-      <div style="margin-bottom:12px">
-        <div class="form-label">加蒜</div>
-        <div class="pref-grid">
-          <div class="pref-btn ${prefs.garlic==='yes'?'selected':''}" onclick="setPref('garlic','yes',this)">要加蒜</div>
-          <div class="pref-btn ${prefs.garlic==='no'?'selected':''}" onclick="setPref('garlic','no',this)">不要蒜</div>
-        </div>
-      </div>
-      <div style="margin-bottom:12px">
-        <div class="form-label">加胡椒</div>
-        <div class="pref-grid">
-          <div class="pref-btn ${prefs.pepper==='yes'?'selected':''}" onclick="setPref('pepper','yes',this)">要胡椒</div>
-          <div class="pref-btn ${prefs.pepper==='no'?'selected':''}" onclick="setPref('pepper','no',this)">不要胡椒</div>
+      <div class="pref-hint">基本調味預設加蔥、蒜、胡椒；不需要的請勾選下方</div>
+      <div style="margin-bottom:14px">
+        <div class="pref-grid" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="pref-btn ${prefs.scallion==='no'?'selected':''}" onclick="toggleNoPref('scallion',this)">不要蔥</div>
+          <div class="pref-btn ${prefs.garlic==='no'?'selected':''}" onclick="toggleNoPref('garlic',this)">不要蒜</div>
+          <div class="pref-btn ${prefs.pepper==='no'?'selected':''}" onclick="toggleNoPref('pepper',this)">不要胡椒</div>
         </div>
       </div>
       <div style="margin-bottom:14px">
@@ -2769,6 +2772,11 @@ function setPref(key,val,el,otherId){
   // 同組全部取消
   el.parentElement.querySelectorAll('.pref-btn').forEach(b=>b.classList.remove('selected'));
   el.classList.add('selected');
+}
+// 蔥蒜胡椒「不要」開關：預設加，點一下＝退掉(no)反白，再點＝加回來(yes)
+function toggleNoPref(key,el){
+  prefs[key] = (prefs[key]==='no') ? 'yes' : 'no';
+  el.classList.toggle('selected', prefs[key]==='no');
 }
 // 辣度列開關＋另外裝灰化：微辣/微微辣在「另外裝」時不開放
 // （分量太少沒必要另外裝——老闆的裁定，畫面上只灰掉不解釋）
@@ -2888,12 +2896,10 @@ function showFinalConfirm(total, mode) {
   ordersToShow.forEach(o => {
     const prefLines = [];
     if (o.prefs) {
-      if(o.prefs.scallion==='yes') prefLines.push('加蔥');
-      else if(o.prefs.scallion==='no') prefLines.push('不要蔥');
-      if(o.prefs.garlic==='yes') prefLines.push('加蒜');
-      else if(o.prefs.garlic==='no') prefLines.push('不要蒜');
-      if(o.prefs.pepper==='yes') prefLines.push('加胡椒');
-      else if(o.prefs.pepper==='no') prefLines.push('不要胡椒');
+      // 蔥蒜胡椒預設加，只在客人選「不要」時才備註
+      if(o.prefs.scallion==='no') prefLines.push('不要蔥');
+      if(o.prefs.garlic==='no') prefLines.push('不要蒜');
+      if(o.prefs.pepper==='no') prefLines.push('不要胡椒');
       if(o.prefs.spicy==='yes' && o.prefs.spiceLevel) prefLines.push('辣度：'+o.prefs.spiceLevel);
       else if(o.prefs.spicy==='side') prefLines.push(o.prefs.spiceLevel?'辣度：'+o.prefs.spiceLevel+'（另外裝）':'辣另外裝');
       else if(o.prefs.spicy==='no') prefLines.push('不加辣');
@@ -3401,12 +3407,10 @@ function queryStatusLine(status, pickup_at) {
 function prefLinesHTML(prefs) {
   if (!prefs) return '';
   const pLines = [];
-  if (prefs.scallion === 'yes') pLines.push('加蔥');
-  else if (prefs.scallion === 'no') pLines.push('不要蔥');
-  if (prefs.garlic === 'yes') pLines.push('加蒜');
-  else if (prefs.garlic === 'no') pLines.push('不要蒜');
-  if (prefs.pepper === 'yes') pLines.push('加胡椒');
-  else if (prefs.pepper === 'no') pLines.push('不要胡椒');
+  // 蔥蒜胡椒預設加，只顯示客人選「不要」的
+  if (prefs.scallion === 'no') pLines.push('不要蔥');
+  if (prefs.garlic === 'no') pLines.push('不要蒜');
+  if (prefs.pepper === 'no') pLines.push('不要胡椒');
   if (prefs.spicy === 'yes' && prefs.spiceLevel) pLines.push(prefs.spiceLevel);
   else if (prefs.spicy === 'side') pLines.push(prefs.spiceLevel ? prefs.spiceLevel + '（另外裝）' : '辣另外裝');
   else if (prefs.spicy === 'no') pLines.push('不加辣');
@@ -3670,6 +3674,15 @@ function updateWaitDisplay(){
   if (c) c.innerHTML = `目前等待時間：約 <strong>${waitMinutes} 分鐘</strong>`;
   const o = document.getElementById('orderWaitNum');
   if (o) o.textContent = waitMinutes;
+}
+
+// 呼吸燈顏色依等待分鐘：越久越紅，提醒客人心裡有底
+//  ≤10 綠｜11–20 黃｜21–35 橘｜36＋ 紅（涵蓋 Riley 給的 10內/15-20/25-35/40-60）
+function waitDotColor(m){
+  if (m <= 10) return '#37c26a';   // 綠：很快
+  if (m <= 20) return '#e8bf3c';   // 黃：普通
+  if (m <= 35) return '#ec8b2e';   // 橘：偏久
+  return '#e04b3c';                // 紅：要等一下
 }
 
 /* 舊版遺跡（已停用）：
