@@ -237,13 +237,23 @@ function showBoard() {
    tab=menu→菜單管理 / tab=settings→營業設定 / tab=report→日報 / 無或 orders→預設看單列表 */
 function handleBossDeepLink() {
   try {
-    const tab = new URLSearchParams(location.search).get('tab');
+    const qs = new URLSearchParams(location.search);
+    let tab = qs.get('tab');
+    // LIFF 常把原始 query 包進 liff.state（例如 ?liff.state=%3Ftab%3Dmenu）→ 解一層
+    if (!tab) {
+      const st = qs.get('liff.state');
+      if (st) tab = new URLSearchParams(st.replace(/^[?#]/, '')).get('tab');
+    }
+    // 再保險：hash 也看一下（少數情況參數會落在 #）
+    if (!tab && location.hash) {
+      tab = new URLSearchParams(location.hash.replace(/^[?#]/, '')).get('tab');
+    }
     if (!tab) return;
     setTimeout(() => {   // 等看單台畫完再開面板
       if (tab === 'menu') openMenuManager();
       else if (tab === 'settings') openShopSettings();
       else if (tab === 'report') openDailyReport();
-    }, 350);
+    }, 400);
   } catch (e) { /* 跳轉失敗無傷，看單列表照常 */ }
 }
 

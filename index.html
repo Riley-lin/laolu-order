@@ -3845,6 +3845,38 @@ let _coverQueryMode = 'orderno';
 function openCoverQuery() {
   document.getElementById('coverQueryBg').classList.add('open');
   lockScroll(true);
+  // 📱 LINE 客人：用 LINE ID 自動撈當天訂單＋進度，免打姓名電話；一般瀏覽器維持查詢表單
+  if (LINE_USER && LINE_USER.id) {
+    const inputArea = document.getElementById('coverQueryInputArea');
+    if (inputArea) inputArea.style.display = 'none';
+    const hint = inputArea ? inputArea.previousElementSibling : null;
+    if (hint) hint.textContent = '你今天的訂單（自動帶入，會即時反映進度）';
+    const sub = document.querySelector('#coverQueryBg .modal-sub');
+    if (sub) sub.textContent = '你的當天訂單與進度';
+    runLineOrderQuery(document.getElementById('coverQueryResult'));
+  }
+}
+
+// 用 LINE ID 撈自己當天訂單 → 進度卡（沿用 cloudOrderCardHTML／queryStatusLine）
+async function runLineOrderQuery(el) {
+  if (!el) return;
+  el.innerHTML = '<div class="query-result-empty">⏳ 載入你的訂單…</div>';
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_orders_by_line', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY },
+      body: JSON.stringify({ p_line_user_id: LINE_USER.id })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    if (!rows || !rows.length) {
+      el.innerHTML = '<div class="query-result-empty">你今天還沒有訂單<br><small style="opacity:0.7">下單後這裡會自動顯示進度</small></div>';
+      return;
+    }
+    el.innerHTML = rows.map(cloudOrderCardHTML).join('');
+  } catch (e) {
+    el.innerHTML = '<div class="query-result-empty">載入失敗，請再試一次<br><small style="opacity:0.7">或直接致電 0939-955-888</small></div>';
+  }
 }
 
 function closeCoverQuery() {
