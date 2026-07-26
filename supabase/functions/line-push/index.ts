@@ -251,8 +251,12 @@ Deno.serve(async (req) => {
 
   const { kind, record, old_total, old_pickup_at } = await req.json()
 
+  // 🔕 客人主動通知總開關（2026-07-26 Riley 拍板：目前不做主動通知，客人靠「我的訂單」自查）
+  //    老闆的新單通知不受此開關影響（老闆一定要收單）。日後想開回來把它改 true 即可。
+  const CUSTOMER_PUSH_ENABLED = false
+
   if (kind === 'new_order') {
-    // 撈出所有登記過的管理員，逐一發「按鈕卡片」（M2：接單直接在 LINE 按）
+    // 撈出所有登記過的管理員，逐一發「按鈕卡片」（M2：接單直接在 LINE 按）——老闆通知，永遠開
     const { data: admins } = await db.from('line_admins').select('line_user_id')
     const card = buildNewOrderCard(record)
     for (const a of admins ?? []) {
@@ -260,18 +264,15 @@ Deno.serve(async (req) => {
     }
   }
 
-  if (kind === 'confirmed' && record?.line_user_id) {
-    // 只通知有綁定 LINE 的客人（沒綁的照舊用查詢頁，不影響）
+  if (CUSTOMER_PUSH_ENABLED && kind === 'confirmed' && record?.line_user_id) {
     await pushMessages(record.line_user_id, [buildCustomerCard(record)])
   }
 
-  if (kind === 'edited' && record?.line_user_id) {
-    // 訂單被老闆修改 → 通知綁定的客人新內容（沒綁的不發，優雅降級）
+  if (CUSTOMER_PUSH_ENABLED && kind === 'edited' && record?.line_user_id) {
     await pushMessages(record.line_user_id, [buildEditedCard(record, old_total)])
   }
 
-  if (kind === 'retimed' && record?.line_user_id) {
-    // 取餐時間被改 → 通知綁定的客人新時間（M3 補上的第四鈴聲）
+  if (CUSTOMER_PUSH_ENABLED && kind === 'retimed' && record?.line_user_id) {
     await push(record.line_user_id, buildRetimedMessage(record, old_pickup_at))
   }
 
