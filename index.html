@@ -1417,6 +1417,9 @@ body::before{
 .hero-order{background:linear-gradient(160deg,#241c17 0%,#1a1512 100%);border:1px solid rgba(212,165,32,0.3);border-radius:16px;padding:20px 18px;margin-bottom:16px;box-shadow:0 8px 28px rgba(0,0,0,0.4);}
 .hero-no{font-size:12px;color:rgba(255,255,255,0.45);letter-spacing:1px;}
 .hero-status{font-size:24px;font-weight:900;color:var(--gold2);margin:6px 0 10px;letter-spacing:1px;}
+/* 已完成大卡：綠色調，跟進行中(金色)明顯區隔，客人一眼看出「完成了」 */
+.hero-order.done{border-color:rgba(55,194,106,0.4);}
+.hero-order.done .hero-status{color:#4fd17f;}
 /* 窄螢幕時「預計取餐 / 約N分鐘」整塊換行、不要從字中間斷開（避免「約 9 / 分鐘」的擠壓感） */
 .hero-timewrap{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin-bottom:4px;}
 .hero-timelabel{font-size:13px;color:rgba(255,255,255,0.55);white-space:nowrap;flex-shrink:0;}
@@ -3872,14 +3875,28 @@ let LINE_USER = null;      // 認出的客人：{ id, name }
 let LINE_IS_FRIEND = true; // 預設 true（非 LIFF 或偵測失敗都不打擾）；偵測到沒加好友才提示
 (async function initLiff() {
   jumpToSection();  // 先立刻進菜單（不等 LIFF），封面完全不會出現
-  if (!LIFF_ID || typeof liff === 'undefined') return;
+  // 圖文選單「訂單查詢」帶 ?view=orders 進來 → 立刻蓋上「今日訂單」外殼(載入中)，
+  // 菜單頁完全不露出（乾淨俐落直接進今日訂單，不閃）
+  const wantOrders = getLaunchParam('view') === 'orders';
+  if (wantOrders) openCoverQuery(true);
+  if (!LIFF_ID || typeof liff === 'undefined') { if (wantOrders) restoreQueryForm(); return; }
   try {
     await liff.init({ liffId: LIFF_ID });
     if (liff.isLoggedIn()) {
       const p = await liff.getProfile();
       LINE_USER = { id: p.userId, name: p.displayName };
-      // 預先把「今日訂單」抓好放進（隱藏的）結果區——第一次點開就瞬間有內容、不會空白閃兩下
-      try { runLineOrderQuery(document.getElementById('coverQueryResult')); } catch (e) {}
+      const el = document.getElementById('coverQueryResult');
+      if (wantOrders) {
+        // 外殼已開 → 直接填內容＋啟動自動刷新（載入中→訂單，無菜單頁閃動）
+        runLineOrderQuery(el);
+        clearInterval(_myOrdersTimer);
+        _myOrdersTimer = setInterval(() => runLineOrderQuery(el), 30000);
+      } else {
+        // 預先把「今日訂單」抓好放進（隱藏的）結果區——第一次點開就瞬間有內容、不會空白閃兩下
+        try { runLineOrderQuery(el); } catch (e) {}
+      }
+    } else if (wantOrders) {
+      restoreQueryForm();  // 非 LINE 登入者用 ?view=orders → 還原查詢表單
     }
     // 加好友偵測：只在 LINE 裡開（isInClient）才查，沒加好友就掛提示條
     if (liff.isInClient && liff.isInClient()) {
@@ -3890,7 +3907,7 @@ let LINE_IS_FRIEND = true; // 預設 true（非 LIFF 或偵測失敗都不打擾
         // if (!LINE_IS_FRIEND) showAddFriendBanner();
       } catch (e) { /* 查不到就當已加好友，不打擾 */ }
     }
-  } catch (e) { /* LIFF 失敗＝一般網頁模式，不影響點餐 */ }
+  } catch (e) { /* LIFF 失敗＝一般網頁模式，不影響點餐 */ if (wantOrders) restoreQueryForm(); }
 })();
 
 // 沒加好友提示條：頂端一條金色提醒＋「加好友」按鈕（加了才收得到取餐通知）
@@ -3908,6 +3925,20 @@ function showAddFriendBanner() {
 /* 直達分區暗號（M1.5 圖文選單用）：
    網址帶 ?sec=veg → 自動進點餐頁＋捲到蔬食區（圖文選單「今日青菜」按鈕）。
    sec 可以是任何分區代號（veg/meat/noodle…），以後想加按鈕不用改程式。 */
+// 讀取啟動參數：優先讀網址 query；LIFF 會把原始 query 包進 liff.state（?liff.state=%3Fview%3Dorders），一併解出
+function getLaunchParam(key) {
+  try {
+    const direct = new URLSearchParams(location.search).get(key);
+    if (direct) return direct;
+    const state = new URLSearchParams(location.search).get('liff.state');
+    if (state) {
+      const inner = state.charAt(0) === '?' ? state.slice(1) : state;
+      return new URLSearchParams(inner).get(key);
+    }
+  } catch (e) { /* 解析失敗就當沒有參數 */ }
+  return null;
+}
+
 function jumpToSection() {
   try {
     // Uber 版：拿掉封面，一律直接進菜單；不用 selectOrderMode（它會重置購物車），
@@ -3930,17 +3961,17 @@ function jumpToSection() {
 // ────────────────────────────────
 let _coverQueryMode = 'orderno';
 
-function openCoverQuery() {
+function openCoverQuery(forceOrders) {
   document.getElementById('coverQueryBg').classList.add('open');
   lockScroll(true);
-  // 📱 LINE 客人：今日訂單＝Hero 進行中＋收合完成單，每 30 秒自動刷新；一般瀏覽器維持查詢表單
-  if (LINE_USER && LINE_USER.id) {
+  // 📱 LINE 客人（或圖文選單帶 ?view=orders 進來）：直接顯示「今日訂單」，不露查詢表單
+  const ordersView = forceOrders || (LINE_USER && LINE_USER.id);
+  if (ordersView) {
     const inputArea = document.getElementById('coverQueryInputArea');
     if (inputArea) inputArea.style.display = 'none';
     const hint = inputArea ? inputArea.previousElementSibling : null;
     if (hint) hint.style.display = 'none';
     // 脫框：拿掉中間 .query-box 的邊框/背景/重複標題，避免「框中框中框」拉低質感
-    // （只留外框標題「今日訂單」→ 訂單卡兩層）
     const qbox = document.querySelector('#coverQueryBg .query-box');
     if (qbox) qbox.classList.add('bare');
     const title = document.querySelector('#coverQueryBg .modal-title');
@@ -3948,12 +3979,33 @@ function openCoverQuery() {
     const sub = document.querySelector('#coverQueryBg .modal-sub');
     if (sub) sub.textContent = '查看目前訂單進度';
     const el = document.getElementById('coverQueryResult');
-    runLineOrderQuery(el);
-    clearInterval(_myOrdersTimer);
-    _myOrdersTimer = setInterval(() => runLineOrderQuery(el), 30000);  // 每 30 秒自動更新進度
+    if (LINE_USER && LINE_USER.id) {
+      runLineOrderQuery(el);
+      clearInterval(_myOrdersTimer);
+      _myOrdersTimer = setInterval(() => runLineOrderQuery(el), 30000);  // 每 30 秒自動更新進度
+    } else if (!el.innerHTML.trim()) {
+      // 還在等 LIFF 登入完成：先放安靜的載入狀態，不露出查詢表單（避免閃菜單頁）
+      el.innerHTML = '<div class="query-result-empty">載入中…🍢</div>';
+    }
   }
 }
 let _myOrdersTimer = null;
+
+// 非 LINE 登入者卻用 ?view=orders 進來 → 把預開的「今日訂單」外殼還原成查詢表單
+function restoreQueryForm() {
+  const inputArea = document.getElementById('coverQueryInputArea');
+  if (inputArea) inputArea.style.display = '';
+  const hint = inputArea ? inputArea.previousElementSibling : null;
+  if (hint) hint.style.display = '';
+  const qbox = document.querySelector('#coverQueryBg .query-box');
+  if (qbox) qbox.classList.remove('bare');
+  const title = document.querySelector('#coverQueryBg .modal-title');
+  if (title) title.textContent = '訂單查詢';
+  const sub = document.querySelector('#coverQueryBg .modal-sub');
+  if (sub) sub.textContent = '輸入訂單編號或姓名＋電話查詢';
+  const el = document.getElementById('coverQueryResult');
+  if (el && el.innerHTML.indexOf('載入中') >= 0) el.innerHTML = '';
+}
 
 // 台北時間 HH:MM
 function _hm(iso) { return iso ? new Date(iso).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }) : ''; }
@@ -4033,10 +4085,17 @@ function toggleHeroItems(id) {
 // Hero 卡：進行中訂單（new／confirmed）放大顯示「餐好了沒」
 function heroOrderHTML(r) {
   const st = r.status, pk = r.pickup_at ? _hm(r.pickup_at) : '';
-  let statusLabel, timeBlock, bar = '';
+  let statusLabel, timeBlock, bar = '', extraCls = '';
   if (st === 'new') {
     statusLabel = '🔔 等待老闆確認';
     timeBlock = '<div class="hero-wait-plain">已送出，老闆接單後會顯示取餐時間</div>';
+  } else if (st === 'done') {
+    // 完成後仍用大卡＋完整進度表（綠色），並保留取餐時間讓客人知道幾點取
+    extraCls = ' done';
+    statusLabel = '🍜 可以取餐囉！';
+    timeBlock = '<div class="hero-timewrap"><span class="hero-timelabel">取餐時間</span>'
+      + '<span class="hero-time">' + (pk || '—') + '</span></div>'
+      + '<div class="hero-wait-plain">餐點已製作完成，歡迎到店取餐。</div>';
   } else {
     statusLabel = '🍲 製作中';
     let mins = '';
@@ -4055,8 +4114,8 @@ function heroOrderHTML(r) {
     }
     bar = '<div class="hero-bar"><div class="hero-bar-fill" style="width:' + pct + '%"></div></div>';
   }
-  const stage = st === 'new' ? 1 : 2;
-  return '<div class="hero-order"><div class="hero-no">訂單 #' + r.order_no + '</div>'
+  const stage = st === 'new' ? 1 : (st === 'done' ? 4 : 2);   // done＝時間軸四步全綠
+  return '<div class="hero-order' + extraCls + '"><div class="hero-no">訂單 #' + r.order_no + '</div>'
     + '<div class="hero-status">' + statusLabel + '</div>' + timeBlock + bar
     + heroItemsHTML(r)                    // 🍽 餐點內容（收合，進度條與時間軸之間）
     + timelineStepsHTML(r, stage) + '</div>';
@@ -4089,15 +4148,28 @@ function toggleOrderDetail(id, el) {
   el.textContent = open ? '收合 ˄' : '查看明細 ›';
 }
 
-// 組整頁：進行中(Hero) ＋ 今天較早訂單(收合) ＋ 最後更新
+// 組整頁：進行中(Hero) ＋ 最近一筆完成單(綠色大卡) ＋ 其餘(收合) ＋ 最後更新
 function renderMyOrders(rows, el) {
   const active = rows.filter(r => r.status === 'new' || r.status === 'confirmed');
-  const past = rows.filter(r => r.status === 'done' || r.status === 'cancelled');
-  let html = active.length
-    ? active.map(heroOrderHTML).join('')
-    : '<div class="query-result-empty">目前沒有進行中的訂單 🍢<br><small style="opacity:0.7">下單後這裡會顯示製作進度</small></div>';
+  // 完成單依時間新→舊排；只把「最近一筆」留成大卡，其餘收到下面
+  const doneAll = rows.filter(r => r.status === 'done')
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const latestDone = doneAll.slice(0, 1);   // 保留最近一筆完成單當大卡（逾時來取餐也看得到已完成＋進度表）
+  const olderDone = doneAll.slice(1);
+  const cancelled = rows.filter(r => r.status === 'cancelled');
+
+  let html = '';
+  if (active.length) html += active.map(heroOrderHTML).join('');
+  if (latestDone.length) html += latestDone.map(heroOrderHTML).join('');   // 綠色✅大卡＋完整進度表
+  if (!active.length && !latestDone.length) {
+    html += '<div class="query-result-empty">目前沒有進行中的訂單 🍢<br><small style="opacity:0.7">下單後這裡會顯示製作進度</small></div>';
+  }
+  // 其餘（較早的完成單＋取消單）收合在最下面；標題依內容精準命名
+  const past = olderDone.concat(cancelled);
   if (past.length) {
-    html += '<div class="past-orders"><div class="past-toggle" onclick="togglePastOrders(this)">已完成訂單（' + past.length + '）<span class="past-arrow">▼</span></div>'
+    const label = (olderDone.length && cancelled.length) ? '先前訂單'
+                : cancelled.length ? '已取消訂單' : '已完成訂單';
+    html += '<div class="past-orders"><div class="past-toggle" onclick="togglePastOrders(this)">' + label + '（' + past.length + '）<span class="past-arrow">▼</span></div>'
       + '<div class="past-list" style="display:none">' + past.map(pastOrderRowHTML).join('') + '</div></div>';
   }
   html += '<div class="last-updated">最後更新 ' + _hm(new Date().toISOString()) + '</div>';

@@ -28,17 +28,6 @@ const IMG_BASE = 'https://laolusian.pages.dev'
 
 const H_JSON = { 'Authorization': `Bearer ${ACCESS_TOKEN}`, 'Content-Type': 'application/json' }
 
-// 整版單顆按鈕的 Rich Menu 定義（2500x843＝精簡一列）
-function menuDef(name: string, label: string, uri: string) {
-  return {
-    size: { width: 2500, height: 843 },
-    selected: false,
-    name,
-    chatBarText: label,
-    areas: [{ bounds: { x: 0, y: 0, width: 2500, height: 843 }, action: { type: 'uri', uri } }],
-  }
-}
-
 async function createMenu(def: unknown): Promise<string> {
   const res = await fetch('https://api.line.me/v2/bot/richmenu', { method: 'POST', headers: H_JSON, body: JSON.stringify(def) })
   const data = await res.json()
@@ -80,9 +69,20 @@ Deno.serve(async (req) => {
     const removed = await deleteAllMenus()
     log.push(`清掉舊選單 ${removed} 個`)
 
-    // ② 客人選單 → 設為所有人預設
-    const custId = await createMenu(menuDef('customer-order', '🍢 我要點餐', CUSTOMER_LIFF))
-    await uploadImage(custId, `${IMG_BASE}/richmenu-customer.png`)
+    // ② 客人選單（左右兩格）→ 設為所有人預設
+    //    左格＝我要點餐（點餐頁）、右格＝查看訂單（帶 ?view=orders 直接開今日訂單追蹤）
+    const custDef = {
+      size: { width: 2500, height: 843 },
+      selected: false,
+      name: 'customer-order',
+      chatBarText: '🍢 點餐／看單',
+      areas: [
+        { bounds: { x: 0,    y: 0, width: 1250, height: 843 }, action: { type: 'uri', uri: CUSTOMER_LIFF } },                    // 左：我要點餐
+        { bounds: { x: 1250, y: 0, width: 1250, height: 843 }, action: { type: 'uri', uri: CUSTOMER_LIFF + '?view=orders' } },  // 右：查看訂單
+      ],
+    }
+    const custId = await createMenu(custDef)
+    await uploadImage(custId, `${IMG_BASE}/richmenu-customer.jpg`)   // JPEG 壓過(PNG 紅底漸層太大超過 LINE 1MB)
     const defRes = await fetch(`https://api.line.me/v2/bot/user/all/richmenu/${custId}`, { method: 'POST', headers: { 'Authorization': `Bearer ${ACCESS_TOKEN}` } })
     if (!defRes.ok) throw new Error('設預設選單失敗：' + (await defRes.text()))
     log.push(`客人選單建好並設為預設：${custId}`)
