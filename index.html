@@ -717,7 +717,7 @@ body::before{
 .disc-row{display:flex;justify-content:space-between;gap:10px;}
 .disc-row>span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap;}
 .disc-recap{font-size:11px;color:rgba(255,255,255,0.5);padding:1px 0 1px 12px;letter-spacing:0.3px;}
-.disc-query{font-size:11px;color:rgba(255,255,255,0.45);padding-left:12px;}
+.disc-query{font-size:12.5px;color:rgba(255,255,255,0.55);padding-left:12px;}
 
 .cart-summary{
   display:flex;align-items:center;
@@ -1281,6 +1281,10 @@ body::before{
   background: var(--card);
   box-shadow: 0 8px 26px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
 }
+/* 脫框（LINE 今日訂單專用）：中間層變透明容器，消掉「框中框」的沉重感 */
+.query-box.bare{margin-top:8px;border:none;background:none;box-shadow:none;border-radius:0;overflow:visible;}
+.query-box.bare .query-box-header{display:none;}
+.query-box.bare .query-box-body{padding:0;}
 .query-box-header {
   background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
   padding: 14px 16px;
@@ -1407,25 +1411,30 @@ body::before{
 /* 目前步驟放大、其他步驟降透明（一眼看到現在到哪） */
 .otl-step.future{opacity:0.5;}
 .otl-step.current .otl-dot{width:34px;height:34px;font-size:17px;}
-.otl-step.current .otl-t{font-size:16px;}
+.otl-step.current .otl-t{font-size:16px;font-weight:800;}
 
 /* ── Hero 進行中訂單卡 ── */
 .hero-order{background:linear-gradient(160deg,#241c17 0%,#1a1512 100%);border:1px solid rgba(212,165,32,0.3);border-radius:16px;padding:20px 18px;margin-bottom:16px;box-shadow:0 8px 28px rgba(0,0,0,0.4);}
 .hero-no{font-size:12px;color:rgba(255,255,255,0.45);letter-spacing:1px;}
 .hero-status{font-size:24px;font-weight:900;color:var(--gold2);margin:6px 0 10px;letter-spacing:1px;}
-.hero-timewrap{display:flex;align-items:baseline;gap:10px;margin-bottom:4px;}
-.hero-timelabel{font-size:13px;color:rgba(255,255,255,0.55);}
-.hero-time{font-size:34px;font-weight:900;color:var(--cream);line-height:1;font-variant-numeric:tabular-nums;}
-.hero-mins{font-size:15px;font-weight:700;color:#ff9d5c;}
+/* 窄螢幕時「預計取餐 / 約N分鐘」整塊換行、不要從字中間斷開（避免「約 9 / 分鐘」的擠壓感） */
+.hero-timewrap{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin-bottom:4px;}
+.hero-timelabel{font-size:13px;color:rgba(255,255,255,0.55);white-space:nowrap;flex-shrink:0;}
+.hero-time{font-size:34px;font-weight:900;color:var(--cream);line-height:1;font-variant-numeric:tabular-nums;flex-shrink:0;}
+.hero-mins{font-size:15px;font-weight:700;color:#ff9d5c;white-space:nowrap;flex-shrink:0;}
 .hero-bar{height:8px;border-radius:5px;background:rgba(255,255,255,0.1);overflow:hidden;margin:14px 0 18px;}
 .hero-bar-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,#e9a64c,#f3c869);transition:width 0.6s ease;}
 .hero-wait-plain{font-size:14px;color:rgba(255,255,255,0.6);margin:8px 0 16px;}
-/* Hero 餐點內容（收合，放進度條與時間軸之間） */
+/* Hero 餐點內容：細線條列＋「查看點餐內容」動作文字（放進度條與時間軸之間） */
 .hero-items{border-top:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);margin:2px 0 16px;}
-.hi-toggle{display:flex;justify-content:space-between;align-items:center;padding:12px 2px;cursor:pointer;font-size:14px;color:var(--cream);}
-.hi-arrow{color:var(--gold3);font-size:11px;margin-left:3px;}
-.hi-summary{font-size:12.5px;color:rgba(255,255,255,0.5);}
-.hi-detail{padding:2px 2px 12px;}
+.hi-toggle{display:flex;justify-content:space-between;align-items:center;padding:13px 2px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.hi-summary{font-size:14px;color:var(--cream);font-weight:600;}
+.hi-arrow{color:var(--gold3);font-size:14px;transition:transform 0.2s ease;}
+.hero-items.open .hi-arrow{transform:rotate(180deg);}                              /* 展開時箭頭旋轉 */
+/* 展開明細：200ms 平滑展開；商品太多限高 220px、只讓明細捲動（不推走時間軸） */
+.hi-detail{max-height:0;overflow:hidden;transition:max-height 0.22s ease-out;padding:0 10px 0 2px;}
+/* 右邊多留 10px 給 iOS 覆蓋式捲軸，金額（−$5）才不會被捲軸壓到 */
+.hero-items.open .hi-detail{max-height:230px;overflow-y:auto;padding:8px 10px 12px 2px;-webkit-overflow-scrolling:touch;}
 .hi-row{display:flex;justify-content:space-between;font-size:13px;color:rgba(253,246,227,0.85);padding:3px 0;}
 .hi-row.hi-total{border-top:1px solid rgba(212,165,32,0.25);margin-top:6px;padding-top:8px;font-weight:800;color:var(--gold2);font-size:15px;}
 
@@ -3930,8 +3939,10 @@ function openCoverQuery() {
     if (inputArea) inputArea.style.display = 'none';
     const hint = inputArea ? inputArea.previousElementSibling : null;
     if (hint) hint.style.display = 'none';
-    const box = document.querySelector('#coverQueryBg .query-box-header-text');
-    if (box) box.textContent = '今 日 訂 單';
+    // 脫框：拿掉中間 .query-box 的邊框/背景/重複標題，避免「框中框中框」拉低質感
+    // （只留外框標題「今日訂單」→ 訂單卡兩層）
+    const qbox = document.querySelector('#coverQueryBg .query-box');
+    if (qbox) qbox.classList.add('bare');
     const title = document.querySelector('#coverQueryBg .modal-title');
     if (title) title.textContent = '今日訂單';
     const sub = document.querySelector('#coverQueryBg .modal-sub');
@@ -3947,7 +3958,7 @@ let _myOrdersTimer = null;
 // 台北時間 HH:MM
 function _hm(iso) { return iso ? new Date(iso).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }) : ''; }
 
-// 進度時間軸 4 步驟（已送出→店家接單→製作中→可取餐）；stage＝目前到第幾步
+// 進度時間軸 4 步驟（已送出→老闆接單→製作中→可取餐）；stage＝目前到第幾步
 function timelineStepsHTML(r, stage) {
   const st = r.status, pk = r.pickup_at ? _hm(r.pickup_at) : '';
   const overdue = r.pickup_at && (new Date(r.pickup_at).getTime() < Date.now());  // 已過預計取餐時間
@@ -3956,7 +3967,7 @@ function timelineStepsHTML(r, stage) {
     : '等待製作';
   const steps = [
     { t: '已送出',  time: _hm(r.created_at),   sub: '訂單成立' },
-    { t: '店家接單', time: _hm(r.confirmed_at), sub: stage >= 2 ? '開始準備' : '等待老闆確認' },
+    { t: '老闆接單', time: _hm(r.confirmed_at), sub: stage >= 2 ? '開始準備' : '等待老闆確認' },
     { t: '製作中',  time: '', sub: makingSub },
     { t: '可取餐',  time: '', sub: st === 'done' ? '餐點完成，請取餐' : '老闆製作完成即可取餐' },
   ];
@@ -3991,17 +4002,18 @@ function heroItemsHTML(r) {
   rows += '<div class="hi-row hi-total"><span>總計</span><span>$' + r.total + '</span></div>';
   const id = 'hi-' + r.order_no;
   const open = _heroItemsOpen.has(id);
-  return '<div class="hero-items">'
-    + '<div class="hi-toggle" onclick="toggleHeroItems(\'' + id + '\',this)">'
-    +   '<span>🍽 餐點內容 <span class="hi-arrow">' + (open ? '▲' : '▼') + '</span></span>'
-    +   '<span class="hi-summary">' + count + ' 項商品｜$' + r.total + '</span></div>'
-    + '<div class="hi-detail" id="' + id + '"' + (open ? '' : ' style="display:none"') + '>' + rows + '</div></div>';
+  // 細線條列＋明確動作文字「查看點餐內容（N 項）」，讓客人知道這裡可點（客戶回饋：純數字看不出是入口）
+  return '<div class="hero-items' + (open ? ' open' : '') + '" id="wrap-' + id + '">'
+    + '<div class="hi-toggle" onclick="toggleHeroItems(\'' + id + '\')">'
+    +   '<span class="hi-summary">查看點餐內容（' + count + ' 項）</span>'
+    +   '<span class="hi-arrow">▼</span></div>'
+    + '<div class="hi-detail" id="' + id + '">' + rows + '</div></div>';
 }
-function toggleHeroItems(id, el) {
-  const d = document.getElementById(id);
-  const open = d.style.display === 'none';
-  d.style.display = open ? 'block' : 'none';
-  const a = el.querySelector('.hi-arrow'); if (a) a.textContent = open ? '▲' : '▼';
+function toggleHeroItems(id) {
+  const wrap = document.getElementById('wrap-' + id);
+  if (!wrap) return;
+  const open = !wrap.classList.contains('open');   // 切換展開／收合
+  wrap.classList.toggle('open', open);
   if (open) _heroItemsOpen.add(id); else _heroItemsOpen.delete(id);
 }
 
@@ -4073,7 +4085,7 @@ function renderMyOrders(rows, el) {
     ? active.map(heroOrderHTML).join('')
     : '<div class="query-result-empty">目前沒有進行中的訂單 🍢<br><small style="opacity:0.7">下單後這裡會顯示製作進度</small></div>';
   if (past.length) {
-    html += '<div class="past-orders"><div class="past-toggle" onclick="togglePastOrders(this)">今天較早訂單（' + past.length + '）<span class="past-arrow">▼</span></div>'
+    html += '<div class="past-orders"><div class="past-toggle" onclick="togglePastOrders(this)">已完成訂單（' + past.length + '）<span class="past-arrow">▼</span></div>'
       + '<div class="past-list" style="display:none">' + past.map(pastOrderRowHTML).join('') + '</div></div>';
   }
   html += '<div class="last-updated">最後更新 ' + _hm(new Date().toISOString()) + '</div>';
