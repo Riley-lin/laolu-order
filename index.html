@@ -810,10 +810,19 @@ body::before{
 }
 .order-recap-title{font-size:12px;letter-spacing:0.5px;color:var(--gold2);font-weight:700;margin-bottom:8px;}
 .recap-row{display:flex;justify-content:space-between;font-size:13.5px;padding:4px 0;color:var(--cream);}
+/* 總計區：全頁最搶眼的資訊——金額放大＋發光，分隔線加金 */
 .recap-total{
-  display:flex;justify-content:space-between;
-  font-size:19px;font-weight:800;color:var(--gold2);
-  border-top:1px solid var(--line);margin-top:8px;padding-top:10px;
+  display:flex;justify-content:space-between;align-items:baseline;
+  margin-top:12px;padding-top:14px;
+  border-top:1px solid rgba(212,165,32,0.38);
+}
+.recap-total > span:first-child{   /* 「總 計」標籤：低調襯托金額 */
+  font-size:15px;font-weight:800;letter-spacing:3px;color:var(--goldlight);
+}
+.recap-total > span:last-child{    /* 金額：放到最大＋微微發光 */
+  font-size:27px;font-weight:900;color:var(--gold2);
+  font-variant-numeric:tabular-nums;
+  text-shadow:0 0 18px rgba(212,165,32,0.35);
 }
 
 .modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
