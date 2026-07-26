@@ -92,3 +92,20 @@ select tablename, policyname, cmd, roles
 from pg_policies
 where schemaname = 'public' and tablename = 'orders'
 order by cmd;
+
+-- ============================================================
+-- 🔐 webhook 防重放：LINE 事件去重表
+--   LINE 每則 webhook 事件都有唯一 webhookEventId。接待員(line-webhook)收到事件時
+--   先把 id 插進這張表，插得進＝第一次、插不進(主鍵衝突)＝重複(LINE 重送或有人重放封包)→ 跳過。
+--   這張表只有 edge function 用 service_role 寫（繞過 RLS）；開 RLS 且不給任何政策＝
+--   anon/登入者都碰不到（純內部用）。
+-- ============================================================
+create table if not exists public.line_webhook_events (
+  event_id   text primary key,
+  created_at timestamptz not null default now()
+);
+alter table public.line_webhook_events enable row level security;
+-- 不建任何 policy＝anon/authenticated 完全碰不到；只有 service_role(edge function) 能存取
+
+-- 定期清舊（可選）：這張表只為去重，保留幾天就夠。手動偶爾跑一次即可：
+-- delete from public.line_webhook_events where created_at < now() - interval '7 days';

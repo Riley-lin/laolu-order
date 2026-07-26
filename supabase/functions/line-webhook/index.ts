@@ -36,7 +36,15 @@ async function verifySignature(body: string, signature: string | null): Promise<
   )
   const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body))
   const expected = btoa(String.fromCharCode(...new Uint8Array(mac)))
-  return expected === signature
+  return timingSafeEqual(expected, signature)
+}
+
+// 常數時間字串比對：不管哪個字元不同都跑完全長，避免用「比對第幾個字元才失敗」的時間差反推簽章
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false   // 長度固定（base64 SHA-256），這個提前返回不洩漏有用資訊
+  let diff = 0
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return diff === 0
 }
 
 // ---------- 回覆訊息（用 LINE 給的一次性回覆券 replyToken）----------
@@ -223,6 +231,18 @@ Deno.serve(async (req) => {
   const { events } = JSON.parse(body)
 
   for (const ev of events ?? []) {
+    // 🛡 防重放：每則事件有唯一 webhookEventId。先「插入」去重表，插得進＝第一次處理；
+    //    插不進（主鍵衝突 23505）＝這則事件已處理過（LINE 重送或有人重放封包）→ 直接跳過。
+    //    先插後做＝原子操作，兩個同時進來也只有一個成功。
+    const eventId: string | undefined = ev.webhookEventId
+    if (eventId) {
+      const { error: dupErr } = await db.from('line_webhook_events').insert({ event_id: eventId })
+      if (dupErr) {
+        if (dupErr.code === '23505') continue            // 重複事件 → 跳過
+        console.error('dedup insert error（不擋，照常處理保可用）：', dupErr)
+      }
+    }
+
     const userId: string | undefined = ev.source?.userId
     if (!userId) continue
 
