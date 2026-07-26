@@ -638,7 +638,6 @@ body::before{
 .cart-bar{
   position:fixed;bottom:0;left:0;right:0;
   z-index:100;
-  padding-bottom: env(safe-area-inset-bottom);  /* 深色延伸進底部安全區，不露白 */
   display:none;
 }
 /* 摘要列：永遠固定不動，收合時就是它。不透明底色＝可遮住滑到它後面的明細 */
@@ -717,8 +716,10 @@ body::before{
 .disc-query{font-size:11px;color:rgba(255,255,255,0.45);padding-left:12px;}
 
 .cart-summary{
-  display:flex;align-items:center;padding:14px 16px;
-  max-width:860px;margin:0 auto;gap:13px;cursor:pointer;
+  display:flex;align-items:center;
+  /* 底部墊安全區＝深色貼齊手機下緣、不留空洞；左邊多留一點＝購物車群組往右一些 */
+  padding:12px 14px calc(12px + env(safe-area-inset-bottom)) 20px;
+  max-width:860px;margin:0 auto;gap:11px;cursor:pointer;
 }
 .cart-icon-wrap{position:relative;display:flex;align-items:center;line-height:1;flex-shrink:0;}
 .cart-badge{
@@ -731,15 +732,16 @@ body::before{
 .cart-info{flex:1;min-width:0;line-height:1.15;}
 .cart-count{font-size:12px;color:rgba(255,255,255,0.55);letter-spacing:1px;}
 .cart-total-num{font-size:27px;font-weight:900;color:var(--gold2);line-height:1.1;font-variant-numeric:tabular-nums;}
+.cart-total-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}  /* 金額＋已折同一列 */
 @keyframes badgePop{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
 .cart-badge.pop{animation:badgePop .28s ease;}
 @media (prefers-reduced-motion: reduce){ .cart-badge.pop{animation:none;} }
-.cart-saved{font-size:11.5px;color:#63cb88;font-weight:700;letter-spacing:0.3px;margin-top:1px;}
+.cart-saved{font-size:12px;color:#63cb88;font-weight:700;letter-spacing:0.3px;white-space:nowrap;}  /* 移到 $金額 右側同列 */
 .checkout-btn{
   background: linear-gradient(180deg, #f3b962 0%, #e9a64c 55%, #c7852f 100%);
-  color:var(--dark);border:1px solid rgba(255,255,255,0.22);padding:16px 36px;
-  font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;font-size:16px;font-weight:800;
-  letter-spacing:3px;cursor:pointer;border-radius:13px;
+  color:var(--dark);border:1px solid rgba(255,255,255,0.22);padding:14px 26px;
+  font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;font-size:15px;font-weight:800;
+  letter-spacing:2px;cursor:pointer;border-radius:12px;
   box-shadow: 0 6px 20px rgba(233,166,76,0.4), inset 0 1px 0 rgba(255,255,255,0.45);
   transition: var(--transition);white-space:nowrap;
   position:relative;overflow:hidden;
@@ -1694,8 +1696,10 @@ body::before{
     </div>
     <div class="cart-info">
       <div class="cart-count" id="cartCount">共 0 件</div>
-      <div class="cart-total-num" id="cartTotalNum">$0</div>
-      <div class="cart-saved" id="cartSaved"></div>
+      <div class="cart-total-row">
+        <div class="cart-total-num" id="cartTotalNum">$0</div>
+        <div class="cart-saved" id="cartSaved"></div>
+      </div>
     </div>
     <button class="checkout-btn" id="checkoutBtn" disabled onclick="handleCheckoutClick(event)">下 一 步</button>
   </div>
