@@ -3862,6 +3862,8 @@ let LINE_IS_FRIEND = true; // 預設 true（非 LIFF 或偵測失敗都不打擾
     if (liff.isLoggedIn()) {
       const p = await liff.getProfile();
       LINE_USER = { id: p.userId, name: p.displayName };
+      // 預先把「今日訂單」抓好放進（隱藏的）結果區——第一次點開就瞬間有內容、不會空白閃兩下
+      try { runLineOrderQuery(document.getElementById('coverQueryResult')); } catch (e) {}
     }
     // 加好友偵測：只在 LINE 裡開（isInClient）才查，沒加好友就掛提示條
     if (liff.isInClient && liff.isInClient()) {
