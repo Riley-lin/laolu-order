@@ -645,7 +645,8 @@ body::before{
   max-height:0;overflow:hidden;transition:max-height 0.35s ease;
   max-width:860px;margin:0 auto;
 }
-.cart-detail.open{max-height:42vh;overflow-y:auto;}
+/* 依內容自動長高：內容少只佔需要的高度，內容多最高頂到上方留白（扣掉底部購物車列約 72px）*/
+.cart-detail.open{max-height:calc(85vh - 72px);overflow-y:auto;}
 .cart-detail-inner{padding:8px 16px 6px;border-bottom:1px solid rgba(212,165,32,0.12);}
 .cart-detail::-webkit-scrollbar{width:3px;}
 .cart-detail::-webkit-scrollbar-thumb{background:var(--gold3);}
