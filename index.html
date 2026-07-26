@@ -3868,7 +3868,8 @@ let LINE_IS_FRIEND = true; // 預設 true（非 LIFF 或偵測失敗都不打擾
       try {
         const fs = await liff.getFriendship();
         LINE_IS_FRIEND = !!(fs && fs.friendFlag);
-        if (!LINE_IS_FRIEND) showAddFriendBanner();
+        // 加好友提示條暫不顯示（無主動通知、暫不做行銷推廣）；要恢復把這行改回 showAddFriendBanner()
+        // if (!LINE_IS_FRIEND) showAddFriendBanner();
       } catch (e) { /* 查不到就當已加好友，不打擾 */ }
     }
   } catch (e) { /* LIFF 失敗＝一般網頁模式，不影響點餐 */ }
