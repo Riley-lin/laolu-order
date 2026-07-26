@@ -3950,11 +3950,15 @@ function _hm(iso) { return iso ? new Date(iso).toLocaleTimeString('zh-TW', { tim
 // 進度時間軸 4 步驟（已送出→店家接單→製作中→可取餐）；stage＝目前到第幾步
 function timelineStepsHTML(r, stage) {
   const st = r.status, pk = r.pickup_at ? _hm(r.pickup_at) : '';
+  const overdue = r.pickup_at && (new Date(r.pickup_at).getTime() < Date.now());  // 已過預計取餐時間
+  const makingSub = st === 'done' ? '已完成'
+    : stage >= 2 ? (overdue ? '即將製作完成，請稍候' : ('正在滷…預計 ' + (pk || '—') + ' 完成'))
+    : '等待製作';
   const steps = [
     { t: '已送出',  time: _hm(r.created_at),   sub: '訂單成立' },
     { t: '店家接單', time: _hm(r.confirmed_at), sub: stage >= 2 ? '開始準備' : '等待老闆確認' },
-    { t: '製作中',  time: '', sub: st === 'done' ? '已完成' : (stage >= 2 ? ('正在滷…預計 ' + (pk || '—') + ' 完成') : '等待製作') },
-    { t: '可取餐',  time: '', sub: st === 'done' ? '餐點完成，請取餐' : '完成後將透過 LINE 通知' },
+    { t: '製作中',  time: '', sub: makingSub },
+    { t: '可取餐',  time: '', sub: st === 'done' ? '餐點完成，請取餐' : '老闆製作完成即可取餐' },
   ];
   const icons = ['📤', '🔔', '🍲', '🍜'];
   let rows = '';
@@ -4013,7 +4017,7 @@ function heroOrderHTML(r) {
     let mins = '';
     if (r.pickup_at) {
       const d = Math.round((new Date(r.pickup_at).getTime() - Date.now()) / 60000);
-      mins = d > 0 ? ('約 ' + d + ' 分鐘') : '快好了';
+      mins = d > 0 ? ('約 ' + d + ' 分鐘') : '即將製作完成';
     }
     timeBlock = '<div class="hero-timewrap"><span class="hero-timelabel">預計取餐</span>'
       + '<span class="hero-time">' + (pk || '—') + '</span>'
