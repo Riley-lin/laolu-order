@@ -2661,29 +2661,25 @@ function toggleCartDetail(){ setCartDetailOpen(!cartOpen); }
     if (!cartOpen || !allow) return;
     dy = e.touches[0].clientY - startY;
     if (dy <= 0) { // 往上：還原並交還給內部捲動
-      if (dragging) { bar.style.transform = 'translateY(0)'; dy = 0; }
+      if (dragging) { bar.style.transform = 'translate3d(0,0,0)'; dy = 0; }
       return;
     }
     dragging = true;
     e.preventDefault();                 // 擋掉背景/清單捲動，改成拖整個面板
-    bar.style.transform = 'translateY(' + dy + 'px)';
+    bar.style.transform = 'translate3d(0,' + dy + 'px,0)';  // 用 3d＝跟 GPU 圖層一致，不閃
     if (backdrop) backdrop.style.opacity = String(Math.max(0, 0.5 - dy / 600)); // 越拉越淡
   }, { passive: false });
 
   sheet.addEventListener('touchend', () => {
     if (!cartOpen) return;
     if (backdrop) backdrop.style.opacity = '';
+    // 不論收合或彈回，面板都「平順滑回定位」——絕不把整條甩出畫面再彈回（那個瞬間彈回＝閃）
+    bar.style.transition = 'transform 0.26s ease';
+    bar.style.transform = '';
     if (dragging && dy > CLOSE_THRESHOLD) {
-      // 過門檻：整個面板順順滑出畫面 → 再收合＋清掉位移
-      bar.style.transition = 'transform 0.26s ease';
-      bar.style.transform = 'translateY(100%)';
-      setTimeout(() => { setCartDetailOpen(false); bar.style.transition = ''; bar.style.transform = ''; }, 240);
-    } else {
-      // 沒過門檻：滑順彈回原位
-      bar.style.transition = 'transform 0.26s ease';
-      bar.style.transform = '';
-      setTimeout(() => { bar.style.transition = ''; }, 280);
+      setCartDetailOpen(false);         // 過門檻：同時收合明細，底部摘要條留著不動
     }
+    setTimeout(() => { bar.style.transition = ''; }, 300);
     dragging = false; allow = false; dy = 0;
   });
 })();
