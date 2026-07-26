@@ -3983,14 +3983,19 @@ function timelineStepsHTML(r, stage) {
   return rows;
 }
 
-// Hero 卡的「🍽 餐點內容」收合區（摘要行＋展開明細）；跨自動刷新記住展開狀態
-let _heroItemsOpen = new Set();
-function heroItemsHTML(r) {
+// 一張訂單的完整明細列（品項＋價格＋優惠折抵＋分區折抵＋口味＋總計）
+// ── 進行中(Hero) 與 已完成訂單 共用，避免兩邊格式不一致（例如完成單看不到折抵）
+function orderItemCount(r) {
+  let c = 0;
+  (Array.isArray(r.items) ? r.items : []).forEach(o => (o.items || []).forEach(v => c += v.qty));
+  return c;
+}
+function orderDetailRowsHTML(r) {
   const packs = Array.isArray(r.items) ? r.items : [];
-  let count = 0, rows = '';
+  let rows = '';
   packs.forEach(o => {
     if (packs.length > 1 && o.name) rows += '<div class="hi-row" style="color:var(--gold3);font-weight:700;border-top:1px dashed rgba(212,165,32,0.15);margin-top:4px;padding-top:6px"><span>' + o.name + '</span><span></span></div>';
-    (o.items || []).forEach(v => { count += v.qty; rows += '<div class="hi-row"><span>' + v.name + ' ×' + v.qty + '</span><span>$' + (v.price * v.qty) + '</span></div>'; });
+    (o.items || []).forEach(v => { rows += '<div class="hi-row"><span>' + v.name + ' ×' + v.qty + '</span><span>$' + (v.price * v.qty) + '</span></div>'; });
     // 優惠折抵＋分區折抵明細（每湊成幾組、折多少）
     if (o.discount > 0) {
       rows += '<div class="hi-row" style="color:var(--gold2);font-weight:700"><span>優惠折抵</span><span>−$' + o.discount + '</span></div>';
@@ -4000,6 +4005,14 @@ function heroItemsHTML(r) {
     rows += prefLinesHTML(o.prefs);
   });
   rows += '<div class="hi-row hi-total"><span>總計</span><span>$' + r.total + '</span></div>';
+  return rows;
+}
+
+// Hero 卡的「🍽 餐點內容」收合區（摘要行＋展開明細）；跨自動刷新記住展開狀態
+let _heroItemsOpen = new Set();
+function heroItemsHTML(r) {
+  const count = orderItemCount(r);
+  const rows = orderDetailRowsHTML(r);
   const id = 'hi-' + r.order_no;
   const open = _heroItemsOpen.has(id);
   // 細線條列＋明確動作文字「查看點餐內容（N 項）」，讓客人知道這裡可點（客戶回饋：純數字看不出是入口）
@@ -4054,13 +4067,12 @@ function pastOrderRowHTML(r) {
   const st = r.status;
   const label = st === 'done' ? '<span class="pr-done">✔ 已完成</span>' : '<span class="pr-cancel">✕ 已取消</span>';
   const when = _hm(st === 'done' ? (r.pickup_at || r.created_at) : r.created_at);
-  const items = [];
-  (Array.isArray(r.items) ? r.items : []).forEach(o => (o.items || []).forEach(v => items.push(v.name + '×' + v.qty)));
   const id = 'pd-' + r.order_no;
+  // 明細用共用函式＝跟 Hero 卡一樣完整（含每項價格＋優惠折抵＋分區折抵），不再只有品項名稱
   return '<div><div class="past-row">'
     + '<span class="past-row-l">' + label + ' <span style="opacity:0.55">#' + r.order_no + '</span><span class="past-row-t">' + when + '</span></span>'
     + '<span class="past-detail-btn" onclick="toggleOrderDetail(\'' + id + '\',this)">查看明細 ›</span></div>'
-    + '<div class="past-detail" id="' + id + '" style="display:none">' + (items.join('、') || '（無明細）') + '　合計 $' + r.total + '</div></div>';
+    + '<div class="past-detail" id="' + id + '" style="display:none">' + orderDetailRowsHTML(r) + '</div></div>';
 }
 
 function togglePastOrders(el) {
