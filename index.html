@@ -638,6 +638,10 @@ body::before{
   z-index:100;
   box-shadow: 0 -8px 40px rgba(0,0,0,0.8), 0 -1px 0 rgba(212,165,32,0.1);
   padding-bottom: env(safe-area-inset-bottom);  /* 深色延伸進底部安全區，home 指示條那塊不露白 */
+  /* 升級成獨立 GPU 圖層：脫離整頁捲動的重繪，固定不抖動（iOS fixed 抖動的標準解） */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
   display:none;
 }
 /* 拖曳把手：暗示「這是可操作面板」；展開時黏在最上面不隨內容捲走 */
