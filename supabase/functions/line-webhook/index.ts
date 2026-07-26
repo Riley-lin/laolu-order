@@ -286,6 +286,13 @@ Deno.serve(async (req) => {
       continue
     }
 
+    // ③.5 老闆解除綁定：傳「老闆解除綁定」→ 把自己從管理員名簿移除（換手機/員工異動用；只會移除自己，免密語）
+    if (text === '老闆解除綁定' || text === '解除綁定') {
+      await db.from('line_admins').delete().eq('line_user_id', userId)
+      await reply(ev.replyToken, '✅ 已解除綁定，這支手機之後不會再收到新訂單通知。')
+      continue
+    }
+
     // ③ 老闆綁定：傳「老闆綁定 <密語>」→ 登記成管理員
     if (text.startsWith('老闆綁定')) {
       const code = text.replace('老闆綁定', '').trim()
