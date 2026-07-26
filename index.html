@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"><!-- 禁止點輸入框時自動放大（畫面歪掉的元兇），手動雙指縮放不受影響；viewport-fit=cover＝畫布鋪滿含底部安全區，深色底墊到最底不露白 -->
+<meta name="theme-color" content="#151110"><!-- 瀏覽器/webview 安全區底色染深，消掉最底那條白邊（CSS 管不到那塊，靠這個） -->
 <meta name="theme-color" content="#0e0400"><!-- 告訴 LINE 瀏覽器：頁面周圍請塗深色，不要白 -->
 <title>老滷仙 道地滷味 ─ 八德廣福店</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500;700;900&family=Noto+Sans+TC:wght@300;400;500;700&family=Playfair+Display:wght@400;700;900&display=swap" rel="stylesheet">
@@ -339,13 +340,11 @@ body::before{
 #order-page{display:none;background:var(--dark);min-height:100vh;}
 
 .order-header{
-  background: linear-gradient(180deg, rgba(37,29,23,0.98) 0%, rgba(30,24,20,0.96) 100%);
+  background: linear-gradient(180deg, #251d17 0%, #1e1814 100%);   /* 純色（拿掉毛玻璃）：捲動不再閃爍 */
   border-bottom: 1px solid rgba(212,165,32,0.3);
   padding: 13px 18px;
   display:flex;align-items:center;gap:10px;
   position:sticky;top:0;z-index:50;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 2px 20px rgba(0,0,0,0.5);
   position: static;
 }
@@ -633,13 +632,11 @@ body::before{
 /* ══════════════ CART BAR ══════════════ */
 .cart-bar{
   position:fixed;bottom:0;left:0;right:0;
-  background: linear-gradient(0deg, rgba(21,17,16,0.98) 0%, rgba(30,24,20,0.96) 100%);
+  background: linear-gradient(0deg, #151110 0%, #1e1814 100%);   /* 純色（拿掉毛玻璃）：iOS 捲動不再重繪閃爍 */
   border-top:1px solid rgba(212,165,32,0.35);
   border-radius:20px 20px 0 0;   /* 圓角頂＝像浮起來的 bottom sheet，不再是整片直角 */
   z-index:100;
   box-shadow: 0 -8px 40px rgba(0,0,0,0.8), 0 -1px 0 rgba(212,165,32,0.1);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   padding-bottom: env(safe-area-inset-bottom);  /* 深色延伸進底部安全區，home 指示條那塊不露白 */
   display:none;
 }
