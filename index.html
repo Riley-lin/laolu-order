@@ -349,8 +349,27 @@ body::before{
   box-shadow: 0 2px 20px rgba(0,0,0,0.5);
   position: static;
 }
-.order-hname{font-family:'CashSign','Noto Serif TC',serif;font-size:20px;font-weight:900;color:#fff;letter-spacing:4px;text-shadow:0 0 20px rgba(212,165,32,0.3);}
-.order-hsub{font-size:11px;color:var(--goldlight);letter-spacing:2px;margin-top:1px;}
+/* 店名：金屬質感金色襯線體（老字號高級感） */
+.order-hname{
+  font-family:'PingFang TC','Microsoft JhengHei','Noto Sans TC','Helvetica Neue',sans-serif;
+  font-size:24px;font-weight:800;letter-spacing:6px;line-height:1.15;
+  background:linear-gradient(180deg,#f7dc9c 0%,#e9a64c 55%,#c7852f 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+  text-shadow:0 1px 10px rgba(233,166,76,0.15);
+}
+/* 店名列：老滷仙＋八德廣福店 同一行對齊 */
+.order-title-row{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;}
+/* 分店名：細金線點綴＋寬間距（排在店名右側） */
+.order-hsub{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:11px;color:rgba(243,217,168,0.62);letter-spacing:4px;
+  font-weight:400;
+}
+.order-hsub::before{
+  content:'';width:16px;height:1px;flex:0 0 auto;
+  background:linear-gradient(90deg,transparent,rgba(233,166,76,0.7));
+}
 .back-btn{
   margin-left:8px;background:rgba(212,165,32,0.12);border:1px solid var(--gold3);
   color:var(--gold2);padding:6px 12px;font-size:13px;cursor:pointer;border-radius:8px;
@@ -523,7 +542,7 @@ body::before{
 .item-card.has-qty{
   border-color:var(--gold3);
   background: linear-gradient(135deg, rgba(212,165,32,0.12), rgba(180,120,10,0.08));
-  box-shadow: 0 0 16px rgba(212,165,32,0.12);
+  box-shadow: inset 4px 0 0 var(--gold2), 0 0 16px rgba(212,165,32,0.12);
 }
 
 .item-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
@@ -650,25 +669,27 @@ body::before{
 .cart-discount-line{color:rgba(255,255,255,0.5);font-size:12px;margin-top:3px;padding-left:2px;letter-spacing:0.3px;}
 
 .cart-summary{
-  display:flex;align-items:center;padding:10px 14px;
-  max-width:860px;margin:0 auto;gap:10px;cursor:pointer;
+  display:flex;align-items:center;padding:14px 16px;
+  max-width:860px;margin:0 auto;gap:13px;cursor:pointer;
 }
-.cart-icon-wrap{position:relative;font-size:24px;line-height:1;}
+.cart-icon-wrap{position:relative;display:flex;align-items:center;line-height:1;flex-shrink:0;}
 .cart-badge{
-  position:absolute;top:-6px;right:-8px;
-  background:var(--red);color:#fff;font-size:10px;font-weight:700;
-  width:18px;height:18px;border-radius:50%;
+  position:absolute;top:-8px;right:-9px;
+  background:var(--red);color:#231a10;font-size:12px;font-weight:800;
+  min-width:22px;height:22px;padding:0 5px;border-radius:11px;
   display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 6px rgba(0,0,0,0.4);
 }
-.cart-info{flex:1;}
-.cart-label{font-size:12px;color:rgba(255,255,255,0.42);letter-spacing:1px;}
-.cart-total-num{font-size:22px;font-weight:900;color:var(--gold2);}
+.cart-info{flex:1;min-width:0;line-height:1.15;}
+.cart-count{font-size:12px;color:rgba(255,255,255,0.55);letter-spacing:1px;}
+.cart-total-num{font-size:27px;font-weight:900;color:var(--gold2);line-height:1.1;}
+.cart-saved{font-size:11.5px;color:#63cb88;font-weight:700;letter-spacing:0.3px;margin-top:1px;}
 .checkout-btn{
-  background: linear-gradient(135deg, #f0c84a 0%, #d4a520 50%, #b8891a 100%);
-  color:var(--dark);border:none;padding:12px 26px;
-  font-family:'CashSign','Noto Serif TC',serif;font-size:15px;font-weight:900;
-  letter-spacing:3px;cursor:pointer;border-radius:8px;
-  box-shadow: 0 2px 16px rgba(212,165,32,0.4), inset 0 1px 0 rgba(255,255,255,0.25);
+  background: linear-gradient(180deg, #f3b962 0%, #e9a64c 55%, #c7852f 100%);
+  color:var(--dark);border:1px solid rgba(255,255,255,0.22);padding:16px 36px;
+  font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;font-size:16px;font-weight:800;
+  letter-spacing:3px;cursor:pointer;border-radius:13px;
+  box-shadow: 0 6px 20px rgba(233,166,76,0.4), inset 0 1px 0 rgba(255,255,255,0.45);
   transition: var(--transition);white-space:nowrap;
   position:relative;overflow:hidden;
 }
@@ -1546,7 +1567,7 @@ body::before{
   <!-- 全部固定在最上方的 sticky wrapper -->
   <div class="sticky-header">
     <div class="order-header">
-      <div>
+      <div class="order-title-row">
         <div class="order-hname">老滷仙</div>
         <div class="order-hsub">八德廣福店</div>
       </div>
@@ -1577,11 +1598,13 @@ body::before{
   </div>
   <div class="cart-summary" onclick="toggleCartDetail()">
     <div class="cart-icon-wrap">
+      <svg viewBox="0 0 24 24" width="27" height="27" fill="none" stroke="#e9a64c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2.5 3.5h2.6l2.3 11.3a1.5 1.5 0 0 0 1.5 1.2h8.3a1.5 1.5 0 0 0 1.5-1.2L21 7.5H6.2"/></svg>
       <div class="cart-badge" id="cartBadge">0</div>
     </div>
     <div class="cart-info">
-      <div class="cart-label" id="cartOrderLabel">訂單 A</div>
+      <div class="cart-count" id="cartCount">共 0 件</div>
       <div class="cart-total-num" id="cartTotalNum">$0</div>
+      <div class="cart-saved" id="cartSaved"></div>
     </div>
     <button class="checkout-btn" id="checkoutBtn" disabled onclick="handleCheckoutClick(event)">結 帳</button>
   </div>
@@ -2475,7 +2498,9 @@ function updateCartBar(){
   const totalQty=entries.reduce((s,[,v])=>s+v.qty,0);
   const calc=cartCalc(getCart()); // 自動湊優惠後的實付金額
   document.getElementById('cartBadge').textContent=totalQty;
-  document.getElementById('cartTotalNum').textContent=`$${calc.total}`+(calc.saved>0?` 已折$${calc.saved}`:'');
+  const _cc=document.getElementById('cartCount'); if(_cc) _cc.textContent='共 '+totalQty+' 件';
+  document.getElementById('cartTotalNum').textContent='$'+calc.total;
+  const _cs=document.getElementById('cartSaved'); if(_cs) _cs.textContent = calc.saved>0 ? ('已折 $'+calc.saved) : '';
   document.getElementById('checkoutBtn').disabled = groupMode ? !hasAnyItems() : Object.keys(getCart()).length===0;
   const el=document.getElementById('cartItems');
   if(!entries.length){
