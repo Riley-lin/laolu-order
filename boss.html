@@ -452,12 +452,18 @@ function discountInfo(r) {
     lines: packs.flatMap(o => o.discount_lines || []),
   };
 }
+// 折扣明細一行 → 文字（老闆版一律顯示 ×N；含折抵金額）；舊字串資料相容
+function discLineText(l, forBoss) {
+  if (typeof l === 'string') return l;
+  const q = (forBoss || l.times > 1) ? ' ×' + l.times : '';
+  return l.label + q + '　−$' + l.saved;
+}
 function totalBlock(r) {
   const d = discountInfo(r);
   let s = '';
   if (d.saved > 0) {
     s += '🎁 優惠折抵 −$' + d.saved + '\n';
-    d.lines.forEach(l => { s += '　' + l + '\n'; });
+    d.lines.forEach(l => { s += '　' + discLineText(l, true) + '\n'; });
   }
   s += '💰 合計 $' + r.total;
   return s;
@@ -582,7 +588,8 @@ function edPackDiscountLines(p) {
     const times = Math.floor(n / r.qty);
     if (times < 1) return;
     const s = times * (r.qty * r.unit - r.price);
-    lines.push((CAT_LABELS[c] || c) + ' 任' + r.qty + '樣$' + r.price + ' ×' + times + '（−$' + s + '）');
+    // 結構化明細：跟點餐頁 cartCalc.lines 同格式（label／times／saved）
+    lines.push({ label: (CAT_LABELS[c] || c) + ' 任' + r.qty + '樣$' + r.price, times: times, saved: s });
   });
   return lines;
 }

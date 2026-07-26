@@ -65,9 +65,10 @@ function discountInfo(r: any): { saved: number; lines: string[] } {
 function formatPrefs(p: any): string {
   if (!p) return ''
   const out: string[] = []
-  if (p.scallion === 'yes') out.push('加蔥'); else if (p.scallion === 'no') out.push('不要蔥')
-  if (p.garlic === 'yes') out.push('加蒜'); else if (p.garlic === 'no') out.push('不要蒜')
-  if (p.pepper === 'yes') out.push('加胡椒'); else if (p.pepper === 'no') out.push('不要胡椒')
+  // 蔥蒜胡椒預設加，只標客人選「不要」的（加是標配不印，三邊同步：點餐頁/boss.html/此處）
+  if (p.scallion === 'no') out.push('不要蔥')
+  if (p.garlic === 'no') out.push('不要蒜')
+  if (p.pepper === 'no') out.push('不要胡椒')
   if (p.spicy === 'yes' && p.spiceLevel) out.push('辣度：' + p.spiceLevel)
   else if (p.spicy === 'side') out.push(p.spiceLevel ? '辣度：' + p.spiceLevel + '（另外裝）' : '辣另外裝')
   else if (p.spicy === 'no') out.push('不加辣')
@@ -99,7 +100,8 @@ function flexPrefRows(r: any): any[] {
 // ---------- 對帳版 Flex 列（品名靠左、金額靠右＋折扣明細＋合計）----------
 // 老闆卡片與客人卡片共用同一套——兩邊看到的帳永遠同款
 // （純文字在 LINE 沒辦法真靠右——字寬不固定；要對齊只能用卡片，2026-07-19 Riley 拍板升級）
-function flexItemRows(r: any): any[] {
+// forBoss＝true：老闆卡片保留 ×N；客人卡片(false)＝×1 省略、只在 ≥2 才顯示
+function flexItemRows(r: any, forBoss = false): any[] {
   const d = discountInfo(r)
   const rows: any[] = flatItems(r).map((v: any) => ({
     type: 'box', layout: 'horizontal', contents: [
@@ -114,7 +116,14 @@ function flexItemRows(r: any): any[] {
         { type: 'text', text: '−$' + d.saved, size: 'sm', align: 'end', flex: 2, color: '#C0392B' },
       ],
     })
-    d.lines.forEach((l: string) => rows.push({ type: 'text', text: '　' + l, size: 'xs', color: '#999999', wrap: true }))
+    // 折扣明細：名稱靠左、金額靠右對齊（舊字串資料相容）
+    d.lines.forEach((l: any) => {
+      const isStr = typeof l === 'string'
+      const label = isStr ? l : (l.label + ((forBoss || l.times > 1) ? ' ×' + l.times : ''))
+      const contents: any[] = [{ type: 'text', text: '　' + label, size: 'xs', color: '#999999', wrap: true, flex: 5 }]
+      if (!isStr) contents.push({ type: 'text', text: '−$' + l.saved, size: 'xs', color: '#999999', align: 'end', flex: 2 })
+      rows.push({ type: 'box', layout: 'horizontal', contents })
+    })
   }
   // 口味偏好／備註接在品項後面、合計前面（老闆卡與客人卡共用，一改兩邊都到位）
   rows.push(...flexPrefRows(r))
@@ -204,7 +213,7 @@ function buildNewOrderCard(r: any) {
           { type: 'text', text: '🔔 新訂單 #' + r.order_no, weight: 'bold', size: 'lg', color: '#B8860B' },
           { type: 'text', text: '👤 ' + (r.customer_name ?? '') + '　📞 ' + (r.customer_phone ?? ''), size: 'sm', wrap: true },
           { type: 'separator', margin: 'sm' },
-          ...flexItemRows(r),
+          ...flexItemRows(r, true),
           { type: 'text', text: '👇 選等候分鐘＝接單，客人自動收到取餐時間', size: 'xs', color: '#999999', wrap: true, margin: 'md' },
         ],
       },

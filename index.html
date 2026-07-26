@@ -666,6 +666,11 @@ body::before{
 .cart-discount{margin-top:8px;padding-top:8px;border-top:1px dashed rgba(212,165,32,0.3);}
 .cart-discount-hd{display:flex;justify-content:space-between;color:var(--gold2);font-weight:700;font-size:13.5px;}
 .cart-discount-line{color:rgba(255,255,255,0.5);font-size:12px;margin-top:3px;padding-left:2px;letter-spacing:0.3px;}
+/* 折扣明細通用：名稱靠左、金額靠右對齊（客人端三處共用） */
+.disc-row{display:flex;justify-content:space-between;gap:10px;}
+.disc-row>span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap;}
+.disc-recap{font-size:11px;color:rgba(255,255,255,0.5);padding:1px 0 1px 12px;letter-spacing:0.3px;}
+.disc-query{font-size:11px;color:rgba(255,255,255,0.45);padding-left:12px;}
 
 .cart-summary{
   display:flex;align-items:center;padding:14px 16px;
@@ -1644,7 +1649,7 @@ body::before{
       <div class="cart-total-num" id="cartTotalNum">$0</div>
       <div class="cart-saved" id="cartSaved"></div>
     </div>
-    <button class="checkout-btn" id="checkoutBtn" disabled onclick="handleCheckoutClick(event)">結 帳</button>
+    <button class="checkout-btn" id="checkoutBtn" disabled onclick="handleCheckoutClick(event)">下 一 步</button>
   </div>
 </div>
 
@@ -1930,9 +1935,19 @@ function cartCalc(cart){
     const s = times * (r.qty * r.unit - r.price);
     saved += s;
     const cat = MENU.find(x => x.id === c);
-    lines.push((cat ? cat.label : c) + ' 任' + r.qty + '樣$' + r.price + ' ×' + times + '（−$' + s + '）');
+    // 結構化明細：label＝優惠名稱、times＝湊成幾組、saved＝折抵金額（各畫面自行排版：客人隱藏×1、老闆保留）
+    lines.push({ label: (cat ? cat.label : c) + ' 任' + r.qty + '樣$' + r.price, times: times, saved: s });
   });
   return { gross, saved, total: gross - saved, lines };
+}
+
+// 折扣明細一行 → 客人版 HTML（名稱靠左、金額靠右對齊；×1 省略，只在 ≥2 組才顯示次數）
+// 舊字串資料相容：直接原樣塞左欄
+function discLineHTML(l, extraCls){
+  const cls = 'disc-row' + (extraCls ? ' ' + extraCls : '');
+  if (typeof l === 'string') return '<div class="'+cls+'"><span>'+l+'</span></div>';
+  const q = l.times > 1 ? ' ×' + l.times : '';
+  return '<div class="'+cls+'"><span>'+l.label+q+'</span><span>−$'+l.saved+'</span></div>';
 }
 
 // ────────────────────────────────
@@ -2578,7 +2593,7 @@ function updateCartBar(){
       </div>`;}).join('')
       + (calc.saved>0?`<div class="cart-discount">
           <div class="cart-discount-hd"><span>優惠折抵</span><span>−$${calc.saved}</span></div>
-          ${calc.lines.map(l=>`<div class="cart-discount-line">${l}</div>`).join('')}
+          ${calc.lines.map(l=>discLineHTML(l,'cart-discount-line')).join('')}
         </div>`:'');
   }
 }
@@ -2686,7 +2701,7 @@ function openCheckout(e){
         </div>`:''}
         ${Object.values(o.cart).map(v=>`<div class="recap-row"><span>${v.name} × ${v.qty}</span><span>$${v.price*v.qty}</span></div>`).join('')}
         ${calcO.saved>0?`<div class="recap-row" style="color:var(--gold2);font-weight:700"><span>優惠折抵</span><span>−$${calcO.saved}</span></div>
-        ${calcO.lines.map(l=>`<div style="font-size:11px;color:rgba(255,255,255,0.5);padding:1px 0 1px 12px;letter-spacing:0.3px;">${l}</div>`).join('')}`:''}
+        ${calcO.lines.map(l=>discLineHTML(l,'disc-recap')).join('')}`:''}
         ${prefLines.length>0?`<div style="margin-top:6px;font-size:11px;color:rgba(255,255,255,0.45);letter-spacing:0.5px">${prefLines.join('、')}</div>`:''}
       </div>`;
     }).join('');
@@ -2842,7 +2857,7 @@ function showUtensilPrompt(next){
       <div style="margin-top:12px;border-top:1px dashed rgba(212,165,32,0.55);padding-top:6px;">
         ${items.map(i => utensilRowHTML(i.name, i.price)).join('')}
       </div>
-      <button class="btn-order" style="width:100%;margin-top:14px;" onclick="closeUtensilPrompt()">前 往 填 寫 資 料</button>
+      <button class="btn-order" style="width:100%;margin-top:14px;" onclick="closeUtensilPrompt()">前 往 結 帳</button>
     </div>`;
   // 點背景不放行——只有「繼續結帳」能過（Riley 抓的漏洞：亂點旁邊就溜進結帳）
   window._utensilNext = next;
@@ -3442,7 +3457,7 @@ function cloudOrderCardHTML(r) {
     if (o.discount > 0) {
       ordersHtml += '<div class="query-item-row" style="color:var(--gold2);font-weight:700"><span>優惠折抵</span><span>−$' + o.discount + '</span></div>';
       (o.discount_lines || []).forEach(l => {
-        ordersHtml += '<div style="font-size:11px;color:rgba(255,255,255,0.45);padding-left:12px;">' + l + '</div>';
+        ordersHtml += discLineHTML(l, 'disc-query');
       });
     }
     if (packs.length > 1) {
