@@ -633,40 +633,56 @@ body::before{
 }
 
 /* ══════════════ CART BAR ══════════════ */
+/* ── 購物車 bottom sheet（固定幾何版，Codex 藍圖：只用單一 transform 開合，無殘影）──
+   外殼只定位，不畫背景；視覺交給「摘要列」（收起時可見）＋「明細」（展開時滑上來）*/
 .cart-bar{
   position:fixed;bottom:0;left:0;right:0;
-  background: linear-gradient(0deg, #151110 0%, #1e1814 100%);   /* 純色（拿掉毛玻璃）：iOS 捲動不再重繪閃爍 */
-  border-top:1px solid rgba(212,165,32,0.35);
-  border-radius:20px 20px 0 0;   /* 圓角頂＝像浮起來的 bottom sheet，不再是整片直角 */
   z-index:100;
-  box-shadow: 0 -8px 40px rgba(0,0,0,0.8), 0 -1px 0 rgba(212,165,32,0.1);
-  padding-bottom: env(safe-area-inset-bottom);  /* 深色延伸進底部安全區，home 指示條那塊不露白 */
-  /* 獨立 GPU 圖層：拖曳位移平順（不用 will-change，iOS 上反而會閃） */
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
+  padding-bottom: env(safe-area-inset-bottom);  /* 深色延伸進底部安全區，不露白 */
   display:none;
 }
-/* 拖曳把手：暗示「這是可操作面板」；展開時黏在最上面不隨內容捲走 */
+/* 摘要列：永遠固定不動，收合時就是它。不透明底色＝可遮住滑到它後面的明細 */
+.cart-summary{
+  position:relative;z-index:2;
+  background: linear-gradient(0deg, #151110 0%, #1e1814 100%);
+  border-top:1px solid rgba(212,165,32,0.35);
+  border-radius:20px 20px 0 0;
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.8), 0 -1px 0 rgba(212,165,32,0.1);
+}
+.cart-bar.detail-open .cart-summary{border-radius:0;}  /* 展開時圓角頂交給明細，接縫才平 */
+/* 明細：絕對定位坐在摘要列正上方，脫離文件流＝收起不佔位；只用 transform 滑動 */
+.cart-detail{
+  position:absolute;left:0;right:0;bottom:100%;
+  max-width:860px;margin:0 auto;z-index:1;   /* 在摘要列底下＝滑下去被它遮住 */
+  max-height:calc(80dvh - 72px);              /* 內容自動撐高，最高約 80% */
+  overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  background: linear-gradient(0deg, #1e1814 0%, #241c17 100%);
+  border-top:1px solid rgba(212,165,32,0.35);
+  border-radius:20px 20px 0 0;
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.7);
+  transform: translate3d(0,110%,0);          /* 收起：整片往下藏到摘要列後面 */
+  transition: transform 0.32s cubic-bezier(0.32,0.72,0,1), visibility 0s linear 0.32s;
+  visibility:hidden;
+}
+.cart-detail.open{
+  transform: translate3d(0,0,0);             /* 展開：滑上來 */
+  visibility:visible;
+  transition: transform 0.32s cubic-bezier(0.32,0.72,0,1), visibility 0s;
+}
+@media (prefers-reduced-motion: reduce){
+  .cart-detail, .cart-detail.open{transition-duration:0.01ms;}
+}
+/* 拖曳把手：黏在明細最上面，暗示可拖 */
 .cart-handle{
   position:sticky;top:0;z-index:2;
-  display:none;                       /* 只有展開時才顯示 */
-  justify-content:center;
+  display:flex;justify-content:center;
   padding:9px 0 7px;
-  background: rgba(24,19,16,0.98);
-  border-radius:20px 20px 0 0;
+  background: linear-gradient(0deg, rgba(30,24,20,0) 0%, #241c17 40%);
 }
 .cart-handle::before{
   content:'';width:40px;height:4px;border-radius:2px;
   background:rgba(212,165,32,0.45);
 }
-.cart-detail.open .cart-handle{display:flex;}
-.cart-detail{
-  max-height:0;overflow:hidden;transition:max-height 0.35s ease, transform 0.3s ease;
-  max-width:860px;margin:0 auto;
-}
-/* 依內容自動長高：內容少只佔需要的高度，內容多最高頂到接近滿版（扣掉底部購物車列＋頂端一點縫）*/
-.cart-detail.open{max-height:calc(74vh - 72px);overflow-y:auto;overscroll-behavior:contain;}          /* 舊瀏覽器 fallback */
-.cart-detail.open{max-height:calc(80dvh - 72px);overflow-y:auto;overscroll-behavior:contain;}        /* 依內容長高，最高約 80%＝上方留一條暗背景，面板「浮」起來 */
 /* 購物車遮罩：蓋住背景菜單，展開時只能操作購物車 */
 .cart-backdrop{
   position:fixed;inset:0;background:rgba(0,0,0,0.5);
@@ -2629,11 +2645,23 @@ function updateCartBar(){
         </div>`:'');
   }
 }
-// 購物車明細開關：面板＋遮罩＋背景鎖定一起控制（遮罩擋住背景滑動＝iOS 也鎖得住）
+// 購物車明細開關：只切 class（CSS 用單一 transform 做開合動畫，無殘影）＋遮罩＋背景鎖定
 function setCartDetailOpen(open){
   cartOpen = open;
-  document.getElementById('cartDetail').classList.toggle('open', open);
+  const d = document.getElementById('cartDetail');
+  document.getElementById('cartBar')?.classList.toggle('detail-open', open);
   document.getElementById('cartBackdrop')?.classList.toggle('open', open);
+  if (open) {
+    // 先回到關閉終態(110%)並提交，下一幀再加 .open 觸發「滑上來」——WKWebView 才不會跳過過渡
+    d.style.transition = ''; d.style.transform = '';
+    d.classList.remove('open');
+    void d.offsetHeight;
+    requestAnimationFrame(() => requestAnimationFrame(() => d.classList.add('open')));
+  } else {
+    // 先移除 .open（交回 CSS 的 110% 終態），再清 inline——順序反了會跳一下再重滑
+    d.classList.remove('open');
+    d.style.transition = ''; d.style.transform = '';
+  }
   lockScroll(open);
 }
 function toggleCartDetail(){ setCartDetailOpen(!cartOpen); }
@@ -2642,48 +2670,50 @@ function toggleCartDetail(){ setCartDetailOpen(!cartOpen); }
 // 放開時滑超過門檻就關、沒超過就彈回。往上滑一律交給清單內部捲動，不搶。
 // 移動的是整個 cart-bar（含把手/清單/底部條），不能只動明細區，否則上緣會跟容器分家露出黑塊。
 (function initCartDragToClose(){
-  const sheet = document.getElementById('cartDetail');  // 觸控＋判斷是否捲到頂
-  const bar   = document.getElementById('cartBar');     // 真正位移的整個面板
-  if (!sheet || !bar) return;
+  const d = document.getElementById('cartDetail');   // 拖曳＋位移的就是明細本身（不再動整條 bar）
+  if (!d) return;
   const backdrop = document.getElementById('cartBackdrop');
   let startY = 0, dy = 0, dragging = false, allow = false;
   const CLOSE_THRESHOLD = 90; // 下拉超過 90px 才收合，避免手殘誤關
 
-  sheet.addEventListener('touchstart', e => {
+  d.addEventListener('touchstart', e => {
     if (!cartOpen) return;
     startY = e.touches[0].clientY;
     dy = 0; dragging = false;
     // 允許下拉收合的條件：從把手起手，或清單已捲到最頂（否則優先讓清單捲動）
     const onHandle = !!(e.target.closest && e.target.closest('.cart-handle'));
-    allow = onHandle || sheet.scrollTop <= 0;
-    bar.style.transition = 'none'; // 拖曳時關動畫，跟手才順
-    if (backdrop) backdrop.style.transition = 'none'; // 遮罩也關過渡，才不會 lag/閃
+    allow = onHandle || d.scrollTop <= 0;
+    d.style.transition = 'none'; // 拖曳時關動畫，跟手才順
+    if (backdrop) backdrop.style.transition = 'none';
   }, { passive: true });
 
-  sheet.addEventListener('touchmove', e => {
+  d.addEventListener('touchmove', e => {
     if (!cartOpen || !allow) return;
     dy = e.touches[0].clientY - startY;
     if (dy <= 0) { // 往上：還原並交還給內部捲動
-      if (dragging) { bar.style.transform = 'translate3d(0,0,0)'; dy = 0; }
+      if (dragging) { d.style.transform = 'translate3d(0,0,0)'; dy = 0; }
       return;
     }
     dragging = true;
-    e.preventDefault();                 // 擋掉背景/清單捲動，改成拖整個面板
-    bar.style.transform = 'translate3d(0,' + dy + 'px,0)';  // 用 3d＝跟 GPU 圖層一致，不閃
-    // 遮罩從「全暗(1)」開始隨下拉才漸淡——不可從 0.5 起跳，否則手指一碰背景突然變亮＝閃
+    e.preventDefault();                 // 擋掉清單捲動，改成拖明細
+    d.style.transform = 'translate3d(0,' + dy + 'px,0)';   // 只動 transform＝合成圖層，無殘影
     if (backdrop) backdrop.style.opacity = String(Math.max(0, 1 - dy / 400));
   }, { passive: false });
 
-  sheet.addEventListener('touchend', () => {
+  d.addEventListener('touchend', () => {
     if (!cartOpen) return;
-    if (backdrop) { backdrop.style.transition = ''; backdrop.style.opacity = ''; }
-    // 不論收合或彈回，面板都「平順滑回定位」——絕不把整條甩出畫面再彈回（那個瞬間彈回＝閃）
-    bar.style.transition = 'transform 0.26s ease';
-    bar.style.transform = '';
-    if (dragging && dy > CLOSE_THRESHOLD) {
-      setCartDetailOpen(false);         // 過門檻：同時收合明細，底部摘要條留著不動
-    }
-    setTimeout(() => { bar.style.transition = ''; }, 300);
+    if (!dragging) { allow = false; dy = 0; return; }  // 只是點一下把手：不動作
+    const close = dy > CLOSE_THRESHOLD;
+    if (backdrop) { backdrop.style.transition = ''; backdrop.style.opacity = ''; if (close) backdrop.classList.remove('open'); }
+    // 順著下拉方向滑（收合＝繼續往下藏；彈回＝回 0），只動 transform＝乾淨無殘影
+    d.style.transition = 'transform 0.28s cubic-bezier(0.4,0,0.2,1)';
+    d.style.transform = close ? 'translate3d(0,110%,0)' : 'translate3d(0,0,0)';
+    d.addEventListener('transitionend', function te(ev){
+      if (ev.propertyName !== 'transform') return;   // 只認 transform 動畫結束（用 transitionend 不用 setTimeout）
+      d.removeEventListener('transitionend', te);
+      if (close) { setCartDetailOpen(false); }        // 滑完才真正關閉＋清 inline
+      else { d.style.transition = ''; d.style.transform = ''; }  // 彈回：交回 CSS(.open)
+    });
     dragging = false; allow = false; dy = 0;
   });
 })();
