@@ -3923,8 +3923,10 @@ function scrollToSec(id,btn){
   const op=document.getElementById('order-page');   // 捲動的是內部容器（固定外殼架構），不是 window
   const el=document.getElementById(`sec-${id}`);
   if(el && op){
-    // rect.top 是相對視窗；捲動容器移動「元素目前位置 − sticky 標頭高度」的差距，讓該區停在標頭下方
-    op.scrollBy({ top: el.getBoundingClientRect().top - 130, behavior:'smooth' });
+    // 補償量＝固定標頭「真實高度」（老滷仙列＋分頁＋分類列），動態量測才不會被標頭蓋住區塊標題
+    const sticky=document.querySelector('.sticky-header');
+    const offset=(sticky ? sticky.offsetHeight : 150) + 6;   // +6 留一點縫，標題剛好露在標頭下方
+    op.scrollBy({ top: el.getBoundingClientRect().top - offset, behavior:'smooth' });
   }
   document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
@@ -3938,7 +3940,8 @@ function activeCatByScroll(){
   const secs=[...document.querySelectorAll('.menu-section')];
   const btns=[...document.querySelectorAll('.cat-btn')];
   if(!secs.length || !btns.length) return;
-  const line=170;                        // sticky 標頭高度附近的判定線
+  const sticky=document.querySelector('.sticky-header');
+  const line=(sticky ? sticky.offsetHeight : 170) + 8;   // 判定線＝固定標頭高度附近（跟點擊跳段同一基準）
   let idx=0;
   for(let i=0;i<secs.length;i++){
     if(secs[i].getBoundingClientRect().top - line <= 0) idx=i;
