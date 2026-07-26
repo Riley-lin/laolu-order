@@ -1402,6 +1402,34 @@ body::before{
 .otl-step.future .otl-t{color:rgba(255,255,255,0.4);}
 .otl-sub{font-size:12px;color:rgba(255,255,255,0.45);margin-top:2px;}
 .otl-time{font-size:12px;color:rgba(255,255,255,0.4);margin-left:8px;font-variant-numeric:tabular-nums;}
+/* 目前步驟放大、其他步驟降透明（一眼看到現在到哪） */
+.otl-step.future{opacity:0.5;}
+.otl-step.current .otl-dot{width:34px;height:34px;font-size:17px;}
+.otl-step.current .otl-t{font-size:16px;}
+
+/* ── Hero 進行中訂單卡 ── */
+.hero-order{background:linear-gradient(160deg,#241c17 0%,#1a1512 100%);border:1px solid rgba(212,165,32,0.3);border-radius:16px;padding:20px 18px;margin-bottom:16px;box-shadow:0 8px 28px rgba(0,0,0,0.4);}
+.hero-no{font-size:12px;color:rgba(255,255,255,0.45);letter-spacing:1px;}
+.hero-status{font-size:24px;font-weight:900;color:var(--gold2);margin:6px 0 10px;letter-spacing:1px;}
+.hero-timewrap{display:flex;align-items:baseline;gap:10px;margin-bottom:4px;}
+.hero-timelabel{font-size:13px;color:rgba(255,255,255,0.55);}
+.hero-time{font-size:34px;font-weight:900;color:var(--cream);line-height:1;font-variant-numeric:tabular-nums;}
+.hero-mins{font-size:15px;font-weight:700;color:#ff9d5c;}
+.hero-bar{height:8px;border-radius:5px;background:rgba(255,255,255,0.1);overflow:hidden;margin:14px 0 18px;}
+.hero-bar-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,#e9a64c,#f3c869);transition:width 0.6s ease;}
+.hero-wait-plain{font-size:14px;color:rgba(255,255,255,0.6);margin:8px 0 16px;}
+
+/* ── 今天較早訂單（收合） ── */
+.past-orders{margin-top:6px;}
+.past-toggle{display:flex;justify-content:space-between;align-items:center;padding:12px 4px;font-size:13px;color:rgba(255,255,255,0.55);cursor:pointer;border-top:1px solid rgba(255,255,255,0.08);}
+.past-arrow{transition:transform 0.2s;}
+.past-arrow.open{transform:rotate(180deg);}
+.past-row{display:flex;justify-content:space-between;align-items:center;padding:11px 4px;border-top:1px dashed rgba(255,255,255,0.07);font-size:13.5px;}
+.past-row-l{color:var(--cream);} .past-row-l .pr-done{color:#63cb88;font-weight:700;} .past-row-l .pr-cancel{color:#e07a5f;font-weight:700;}
+.past-row-t{font-size:12px;color:rgba(255,255,255,0.4);margin-left:8px;}
+.past-detail-btn{font-size:12px;color:var(--gold3);cursor:pointer;white-space:nowrap;}
+.past-detail{font-size:12px;color:rgba(255,255,255,0.55);padding:6px 4px 10px;line-height:1.7;}
+.last-updated{text-align:center;font-size:11px;color:rgba(255,255,255,0.3);margin-top:14px;letter-spacing:1px;}
 .query-card-header {
   display: flex;
   align-items: center;
@@ -3868,56 +3896,128 @@ let _coverQueryMode = 'orderno';
 function openCoverQuery() {
   document.getElementById('coverQueryBg').classList.add('open');
   lockScroll(true);
-  // 📱 LINE 客人：用 LINE ID 自動撈當天訂單＋進度，免打姓名電話；一般瀏覽器維持查詢表單
+  // 📱 LINE 客人：今日訂單＝Hero 進行中＋收合完成單，每 30 秒自動刷新；一般瀏覽器維持查詢表單
   if (LINE_USER && LINE_USER.id) {
     const inputArea = document.getElementById('coverQueryInputArea');
     if (inputArea) inputArea.style.display = 'none';
     const hint = inputArea ? inputArea.previousElementSibling : null;
-    if (hint) hint.textContent = '你今天的訂單（自動帶入，會即時反映進度）';
+    if (hint) hint.style.display = 'none';
+    const box = document.querySelector('#coverQueryBg .query-box-header-text');
+    if (box) box.textContent = '今 日 訂 單';
+    const title = document.querySelector('#coverQueryBg .modal-title');
+    if (title) title.textContent = '今日訂單';
     const sub = document.querySelector('#coverQueryBg .modal-sub');
-    if (sub) sub.textContent = '你的當天訂單與進度';
-    runLineOrderQuery(document.getElementById('coverQueryResult'));
+    if (sub) sub.textContent = '查看目前訂單進度';
+    const el = document.getElementById('coverQueryResult');
+    runLineOrderQuery(el);
+    clearInterval(_myOrdersTimer);
+    _myOrdersTimer = setInterval(() => runLineOrderQuery(el), 30000);  // 每 30 秒自動更新進度
   }
 }
+let _myOrdersTimer = null;
 
-// 我的訂單：直式進度時間軸（已送出→老闆接單→製作中→可取餐）
-function lineOrderTimelineHTML(r) {
-  const t = iso => iso ? new Date(iso).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
-  const st = r.status;
-  const pk = r.pickup_at ? t(r.pickup_at) : '';
-  if (st === 'cancelled') {
-    return '<div class="query-card" style="padding:16px"><div class="otl-no">訂單 #' + r.order_no + '</div>'
-      + '<div class="otl-cancel">❌ 訂單已取消（有疑問請致電 0939-955-888）</div></div>';
-  }
-  // 目前進行到第幾步：new=1(等接單)、confirmed=2(製作中)、done=4(全完成)
-  const stage = st === 'new' ? 1 : st === 'confirmed' ? 2 : 4;
+// 台北時間 HH:MM
+function _hm(iso) { return iso ? new Date(iso).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }) : ''; }
+
+// 進度時間軸 4 步驟（已送出→店家接單→製作中→可取餐）；stage＝目前到第幾步
+function timelineStepsHTML(r, stage) {
+  const st = r.status, pk = r.pickup_at ? _hm(r.pickup_at) : '';
   const steps = [
-    { icon: '📤', t: '已送出',  time: t(r.created_at),   sub: '訂單成立' },
-    { icon: '🔔', t: '老闆接單', time: t(r.confirmed_at), sub: stage >= 2 ? '開始準備' : '等待老闆確認' },
-    { icon: '🔍', t: '製作中',  time: '', sub: st === 'done' ? '已完成' : (stage >= 2 ? ('正在滷…預計 ' + (pk || '—') + ' 完成') : '等待製作') },
-    { icon: '🍜', t: '可取餐',  time: '', sub: st === 'done' ? '餐點完成，請取餐' : '完成後 LINE 通知你' },
+    { t: '已送出',  time: _hm(r.created_at),   sub: '訂單成立' },
+    { t: '店家接單', time: _hm(r.confirmed_at), sub: stage >= 2 ? '開始準備' : '等待老闆確認' },
+    { t: '製作中',  time: '', sub: st === 'done' ? '已完成' : (stage >= 2 ? ('正在滷…預計 ' + (pk || '—') + ' 完成') : '等待製作') },
+    { t: '可取餐',  time: '', sub: st === 'done' ? '餐點完成，請取餐' : '完成後將透過 LINE 通知' },
   ];
+  const icons = ['📤', '🔔', '🍲', '🍜'];
   let rows = '';
   steps.forEach((s, i) => {
     const cls = i < stage ? 'done' : (i === stage ? 'current' : 'future');
-    const dot = cls === 'done' ? '✓' : s.icon;
-    rows += '<div class="otl-step ' + cls + '">'
-      + '<div class="otl-dot ' + cls + '">' + dot + '</div>'
+    const dot = cls === 'done' ? '✓' : icons[i];
+    rows += '<div class="otl-step ' + cls + '"><div class="otl-dot ' + cls + '">' + dot + '</div>'
       + '<div class="otl-body"><div class="otl-t">' + s.t + (s.time ? '<span class="otl-time">' + s.time + '</span>' : '') + '</div>'
       + '<div class="otl-sub">' + s.sub + '</div></div></div>';
   });
-  const head = '<div class="otl-head"><div class="otl-no">訂單 #' + r.order_no + '</div>'
-    + (stage >= 2 && pk
-        ? '<div class="otl-pickup">預計取餐時間<b>' + pk + '</b></div>'
-        : '<div class="otl-pickup" style="font-size:13px;color:rgba(255,255,255,0.5)">等待老闆確認取餐時間…</div>')
-    + '</div>';
-  return '<div class="query-card" style="padding:16px 16px 18px">' + head + rows + '</div>';
+  return rows;
 }
 
-// 用 LINE ID 撈自己當天訂單 → 進度時間軸
+// Hero 卡：進行中訂單（new／confirmed）放大顯示「餐好了沒」
+function heroOrderHTML(r) {
+  const st = r.status, pk = r.pickup_at ? _hm(r.pickup_at) : '';
+  let statusLabel, timeBlock, bar = '';
+  if (st === 'new') {
+    statusLabel = '🔔 等待老闆確認';
+    timeBlock = '<div class="hero-wait-plain">已送出，老闆接單後會顯示取餐時間</div>';
+  } else {
+    statusLabel = '🍲 製作中';
+    let mins = '';
+    if (r.pickup_at) {
+      const d = Math.round((new Date(r.pickup_at).getTime() - Date.now()) / 60000);
+      mins = d > 0 ? ('約 ' + d + ' 分鐘') : '快好了';
+    }
+    timeBlock = '<div class="hero-timewrap"><span class="hero-timelabel">預計取餐</span>'
+      + '<span class="hero-time">' + (pk || '—') + '</span>'
+      + (mins ? '<span class="hero-mins">' + mins + '</span>' : '') + '</div>';
+    let pct = 55;
+    if (r.confirmed_at && r.pickup_at) {
+      const total = new Date(r.pickup_at) - new Date(r.confirmed_at);
+      const done = Date.now() - new Date(r.confirmed_at);
+      pct = total > 0 ? Math.max(10, Math.min(95, Math.round(done / total * 100))) : 55;
+    }
+    bar = '<div class="hero-bar"><div class="hero-bar-fill" style="width:' + pct + '%"></div></div>';
+  }
+  const stage = st === 'new' ? 1 : 2;
+  return '<div class="hero-order"><div class="hero-no">訂單 #' + r.order_no + '</div>'
+    + '<div class="hero-status">' + statusLabel + '</div>' + timeBlock + bar
+    + timelineStepsHTML(r, stage) + '</div>';
+}
+
+// 今天較早訂單（done／cancelled）：收合成一列＋查看明細
+function pastOrderRowHTML(r) {
+  const st = r.status;
+  const label = st === 'done' ? '<span class="pr-done">✔ 已完成</span>' : '<span class="pr-cancel">✕ 已取消</span>';
+  const when = _hm(st === 'done' ? (r.pickup_at || r.created_at) : r.created_at);
+  const items = [];
+  (Array.isArray(r.items) ? r.items : []).forEach(o => (o.items || []).forEach(v => items.push(v.name + '×' + v.qty)));
+  const id = 'pd-' + r.order_no;
+  return '<div><div class="past-row">'
+    + '<span class="past-row-l">' + label + ' <span style="opacity:0.55">#' + r.order_no + '</span><span class="past-row-t">' + when + '</span></span>'
+    + '<span class="past-detail-btn" onclick="toggleOrderDetail(\'' + id + '\',this)">查看明細 ›</span></div>'
+    + '<div class="past-detail" id="' + id + '" style="display:none">' + (items.join('、') || '（無明細）') + '　合計 $' + r.total + '</div></div>';
+}
+
+function togglePastOrders(el) {
+  const list = el.parentElement.querySelector('.past-list');
+  const arr = el.querySelector('.past-arrow');
+  const open = list.style.display === 'none';
+  list.style.display = open ? 'block' : 'none';
+  arr.classList.toggle('open', open);
+}
+function toggleOrderDetail(id, el) {
+  const d = document.getElementById(id);
+  const open = d.style.display === 'none';
+  d.style.display = open ? 'block' : 'none';
+  el.textContent = open ? '收合 ˄' : '查看明細 ›';
+}
+
+// 組整頁：進行中(Hero) ＋ 今天較早訂單(收合) ＋ 最後更新
+function renderMyOrders(rows, el) {
+  const active = rows.filter(r => r.status === 'new' || r.status === 'confirmed');
+  const past = rows.filter(r => r.status === 'done' || r.status === 'cancelled');
+  let html = active.length
+    ? active.map(heroOrderHTML).join('')
+    : '<div class="query-result-empty">目前沒有進行中的訂單 🍢<br><small style="opacity:0.7">下單後這裡會顯示製作進度</small></div>';
+  if (past.length) {
+    html += '<div class="past-orders"><div class="past-toggle" onclick="togglePastOrders(this)">今天較早訂單（' + past.length + '）<span class="past-arrow">▼</span></div>'
+      + '<div class="past-list" style="display:none">' + past.map(pastOrderRowHTML).join('') + '</div></div>';
+  }
+  html += '<div class="last-updated">最後更新 ' + _hm(new Date().toISOString()) + '</div>';
+  el.innerHTML = html;
+}
+
+// 用 LINE ID 撈自己當天訂單 → 今日訂單頁
 async function runLineOrderQuery(el) {
   if (!el) return;
-  el.innerHTML = '<div class="query-result-empty">⏳ 載入你的訂單…</div>';
+  if (!el.innerHTML) el.innerHTML = '<div class="query-result-empty">⏳ 載入你的訂單…</div>';
   try {
     const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_orders_by_line', {
       method: 'POST',
@@ -3930,15 +4030,16 @@ async function runLineOrderQuery(el) {
       el.innerHTML = '<div class="query-result-empty">你今天還沒有訂單<br><small style="opacity:0.7">下單後這裡會自動顯示進度</small></div>';
       return;
     }
-    el.innerHTML = rows.map(lineOrderTimelineHTML).join('');
+    renderMyOrders(rows, el);
   } catch (e) {
-    el.innerHTML = '<div class="query-result-empty">載入失敗，請再試一次<br><small style="opacity:0.7">或直接致電 0939-955-888</small></div>';
+    if (!el.querySelector('.hero-order')) el.innerHTML = '<div class="query-result-empty">載入失敗，請再試一次<br><small style="opacity:0.7">或直接致電 0939-955-888</small></div>';
   }
 }
 
 function closeCoverQuery() {
   document.getElementById('coverQueryBg').classList.remove('open');
   document.getElementById('coverQueryResult').innerHTML = '';
+  clearInterval(_myOrdersTimer);   // 停掉自動刷新
   lockScroll(false);
 }
 
