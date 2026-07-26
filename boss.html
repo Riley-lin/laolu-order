@@ -34,7 +34,8 @@
   body::before{content:'';position:fixed;left:0;right:0;top:-100vh;bottom:-100vh;z-index:-2;background:var(--bg);pointer-events:none;}
   /* position:relative＝把 .wrap 設成「定位的基準點」，
      裡面的登出鈕才知道要貼在「這一塊」的右上角，而不是整個螢幕 */
-  .wrap{max-width:720px;margin:0 auto;padding:16px;position:relative;}
+  /* padding-top 疊加安全區：PWA 全螢幕時把標題推到瀏海/狀態列下方，一般瀏覽器 env 為 0 不受影響 */
+  .wrap{max-width:720px;margin:0 auto;padding:16px;padding-top:calc(16px + env(safe-area-inset-top));position:relative;}
   /* 登出鈕獨立在右上角：離工具列那排按鈕遠遠的，忙起來才不會誤觸（Riley 2026-07-22 回報） */
   .btn-logout{position:absolute;top:16px;right:16px;z-index:5;
     padding:7px 12px;border-radius:6px;border:1px solid var(--line);
