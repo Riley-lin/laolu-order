@@ -109,15 +109,8 @@ async function handleBossButton(ev: any, userId: string) {
       return
     }
     const r = rows[0]
-    // 目前不主動推播客人（省 LINE 則數）；客人在「我的訂單」自己看取餐時間
-    await replyMessages(ev.replyToken, [
-      {
-        type: 'text',
-        text: '✅ 已接單 #' + r.order_no + '，取餐時間 ' + fmtHM(r.pickup_at) + '\n'
-          + '客人可在「我的訂單」看到取餐時間',
-      },
-      buildCookingCard(r),
-    ])
+    // 只推一張「已接單·製作中」卡片就好（不再另發一段文字，介面乾淨）
+    await replyMessages(ev.replyToken, [buildCookingCard(r)])
     return
   }
 
@@ -199,7 +192,7 @@ function buildCookingCard(r: any) {
       type: 'bubble',
       body: {
         type: 'box', layout: 'vertical', spacing: 'sm', contents: [
-          { type: 'text', text: '🔥 #' + r.order_no + ' 製作中', weight: 'bold', size: 'lg', color: '#B8860B' },
+          { type: 'text', text: '✅ #' + r.order_no + ' 已接單 · 製作中', weight: 'bold', size: 'lg', color: '#2E7D32' },
           { type: 'text', text: '⏰ 取餐時間 ' + fmtHM(r.pickup_at), size: 'sm' },
           { type: 'text', text: '做好了按「完成」歸檔', size: 'xs', color: '#999999' },
         ],
