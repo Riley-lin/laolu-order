@@ -8,6 +8,9 @@
 -- 用法：Supabase SQL Editor 貼上執行一次。
 -- ============================================================
 
+-- 先移除舊版（回傳欄位改了，Postgres 不允許直接 replace）
+drop function if exists public.get_orders_by_line(text);
+
 create or replace function public.get_orders_by_line(p_line_user_id text)
 returns table(
   order_no text,
