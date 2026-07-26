@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"><!-- 禁止點輸入框時自動放大（畫面歪掉的元兇），手動雙指縮放不受影響 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"><!-- 禁止點輸入框時自動放大（畫面歪掉的元兇），手動雙指縮放不受影響；viewport-fit=cover＝畫布鋪滿含底部安全區，深色底墊到最底不露白 -->
 <meta name="theme-color" content="#0e0400"><!-- 告訴 LINE 瀏覽器：頁面周圍請塗深色，不要白 -->
 <title>老滷仙 道地滷味 ─ 八德廣福店</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500;700;900&family=Noto+Sans+TC:wght@300;400;500;700&family=Playfair+Display:wght@400;700;900&display=swap" rel="stylesheet">
@@ -37,7 +37,6 @@ body{
   font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
   color:var(--cream);
   min-height:100vh;
-  overscroll-behavior-y:none;   /* 實際捲動的是 body：這裡也要關橡皮筋，才不會滑到底露白 */
 }
 /* iPhone 的 LINE 瀏覽器：滑到底再拉，整頁會被「橡皮筋」拉走、露出底下的白色——
    html 背景管不到那塊。鋪一張比螢幕上下各多一個螢幕高的固定深色底墊，怎麼拉都不露白 */
@@ -641,6 +640,7 @@ body::before{
   box-shadow: 0 -8px 40px rgba(0,0,0,0.8), 0 -1px 0 rgba(212,165,32,0.1);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  padding-bottom: env(safe-area-inset-bottom);  /* 深色延伸進底部安全區，home 指示條那塊不露白 */
   display:none;
 }
 /* 拖曳把手：暗示「這是可操作面板」；展開時黏在最上面不隨內容捲走 */
