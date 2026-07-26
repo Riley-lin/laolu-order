@@ -352,23 +352,18 @@ body::before{
 /* 店名：金屬質感金色襯線體（老字號高級感） */
 .order-hname{
   font-family:'PingFang TC','Microsoft JhengHei','Noto Sans TC','Helvetica Neue',sans-serif;
-  font-size:24px;font-weight:800;letter-spacing:6px;line-height:1.15;
+  font-size:24px;font-weight:900;letter-spacing:5px;line-height:1.1;
   background:linear-gradient(180deg,#f7dc9c 0%,#e9a64c 55%,#c7852f 100%);
   -webkit-background-clip:text;background-clip:text;
   -webkit-text-fill-color:transparent;color:transparent;
   text-shadow:0 1px 10px rgba(233,166,76,0.15);
 }
-/* 店名列：老滷仙＋八德廣福店 同一行對齊 */
-.order-title-row{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;}
-/* 分店名：細金線點綴＋寬間距（排在店名右側） */
+/* 店名列：老滷仙／八德廣福店 上下兩行 */
+.order-title-row{display:flex;flex-direction:column;align-items:flex-start;gap:4px;}
+/* 分店名：第二行，縮小＋變淡，不搶品牌焦點 */
 .order-hsub{
-  display:inline-flex;align-items:center;gap:8px;
-  font-size:11px;color:rgba(243,217,168,0.62);letter-spacing:4px;
+  font-size:12px;color:rgba(243,217,168,0.52);letter-spacing:4px;
   font-weight:400;
-}
-.order-hsub::before{
-  content:'';width:16px;height:1px;flex:0 0 auto;
-  background:linear-gradient(90deg,transparent,rgba(233,166,76,0.7));
 }
 .back-btn{
   margin-left:8px;background:rgba(212,165,32,0.12);border:1px solid var(--gold3);
@@ -388,7 +383,7 @@ body::before{
 /* 等待時間膠囊（右上角，Uber 版） */
 .wait-pill{flex:0 0 auto;margin-left:auto;display:inline-flex;align-items:center;gap:4px;
   font-size:12px;font-weight:700;color:#63cb88;border:1px solid #63cb88;
-  border-radius:20px;padding:5px 11px;white-space:nowrap;letter-spacing:0.5px;}
+  border-radius:20px;padding:6px 14px;white-space:nowrap;letter-spacing:0.8px;}
 .wait-pill span{color:#63cb88;font-weight:900;font-size:14px;}
 
 /* 分類導覽 */
@@ -405,7 +400,7 @@ body::before{
   flex-shrink:0;padding:7px 16px;
   border:1px solid rgba(212,165,32,0.2);
   background: rgba(255,255,255,0.03);
-  color:rgba(255,255,255,0.45);font-size:12px;cursor:pointer;
+  color:rgba(255,255,255,0.5);font-size:12.5px;cursor:pointer;font-weight:500;
   border-radius:20px;white-space:nowrap;
   transition: var(--transition);
   font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
@@ -544,6 +539,10 @@ body::before{
   background: linear-gradient(135deg, rgba(212,165,32,0.12), rgba(180,120,10,0.08));
   box-shadow: inset 4px 0 0 var(--gold2), 0 0 16px rgba(212,165,32,0.12);
 }
+/* 加入購物車：卡片微彈一下的回饋動畫 */
+@keyframes cardPop{0%{transform:scale(1)}45%{transform:scale(1.025)}100%{transform:scale(1)}}
+.item-card.just-added{animation:cardPop .22s ease;}
+@media (prefers-reduced-motion: reduce){ .item-card.just-added{animation:none;} }
 
 .item-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
 .item-name{font-size:15.5px;font-weight:600;color:rgba(253,246,227,0.95);line-height:1.35;letter-spacing:0.3px;}
@@ -702,6 +701,7 @@ body::before{
   transform:translateY(-2px);
   box-shadow:0 6px 24px rgba(212,165,32,0.55), inset 0 1px 0 rgba(255,255,255,0.25);
 }
+.checkout-btn:active:not(:disabled){transform:scale(0.96);box-shadow:0 3px 12px rgba(233,166,76,0.35), inset 0 1px 0 rgba(255,255,255,0.45);}
 .checkout-btn:disabled{opacity:0.28;cursor:not-allowed;}
 
 /* ══════════════ MODAL ══════════════ */
@@ -2242,6 +2242,7 @@ function chQty(key,name,price,delta){
   getCart()[key].qty=Math.max(0,getCart()[key].qty+delta);
   if(getCart()[key] && getCart()[key].qty===0) delete getCart()[key];
   refreshCard(key);
+  if(delta>0){ const _c=document.getElementById('card-'+key); if(_c){ _c.classList.remove('just-added'); void _c.offsetWidth; _c.classList.add('just-added'); setTimeout(function(){_c.classList.remove('just-added');},240); } }
   updateCartBar();
 }
 function refreshCard(key){
