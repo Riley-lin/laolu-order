@@ -809,17 +809,21 @@ body::before{
   animation:waitBreath 2.6s ease-in-out infinite;
 }
 @keyframes waitBreath{
-  0%,100%{ box-shadow:0 0 5px 1px var(--wd,#37c26a); opacity:0.55; }
-  50%    { box-shadow:0 0 13px 5px var(--wd,#37c26a); opacity:0.9; }
+  0%,100%{ box-shadow:0 0 3px 0px var(--wd,#37c26a); opacity:0.55; }
+  50%    { box-shadow:0 0 7px 2px var(--wd,#37c26a); opacity:0.9; }
 }
 @media (prefers-reduced-motion: reduce){
-  .wait-dot{ animation:none; box-shadow:0 0 8px 2px var(--wd,#37c26a); }
+  .wait-dot{ animation:none; box-shadow:0 0 4px 1px var(--wd,#37c26a); }
 }
-/* 口味偏好說明（預設加蔥蒜胡椒） */
+/* 口味偏好說明（預設加蔥蒜胡椒）：琥珀金 banner，跟深色主題同家族又夠明顯 */
 .pref-hint{
-  font-size:12px;color:rgba(253,246,227,0.5);
-  line-height:1.6;margin-bottom:10px;letter-spacing:0.3px;
+  font-size:12.5px;color:var(--goldlight);
+  line-height:1.7;margin-bottom:12px;letter-spacing:0.3px;
+  background:rgba(212,165,32,0.10);
+  border-left:3px solid var(--gold2);
+  border-radius:6px;padding:8px 11px;
 }
+.pref-hl{color:var(--gold2);font-weight:800;}   /* 蔥蒜胡椒關鍵字：亮金加粗 */
 /* 環保提醒彈窗：輕微放大進場（不淡入，較有精神） */
 .utensil-card{ animation:utensilPop 0.22s cubic-bezier(0.34,1.3,0.64,1) both; }
 @keyframes utensilPop{ from{ transform:scale(0.92); } to{ transform:scale(1); } }
@@ -2729,7 +2733,7 @@ function openCheckout(e){
 
       ${!multiOrder ? `
       <div class="modal-section-label">口 味 偏 好</div>
-      <div class="pref-hint">基本調味預設加蔥、蒜、胡椒；不需要的請勾選下方</div>
+      <div class="pref-hint">基本調味預設加<span class="pref-hl">蔥、蒜、胡椒</span>；若需調整，請勾選下方選項</div>
       <div style="margin-bottom:14px">
         <div class="pref-grid" style="grid-template-columns:1fr 1fr 1fr;">
           <div class="pref-btn ${prefs.scallion==='no'?'selected':''}" onclick="toggleNoPref('scallion',this)">不要蔥</div>
