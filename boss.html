@@ -731,11 +731,12 @@ async function commitEdit() {
    「今日暫停」的聰明設計：存的是今天的日期，明天自動失效——按了不用記得關。 */
 async function openShopSettings() {
   const { data, error } = await db.from('app_config')
-    .select('name,value').in('name', ['notice', 'closed_dates', 'closed_now', 'open_hours', 'wait_minutes']);
+    .select('name,value').in('name', ['notice', 'closed_dates', 'closed_now', 'pause_now', 'open_hours', 'wait_minutes']);
   if (error || !data) { alert('讀取失敗——還沒跑 setup-config.sql？'); return; }
   const cfg = {}; data.forEach(r => cfg[r.name] = r.value || '');
   const today = taipeiToday();
-  const pausedToday = cfg.closed_now === today;
+  const pausedToday = cfg.closed_now === today;   // 臨時公休（今日公休看板）
+  const pausedNow = cfg.pause_now === today;       // 暫停接單（忙不過來看板）
   // 營業時段拆成兩個時間框（存檔格式 HH:MM-HH:MM；24:00＝收到半夜，畫面顯示 00:00）
   const hm = /^(\d{2}:\d{2})-(\d{2}:\d{2})$/.exec(cfg.open_hours || '') || [null, '17:00', '24:00'];
   const openFrom = hm[1], openTo = (hm[2] === '24:00' ? '00:00' : hm[2]);
@@ -749,9 +750,13 @@ async function openShopSettings() {
     + '<div class="mm-list">'
     +   '<div class="dr-sec">⏸ 臨時打烊</div>'
     +   '<button id="pauseBtn" class="' + (pausedToday ? 'btn-accept' : 'btn-cancel') + '" style="width:100%;padding:12px;font-size:15px;" onclick="togglePauseToday(' + pausedToday + ')">'
-    +     (pausedToday ? '▶️ 恢復接單（目前：今日暫停中）' : '⏸️ 今日暫停接單')
+    +     (pausedToday ? '▶️ 恢復營業（目前：今日公休中）' : '🚪 臨時公休（今天不開）')
     +   '</button>'
-    +   '<div class="lp-note" style="text-align:left">按下後客人點餐頁立刻顯示「今日公休」且無法下單；明天自動恢復，不用記得回來關</div>'
+    +   '<div class="lp-note" style="text-align:left">客人看到「今日公休・感謝支持明天見」且無法下單；明天自動恢復，不用記得回來關</div>'
+    +   '<button id="pauseNowBtn" class="' + (pausedNow ? 'btn-accept' : 'btn-cancel') + '" style="width:100%;padding:12px;font-size:15px;margin-top:10px;" onclick="togglePauseNow(' + pausedNow + ')">'
+    +     (pausedNow ? '▶️ 恢復接單（目前：暫停接單中）' : '⏸️ 暫停接單（忙不過來）')
+    +   '</button>'
+    +   '<div class="lp-note" style="text-align:left">客人看到「暫停接單・老闆忙不過來啦！」且無法下單；明天自動恢復</div>'
     +   '<div class="dr-sec">🕔 每日接單時段</div>'
     +   '<div style="display:flex;gap:8px;align-items:center;">'
     +     '<input type="time" id="cfgOpenFrom" value="' + openFrom + '" style="flex:1;padding:9px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);color-scheme:dark;">'
@@ -844,6 +849,16 @@ async function togglePauseToday(currentlyPaused) {
   if (error || !data?.length) { alert('切換失敗，請確認已登入再試'); return; }
   document.getElementById('shopSettings')?.remove();
   openShopSettings(); // 重開＝看到最新狀態
+}
+
+/* 暫停接單開關：立即生效（值＝今天日期，隔天自動失效）；需先跑 setup-security.sql 建 pause_now 格 */
+async function togglePauseNow(currentlyPaused) {
+  const val = currentlyPaused ? '' : taipeiToday();
+  const { data, error } = await db.from('app_config')
+    .update({ value: val }).eq('name', 'pause_now').select();
+  if (error || !data?.length) { alert('切換失敗——請確認已登入，且已跑過 setup-security.sql（新增 pause_now 格）'); return; }
+  document.getElementById('shopSettings')?.remove();
+  openShopSettings();
 }
 
 async function saveShopSettings() {

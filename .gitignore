@@ -1,1 +1,12 @@
 laolu-line-keys.txt
+
+# 部署暫存與測試檔（2026-07-26 Uber 改版）
+.wrangler/
+_test_*.html
+index-uber.html
+_*.js
+dumped.html
+debug.html
+dbg_dump.html
+d2.html
+tiny.html
