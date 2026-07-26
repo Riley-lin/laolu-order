@@ -29,7 +29,9 @@
   src:local('PingFang TC'),local('Helvetica Neue'),local('Roboto'),local('Arial');
   unicode-range:U+0024;
 }
-html{scroll-behavior:smooth;background:var(--dark);overscroll-behavior-y:none;} /* 補底色＋關掉往下拉過頭的橡皮筋 */
+/* 固定外殼：html/body 完全不捲動，捲動交給內部容器(#order-page/#cover)。
+   這樣整頁沒有捲動＝底部 position:fixed 的購物車列不會抖、不會有橡皮筋閃爍（iOS 根治法）*/
+html{scroll-behavior:smooth;background:var(--dark);height:100%;overflow:hidden;overscroll-behavior:none;}
 body{
   background: var(--dark);
   background-image:
@@ -37,7 +39,7 @@ body{
     radial-gradient(ellipse 40% 40% at 90% 90%, rgba(233,166,76,0.04) 0%, transparent 50%);
   font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
   color:var(--cream);
-  min-height:100vh;
+  height:100%;overflow:hidden;   /* 外殼不捲，捲動交給內部容器 */
 }
 /* iPhone 的 LINE 瀏覽器：滑到底再拉，整頁會被「橡皮筋」拉走、露出底下的白色——
    html 背景管不到那塊。鋪一張比螢幕上下各多一個螢幕高的固定深色底墊，怎麼拉都不露白 */
@@ -337,7 +339,8 @@ body::before{
   background: var(--dark);
 }
 /* ══════════════ ORDER PAGE ══════════════ */
-#order-page{display:none;background:var(--dark);min-height:100vh;}
+/* 內部捲動容器：填滿外殼、自己捲動；購物車列在外殼上釘死不受它影響 */
+#order-page{display:none;background:var(--dark);height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 
 .order-header{
   background: linear-gradient(180deg, #251d17 0%, #1e1814 100%);   /* 純色（拿掉毛玻璃）：捲動不再閃爍 */
@@ -638,10 +641,9 @@ body::before{
   z-index:100;
   box-shadow: 0 -8px 40px rgba(0,0,0,0.8), 0 -1px 0 rgba(212,165,32,0.1);
   padding-bottom: env(safe-area-inset-bottom);  /* 深色延伸進底部安全區，home 指示條那塊不露白 */
-  /* 升級成獨立 GPU 圖層：脫離整頁捲動的重繪，固定不抖動（iOS fixed 抖動的標準解） */
+  /* 獨立 GPU 圖層：拖曳位移平順（不用 will-change，iOS 上反而會閃） */
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
-  will-change: transform;
   display:none;
 }
 /* 拖曳把手：暗示「這是可操作面板」；展開時黏在最上面不隨內容捲走 */
@@ -2655,6 +2657,7 @@ function toggleCartDetail(){ setCartDetailOpen(!cartOpen); }
     const onHandle = !!(e.target.closest && e.target.closest('.cart-handle'));
     allow = onHandle || sheet.scrollTop <= 0;
     bar.style.transition = 'none'; // 拖曳時關動畫，跟手才順
+    if (backdrop) backdrop.style.transition = 'none'; // 遮罩也關過渡，才不會 lag/閃
   }, { passive: true });
 
   sheet.addEventListener('touchmove', e => {
@@ -2667,12 +2670,13 @@ function toggleCartDetail(){ setCartDetailOpen(!cartOpen); }
     dragging = true;
     e.preventDefault();                 // 擋掉背景/清單捲動，改成拖整個面板
     bar.style.transform = 'translate3d(0,' + dy + 'px,0)';  // 用 3d＝跟 GPU 圖層一致，不閃
-    if (backdrop) backdrop.style.opacity = String(Math.max(0, 0.5 - dy / 600)); // 越拉越淡
+    // 遮罩從「全暗(1)」開始隨下拉才漸淡——不可從 0.5 起跳，否則手指一碰背景突然變亮＝閃
+    if (backdrop) backdrop.style.opacity = String(Math.max(0, 1 - dy / 400));
   }, { passive: false });
 
   sheet.addEventListener('touchend', () => {
     if (!cartOpen) return;
-    if (backdrop) backdrop.style.opacity = '';
+    if (backdrop) { backdrop.style.transition = ''; backdrop.style.opacity = ''; }
     // 不論收合或彈回，面板都「平順滑回定位」——絕不把整條甩出畫面再彈回（那個瞬間彈回＝閃）
     bar.style.transition = 'transform 0.26s ease';
     bar.style.transform = '';
@@ -3622,8 +3626,9 @@ function closeModal(){
 }
 /* 🔒 彈窗開啟時鎖住背景捲動（只有彈窗本身能滑），關閉再解鎖 */
 function lockScroll(on){
-  document.documentElement.style.overflow = on ? 'hidden' : '';
-  document.body.style.overflow = on ? 'hidden' : '';
+  // 外殼架構下真正在捲的是 #order-page，鎖它才擋得住背景滑動（彈窗/購物車展開時用）
+  const op = document.getElementById('order-page');
+  if (op) op.style.overflowY = on ? 'hidden' : 'auto';
 }
 document.getElementById('modalBg').addEventListener('click',function(e){if(e.target===this)closeModal();});
 /* 查詢視窗不做「點背景關閉」——鍵盤開著時容易誤觸背景、查到一半整個彈窗被關掉
