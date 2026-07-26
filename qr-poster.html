@@ -6,15 +6,15 @@
 <title>老滷仙 掃碼點餐海報</title>
 <style>
   :root{ --red:#b5121b; --deepred:#8a0d15; --gold:#c8962e; --cream:#fdf6e9; --ink:#2a1a14; }
-  *{ box-sizing:border-box; margin:0; padding:0; }
+  *{ box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   body{ font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif; background:#ddd; display:flex; justify-content:center; padding:24px; }
   .poster{
-    width:148mm; min-height:210mm;                 /* A5 直式 */
+    width:148mm; height:210mm; overflow:hidden;     /* A5 直式，固定一頁不溢出 */
     background:
       radial-gradient(circle at 50% 0%, #c8171f 0%, var(--red) 45%, var(--deepred) 100%);
     color:var(--cream); position:relative; overflow:hidden;
     display:flex; flex-direction:column; align-items:center;
-    padding:14mm 12mm; text-align:center;
+    padding:11mm 12mm; text-align:center;
   }
   /* 邊框 */
   .poster::before{ content:''; position:absolute; inset:6mm; border:2px solid rgba(255,240,200,0.4); border-radius:4mm; pointer-events:none; }
@@ -23,8 +23,8 @@
   .store{ font-size:17px; letter-spacing:3px; color:#ffe6a8; margin-bottom:6mm; }
   .cta{ font-size:34px; font-weight:900; letter-spacing:3px; margin:2mm 0; color:#fff; }
   .cta .big{ color:#ffd764; }
-  .qrbox{ background:#fff; border-radius:5mm; padding:7mm; margin:5mm 0 4mm; box-shadow:0 8px 24px rgba(0,0,0,0.3); }
-  .qrbox img{ display:block; width:62mm; height:62mm; }
+  .qrbox{ background:#fff; border-radius:5mm; padding:6mm; margin:4mm 0 3mm; box-shadow:0 8px 24px rgba(0,0,0,0.3); }
+  .qrbox img{ display:block; width:54mm; height:54mm; }
   .sub{ font-size:16px; color:#ffe9c2; letter-spacing:1px; line-height:1.9; }
   .steps{ display:flex; gap:5mm; margin:6mm 0 2mm; justify-content:center; }
   .steps .s{ font-size:13px; color:#fff2d6; }
@@ -33,8 +33,9 @@
   .foot{ margin-top:auto; font-size:13px; color:#ffddb0; letter-spacing:2px; padding-top:5mm; }
   .foot .url{ color:#fff; font-weight:700; }
   @media print{
-    body{ background:#fff; padding:0; }
-    .poster{ box-shadow:none; }
+    html,body{ background:#fff; padding:0; margin:0; }
+    *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+    .poster{ width:148mm; height:210mm; overflow:hidden; box-shadow:none; }
     @page{ size:A5 portrait; margin:0; }
   }
 </style>
