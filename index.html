@@ -4064,7 +4064,8 @@ function renderMyOrders(rows, el) {
 // 用 LINE ID 撈自己當天訂單 → 今日訂單頁
 async function runLineOrderQuery(el) {
   if (!el) return;
-  if (!el.innerHTML) el.innerHTML = '<div class="query-result-empty">⏳ 載入你的訂單…</div>';
+  // 不做「⏳ 載入中」的中間替換——避免「空→loading→內容」閃兩次；
+  // 有舊內容就先留著、抓到新資料再原地換掉（無縫刷新）
   try {
     const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_orders_by_line', {
       method: 'POST',
@@ -4085,7 +4086,8 @@ async function runLineOrderQuery(el) {
 
 function closeCoverQuery() {
   document.getElementById('coverQueryBg').classList.remove('open');
-  document.getElementById('coverQueryResult').innerHTML = '';
+  // LINE 客人：內容留著，下次開瞬間顯示上次的、再原地無縫刷新（不閃）；非 LINE 才清空還原查詢表單
+  if (!(LINE_USER && LINE_USER.id)) document.getElementById('coverQueryResult').innerHTML = '';
   clearInterval(_myOrdersTimer);   // 停掉自動刷新
   document.getElementById('segMenu')?.classList.add('active');       // 分頁切回「點餐」
   document.getElementById('segOrders')?.classList.remove('active');
