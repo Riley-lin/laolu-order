@@ -7,6 +7,8 @@
 <meta name="theme-color" content="#0e0400"><!-- 告訴 LINE 瀏覽器：頁面周圍請塗深色，不要白 -->
 <title>老滷仙 道地滷味 ─ 八德廣福店</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500;700;900&family=Noto+Sans+TC:wght@300;400;500;700&family=Playfair+Display:wght@400;700;900&display=swap" rel="stylesheet">
+<!-- Cloudflare Turnstile：防洗版驗證碼（送出訂單前驗證，擋機器人） -->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <style>
 :root {
   --red:#e0715f; --red2:#9a1e23; --red3:#6e1318; --red4:#3d0a0c;
@@ -3077,10 +3079,12 @@ function showFinalConfirm(total, mode) {
     + orderBlocksHtml
     + '<div class="confirm-grand-total"><span>總 計</span><span>$'+total+'</span></div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,0.35);text-align:center;margin:10px 0 14px;letter-spacing:1px;">等待時間約 '+waitMinutes+' 分鐘</div>'
+    + '<div id="turnstileBox" style="display:flex;justify-content:center;margin:0 0 14px;min-height:65px;"></div>'
     + '<div class="modal-actions">'
     + '<button class="btn-back" onclick="backToCheckout()">← 返 回 修 改</button>'
     + '<button class="btn-order" onclick="submitOrder()">送 出 訂 單</button>'
     + '</div>';
+  renderTurnstile();   // 畫出防洗版驗證碼（多數客人自動通過，可疑才要點）
 }
 
 
@@ -3158,6 +3162,28 @@ function saveOrderToHistory(orderNo, name, phone, total, ordersToShow, mode) {
    ================================================================ */
 const SUPABASE_URL = 'https://wwirnzsbqrqafyjrvgkn.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_eJLYMZhDGmE5dlYb4G5XbQ_DapXnnra';
+
+// 🛡 Cloudflare Turnstile 防洗版：Site Key 是公開的（放前端沒關係）；Secret Key 在 Supabase 保險箱
+const TURNSTILE_SITEKEY = '0x4AAAAAAD-LiaktdZHWetoW';
+let _tsToken = null;      // 驗證成功後拿到的一次性通行證
+let _tsWidgetId = null;   // 目前渲染出的 widget 代號（重畫時先移除舊的）
+// 在確認頁把驗證碼畫出來；腳本可能還沒載完＝先等一下再試（最多重試幾次）
+function renderTurnstile(tries){
+  const box = document.getElementById('turnstileBox');
+  if (!box) return;
+  if (!window.turnstile || !turnstile.render) {   // 腳本還沒好 → 稍後再試
+    if ((tries || 0) < 20) setTimeout(() => renderTurnstile((tries || 0) + 1), 200);
+    return;
+  }
+  _tsToken = null;
+  try { if (_tsWidgetId !== null) turnstile.remove(_tsWidgetId); } catch (e) {}
+  _tsWidgetId = turnstile.render(box, {
+    sitekey: TURNSTILE_SITEKEY,
+    callback: t => { _tsToken = t; },                 // 驗證過→拿到通行證
+    'expired-callback': () => { _tsToken = null; },    // 過期→作廢，需重驗
+    'error-callback': () => { _tsToken = null; },
+  });
+}
 
 /* ── 雲端菜單（M0.9-B）─────────────────────────────
    菜單真身在 menu_items 資料表；這裡負責三件事：
@@ -3350,16 +3376,25 @@ function findSoldOutInOrders(list) {
 
 // 把訂單寫上雲端；失敗會丟出錯誤，由 submitOrder 決定怎麼善後
 async function sendOrderToCloud(records) {
-  const res = await fetch(SUPABASE_URL + '/rest/v1/orders', {
+  // 改走 place-order 守門員：先驗 Turnstile，再由伺服器寫入（直接寫資料庫的後門已關）
+  if (!_tsToken) { const e = new Error('TURNSTILE_MISSING'); e._userMsg = '請先完成畫面上的安全驗證再送出 🙏'; throw e; }
+  const res = await fetch(SUPABASE_URL + '/functions/v1/place-order', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'apikey': SUPABASE_KEY,
       'Authorization': 'Bearer ' + SUPABASE_KEY
     },
-    body: JSON.stringify(records)
+    body: JSON.stringify({ token: _tsToken, records })
   });
-  if (!res.ok) throw new Error('雲端回應 HTTP ' + res.status);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    _tsToken = null; try { if (_tsWidgetId !== null) turnstile.reset(_tsWidgetId); } catch (e) {}  // 通行證作廢，讓客人可重驗
+    const err = new Error(data.error || ('HTTP ' + res.status));
+    err._userMsg = data.message;   // 守門員回的白話訊息（驗證失敗/太頻繁…）
+    throw err;
+  }
+  _tsToken = null;   // 通行證一次性，用過作廢
 }
 
 // 把畫面上的訂單整理成資料表格式（回傳一筆或多筆的陣列）
@@ -3446,7 +3481,10 @@ async function submitOrder() {
     await sendOrderToCloud(buildCloudRecords(orderNo, name, phone, total, ordersToShow, mode));
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = '送 出 訂 單'; }
-    alert('⚠️ 訂單傳送失敗（可能是網路不穩），請再按一次「送出訂單」。\n若一直失敗，請直接致電 0939-955-888 訂購。');
+    // 守門員有回白話訊息（驗證未過／太頻繁）就直接顯示；否則給通用網路提示
+    alert(e && e._userMsg
+      ? '⚠️ ' + e._userMsg
+      : '⚠️ 訂單傳送失敗（可能是網路不穩），請再按一次「送出訂單」。\n若一直失敗，請直接致電 0939-955-888 訂購。');
     return;
   }
 
