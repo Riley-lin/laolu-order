@@ -2829,9 +2829,11 @@ function needUtensilPrompt(){
   return !orders.some(o => Object.keys(o.cart).some(k => k.startsWith('extra:')));
 }
 function utensilQty(name){ const e = getCart()['extra:' + name]; return e ? e.qty : 0; }
+// 餐具單位：紙碗算「個」、免洗筷算「雙」，其他一律「份」
+function utensilUnit(name){ return name === '紙碗' ? '個' : name === '免洗筷' ? '雙' : '份'; }
 function utensilRowHTML(name, price){
   return `<div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0;">
-    <span style="font-size:15px;color:rgba(253,246,227,0.9);">${name} <span style="color:var(--gold2);font-weight:700;">$${price}</span><span style="color:rgba(253,246,227,0.45);font-size:12px;"> / 份</span></span>
+    <span style="font-size:15px;color:rgba(253,246,227,0.9);">${name} <span style="color:var(--gold2);font-weight:700;">$${price}</span><span style="color:rgba(253,246,227,0.45);font-size:12px;"> / ${utensilUnit(name)}</span></span>
     <span class="qty-ctrl">
       <button class="qty-btn" onclick="utensilStep('${name}',${price},-1)">－</button>
       <span class="qty-num" id="uq-${name}">${utensilQty(name)}</span>
