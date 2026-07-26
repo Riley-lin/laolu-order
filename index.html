@@ -37,6 +37,7 @@ body{
   font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;
   color:var(--cream);
   min-height:100vh;
+  overscroll-behavior-y:none;   /* 實際捲動的是 body：這裡也要關橡皮筋，才不會滑到底露白 */
 }
 /* iPhone 的 LINE 瀏覽器：滑到底再拉，整頁會被「橡皮筋」拉走、露出底下的白色——
    html 背景管不到那塊。鋪一張比螢幕上下各多一個螢幕高的固定深色底墊，怎麼拉都不露白 */
