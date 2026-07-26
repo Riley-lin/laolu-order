@@ -3397,6 +3397,24 @@ async function sendOrderToCloud(records) {
   _tsToken = null;   // 通行證一次性，用過作廢
 }
 
+// 📮 訂單摘要代貼：從 LINE 開的客人，送出後在聊天室貼一則訂單摘要
+// （需 LIFF 有 chat_message.write 權限＋從聊天室開；沒權限/非聊天情境就靜默略過，不影響下單）
+async function postOrderSummaryToLine(orderNo, name, total, ordersToShow) {
+  try {
+    if (typeof liff === 'undefined' || !liff.isInClient || !liff.isInClient()) return;
+    const lines = [];
+    (ordersToShow || []).forEach(o => {
+      Object.values(o.cart || {}).forEach(v => lines.push('・' + v.name + ' ×' + v.qty));
+    });
+    const text = '🍢 老滷仙 · 訂單已送出\n取餐編號 #' + orderNo
+      + '\n訂餐人：' + name + '\n'
+      + lines.join('\n')
+      + '\n合計 $' + total
+      + '\n（老闆確認接單後會通知取餐時間）';
+    await liff.sendMessages([{ type: 'text', text }]);
+  } catch (e) { /* 沒權限或非聊天情境＝略過，絕不擋下單 */ }
+}
+
 // 把畫面上的訂單整理成資料表格式（回傳一筆或多筆的陣列）
 function buildCloudRecords(orderNo, name, phone, total, ordersToShow, mode) {
   // 單張訂單的內容物：品項、小計、口味偏好（存成 JSON 進 items 欄位）
@@ -3490,6 +3508,9 @@ async function submitOrder() {
 
   // 儲存訂單（本機備份，給下面「查詢我的訂單」功能用）
   saveOrderToHistory(orderNo, name, phone, total, ordersToShow, mode);
+
+  // 📮 訂單摘要代貼：從 LINE 開的客人，送出後在聊天室貼一則訂單摘要（自己有記錄＋方便回查）
+  postOrderSummaryToLine(orderNo, name, total, ordersToShow);
 
   // 顯示成功畫面
   document.getElementById('modalBox').innerHTML = `
