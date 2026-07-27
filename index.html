@@ -389,6 +389,8 @@ body::before{
   font-size:12px;font-weight:700;color:#e9a64c;border:1px solid #e9a64c;
   border-radius:20px;padding:6px 14px;white-space:nowrap;letter-spacing:0.8px;}
 .wait-pill span{color:#e9a64c;font-weight:900;font-size:14px;}
+/* 膠囊裡的呼吸燈要縮小：預設 10px 是給結帳頁大區塊用的，塞進小膠囊會太搶戲 */
+.wait-pill .wait-dot{width:7px;height:7px;margin-right:6px;}
 
 /* 分類導覽 */
 .cat-nav{
@@ -424,11 +426,8 @@ body::before{
 }
 
 /* 點餐/我的訂單 分頁（Uber 版） */
-.seg-bar{display:flex;gap:7px;padding:10px 14px 4px;background:var(--dark);}
-.seg-btn{flex:1;text-align:center;padding:10px;border-radius:11px;font-size:14px;font-weight:700;
-  background:linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));color:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.10);cursor:pointer;transition:var(--transition);}
-.seg-btn.active{background:linear-gradient(180deg,#f3b962,var(--gold2));color:var(--dark);border-color:rgba(255,255,255,0.25);
-  box-shadow:0 3px 12px rgba(233,166,76,0.3),inset 0 1px 0 rgba(255,255,255,0.4);}
+/* 「點餐／我的訂單」分頁樣式已於 2026-07-28 隨元件一起移除
+   （入口統一走 LINE 官方帳號圖文選單，菜單頁不再放第二個查訂單入口） */
 
 /* 菜單頁打烊看板 */
 .order-closed{max-width:860px;margin:0 auto;padding:24px;text-align:center;
@@ -448,13 +447,20 @@ body::before{
   border-bottom:1px solid rgba(212,165,32,0.2);
 }
 .section-title{font-family:'CashSign','Noto Serif TC',serif;font-size:16px;font-weight:700;color:var(--gold2);white-space:nowrap;letter-spacing:2px;text-shadow:0 0 12px rgba(212,165,32,0.2);}
-.section-line{flex:1;height:1px;background:linear-gradient(90deg,rgba(212,165,32,0.25),rgba(212,165,32,0.05),transparent);}
+/* 併進標題那一排的優惠說明（2026-07-28）：比標題小一截、字重不加粗，
+   讓「15元區」仍是主角；手機窄時自動截斷成「…」，不把裝飾線擠掉 */
+.section-note{font-size:11.5px;color:rgba(233,166,76,0.78);font-weight:600;letter-spacing:0.3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0;margin-left:-4px;}
+.section-line{flex:1 1 20px;min-width:12px;height:1px;background:linear-gradient(90deg,rgba(212,165,32,0.25),rgba(212,165,32,0.05),transparent);}
 
 .combo-note{
-  /* 優惠標記 tag：沉穩磚紅框＋金字（少量紅點綴＝餐飲質感，取代原本的綠框） */
-  background:rgba(178,42,42,0.12);border:1px solid rgba(178,42,42,0.45);
-  border-radius:8px;padding:7px 12px;font-size:12.5px;color:#e9a64c;font-weight:600;
-  margin-bottom:10px;letter-spacing:0.5px;
+  /* 2026-07-28：拿掉底色與左線，改成純文字小字。
+     原因＝單子區的分類（15元區）把優惠併進標題那一排、沒有底色，
+     多子區的分類（鍋物）卻是一個磚紅色塊，同一頁出現兩套視覺語言。
+     統一成「金色小字」後兩邊一致，也順便再少掉一個框。 */
+  background:none;border:none;
+  padding:0 2px;font-size:12.5px;color:rgba(233,166,76,0.85);font-weight:600;
+  margin:2px 0 9px;letter-spacing:0.3px;
 }
 
 /* 任選組合進度條 */
@@ -522,7 +528,7 @@ body::before{
   background: linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.02) 100%);
   border: 1px solid rgba(255,255,255,0.09);
   border-radius: 14px;
-  padding: 15px 15px;
+  padding: 12px 15px;   /* 2026-07-28 瘦身：一頁多看一樣品項 */
   display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;
   transition: var(--transition);
   position: relative;
@@ -542,9 +548,10 @@ body::before{
   box-shadow: var(--card-shadow);
 }
 .item-card.has-qty{
-  border-color:var(--gold3);
-  background: linear-gradient(135deg, rgba(212,165,32,0.12), rgba(180,120,10,0.08));
-  box-shadow: inset 4px 0 0 var(--gold2), 0 0 16px rgba(212,165,32,0.12);
+  /* 2026-07-28 減噪：拿掉整圈金框與外光暈，只留左側金線＋淡金底 */
+  border-color:rgba(212,165,32,0.28);
+  background: linear-gradient(135deg, rgba(212,165,32,0.10), rgba(180,120,10,0.05));
+  box-shadow: inset 4px 0 0 var(--gold2);
 }
 /* 加入購物車：卡片微彈一下的回饋動畫 */
 @keyframes cardPop{0%{transform:scale(1)}45%{transform:scale(1.025)}100%{transform:scale(1)}}
@@ -554,7 +561,7 @@ body::before{
 .item-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
 .item-name{font-size:15.5px;font-weight:600;color:rgba(253,246,227,0.95);line-height:1.35;letter-spacing:0.3px;}
 .item-bottom{display:flex;align-items:center;gap:14px;flex-shrink:0;}
-.item-price{font-size:14px;font-weight:700;color:var(--gold2);letter-spacing:0.5px;}
+.item-price{font-size:13px;font-weight:700;color:var(--gold2);letter-spacing:0.5px;}
 /* 收合式加減：平常一顆＋，點了才展開「− 數量 +」 */
 .add-btn{flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:1.5px solid var(--gold2);
   background:transparent;color:var(--gold2);font-size:22px;line-height:1;cursor:pointer;
@@ -581,11 +588,14 @@ body::before{
 .unit-tag{margin-left:5px;font-size:10px;color:rgba(253,246,227,0.45);letter-spacing:0.5px;}
 
 /* 公告條＆打烊看板（內容來自雲端 app_config，老闆店務頁可改） */
+/* 2026-07-28 質感調整：整圈金框 → 左側金線。
+   框會把內容「關起來」，線只是提示，畫面不會被切割 */
+.notice-ico{display:inline-block;vertical-align:-3px;margin-right:7px;}
 .notice-bar{
-  margin:10px 14px;padding:10px 14px;border-radius:8px;
-  background:rgba(212,165,32,0.12);border:1px solid rgba(212,165,32,0.45);
+  margin:10px 14px;padding:9px 14px;border-radius:6px;
+  background:rgba(212,165,32,0.07);border:none;   /* 2026-07-28 Riley：連左邊那條線也拿掉 */
   color:var(--gold2,#e8c358);font-size:13.5px;line-height:1.6;letter-spacing:0.5px;
-  white-space:pre-line;text-align:center;
+  white-space:pre-line;text-align:left;
 }
 .closed-box{
   margin:22px auto 8px;padding:28px 32px;max-width:340px;border-radius:12px;
@@ -774,7 +784,7 @@ body::before{
   background: linear-gradient(160deg, #2c231b 0%, #1e1814 60%, #151110 100%);
   border:1px solid rgba(212,165,32,0.4);
   border-radius:16px;
-  padding:28px 24px 24px;
+  padding:30px 26px 26px;
   width:100%;max-width:440px;max-height:92vh;overflow-y:auto;
   overscroll-behavior:contain; /* 彈窗滑到底就停，不把「拉過頭」傳染給底下的頁面 */
   box-shadow: 0 24px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(212,165,32,0.1);
@@ -791,10 +801,10 @@ body::before{
   margin:18px 0 10px;padding-bottom:0;border-bottom:none;
 }
 
-.form-group{margin-bottom:13px;}
+.form-group{margin-bottom:18px;}  /* 2026-07-28：欄位間距 13→18，呼吸感 */
 .form-label{display:block;font-size:13px;font-weight:600;color:rgba(253,246,227,0.9);letter-spacing:0.5px;margin-bottom:7px;}
 /* 必填小標：紅色、比欄位名小一號（Riley：小字喔） */
-.req-mark{font-size:10.5px;color:#e05d4f;letter-spacing:0.5px;font-weight:400;vertical-align:1px;margin-left:4px;}
+.req-mark{font-size:10.5px;color:rgba(224,93,79,0.72);letter-spacing:0.5px;font-weight:400;vertical-align:1px;margin-left:4px;}
 .form-input,.form-select,.form-textarea{
   width:100%;
   background: rgba(0,0,0,0.22);
@@ -907,17 +917,19 @@ body::before{
   text-shadow:0 0 18px rgba(212,165,32,0.35);
 }
 
-.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
+.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+/* 返回鍵降重量（2026-07-28）：原本有金色邊框＋粗體，跟旁邊的「送出訂單」互相搶注意力。
+   次要動作就該長得像次要動作——拿掉邊框、不粗體、顏色調淡，讓金色主鈕獨佔焦點 */
 .btn-back{
-  background:transparent;border:1px solid var(--line);color:var(--goldlight);
-  padding:13px;font-size:14px;font-weight:700;cursor:pointer;border-radius:12px;
-  font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;transition:border-color 0.2s;
+  background:transparent;border:1px solid transparent;color:rgba(243,216,155,0.62);
+  padding:13px;font-size:14.5px;font-weight:500;cursor:pointer;border-radius:12px;
+  font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;transition:color 0.2s;
 }
-.btn-back:hover{border-color:var(--gold2);}
+.btn-back:hover{color:var(--gold2);}
 .btn-order{
   background: linear-gradient(180deg, #f3b962 0%, var(--gold2) 48%, var(--gold) 100%);
   border:1px solid rgba(255,255,255,0.22);color:var(--dark);padding:14px;
-  font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;font-size:16px;font-weight:800;
+  font-family:'Helvetica Neue',Roboto,Arial,'Noto Sans TC',sans-serif;font-size:16px;font-weight:700;
   letter-spacing:2px;cursor:pointer;border-radius:13px;
   transition: var(--transition);
   box-shadow: 0 6px 20px rgba(233,166,76,0.35), inset 0 1px 0 rgba(255,255,255,0.45);
@@ -1429,6 +1441,20 @@ body::before{
 .hero-bar{height:8px;border-radius:5px;background:rgba(255,255,255,0.1);overflow:hidden;margin:14px 0 18px;}
 .hero-bar-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,#e9a64c,#f3c869);transition:width 0.6s ease;}
 .hero-wait-plain{font-size:14px;color:rgba(255,255,255,0.6);margin:8px 0 16px;}
+/* 等待中的呼吸動畫（2026-07-27）：讓「等待老闆確認」看起來是活的、系統還在運作，
+   而不是畫面當掉了——這是客人最焦慮的那段時間，一個會呼吸的圖示就能安撫 */
+/* 沙漏動畫：模擬真沙漏「沙流完 → 自己翻面 → 再流」的節奏
+   0~45%   靜止（沙在流）
+   45~55%  翻半圈（漏完，倒過來）
+   55~95%  再靜止（另一面在流）
+   95~100% 補完剩下半圈回到原點 → 無縫接下一輪（若只轉 180 度，循環時會「啪」地跳回去）*/
+@keyframes waitFlip{
+  0%,45%  { transform: rotate(0deg); }
+  55%,95% { transform: rotate(180deg); }
+  100%    { transform: rotate(360deg); }
+}
+.hero-waiting-ico{display:inline-block;transform-origin:center;animation:waitFlip 4s ease-in-out infinite;}
+@media (prefers-reduced-motion: reduce){ .hero-waiting-ico{animation:none;} }
 /* Hero 餐點內容：細線條列＋「查看點餐內容」動作文字（放進度條與時間軸之間） */
 .hero-items{border-top:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);margin:2px 0 16px;}
 .hi-toggle{display:flex;justify-content:space-between;align-items:center;padding:13px 2px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
@@ -1449,6 +1475,8 @@ body::before{
 .past-arrow.open{transform:rotate(180deg);}
 .past-row{display:flex;justify-content:space-between;align-items:center;padding:11px 4px;border-top:1px dashed rgba(255,255,255,0.07);font-size:13.5px;}
 .past-row-l{color:var(--cream);} .past-row-l .pr-done{color:#e9a64c;font-weight:700;} .past-row-l .pr-cancel{color:#e07a5f;font-weight:700;}
+/* 收合列裡「還在進行中」的那幾張：用亮金色跟已完成/已取消區隔（2026-07-27） */
+.past-row-l .pr-active{color:#ffd98a;font-weight:700;}
 .past-row-t{font-size:12px;color:rgba(255,255,255,0.4);margin-left:8px;}
 .past-detail-btn{font-size:12px;color:var(--gold3);cursor:pointer;white-space:nowrap;}
 .past-detail{font-size:12px;color:rgba(255,255,255,0.55);padding:6px 4px 10px;line-height:1.7;}
@@ -1727,8 +1755,6 @@ body::before{
 
 <!-- ══════════ ORDER PAGE ══════════ -->
 <div id="order-page">
-  <!-- 公告條（點餐頁版，有公告才現身） -->
-  <div id="orderNotice" class="notice-bar" style="display:none"></div>
   <!-- 全部固定在最上方的 sticky wrapper -->
   <div class="sticky-header">
     <div class="order-header">
@@ -1736,14 +1762,16 @@ body::before{
         <div class="order-hname">老滷仙</div>
         <div class="order-hsub">八德廣福店</div>
       </div>
-      <div class="wait-pill" id="orderWaitBar">等約 <span id="orderWaitNum">15</span> 分</div>
+      <!-- 2026-07-28：膠囊補上呼吸燈（原本只在結帳頁出現，那頁已移除等待時間區塊）。
+           顏色依等待分鐘變（綠→黃→橘→紅），客人在菜單頁就對今天的忙碌程度有底 -->
+      <div class="wait-pill" id="orderWaitBar"><span class="wait-dot" id="orderWaitDot"></span>目前等待時間約 <span id="orderWaitNum">15</span> 分</div>
     </div>
 
-    <!-- 點餐 / 我的訂單 分頁 -->
-    <div class="seg-bar">
-      <button class="seg-btn active" id="segMenu" onclick="closeCoverQuery()">點餐</button>
-      <button class="seg-btn" id="segOrders" onclick="openCoverQuery()">我的訂單</button>
-    </div>
+    <!-- 公告條（2026-07-28 Riley：從頁面最上方搬到店名列正下方，接手原本「點餐／我的訂單」的位置，
+         這裡最顯眼，客人一進來就看得到）
+         ⚠️「點餐／我的訂單」分頁已移除：入口統一走 LINE 官方帳號，
+            查訂單請用圖文選單「訂單查詢」（會帶 ?view=orders 直接開），菜單頁不再重複放一個入口 -->
+    <div id="orderNotice" class="notice-bar" style="display:none"></div>
 
     <!-- 揪團 Tab Bar（揪團模式才顯示） -->
     <div class="order-tabs-bar" id="orderTabsBar"></div>
@@ -1980,21 +2008,23 @@ body::before{
 // （任 qty 件 $price）——購物車會自動湊，客人不用學。
 // ────────────────────────────────
 const FALLBACK_MENU = [
-  // 單位只留年糕/鳥蛋（一份幾個會影響點餐判斷）；其餘 2026-07-19 Riley 拍板全部拿掉
+  // 單位只留年糕/鳥蛋/素肚（一份幾個、素肚半個會影響點餐判斷）；其餘 2026-07-19 Riley 拍板全部拿掉
   { id:'b15', label:'15元區', bundle:{qty:2,price:25}, items:[
     {name:'蘿蔔',price:15},{name:'黑輪',price:15},{name:'海帶',price:15},
     {name:'甜不辣',price:15},{name:'年糕',price:15,unit:'一份4條'},{name:'鳥蛋',price:15,unit:'一份4顆'} ] },
-  { id:'wan', label:'鍋物', bundle:{qty:2,price:25}, items:[
-    {name:'貢丸',price:15},{name:'香菇貢丸',price:15},{name:'魚包蛋',price:15},
-    {name:'龍蝦沙拉',price:15},{name:'花枝丸',price:15},{name:'北海貝',price:15},
-    {name:'麻糬燒',price:15} ] },
+  // 鍋物底下兩個價格區（老闆 2026-07-28 裁示：不分丸類餃類，統一叫鍋物，底下分 10 元／15 元）
+  // $10 區排前面＝由低到高，跟其他分區的排法一致
   { id:'jiao', label:'鍋物', bundle:{qty:4,price:35}, items:[
     {name:'小豆干',price:10},{name:'凍豆腐',price:10},{name:'起司燒',price:10},
     {name:'水晶餃',price:10},{name:'魚餃',price:10},{name:'魚豆腐',price:10},
     {name:'鑫鑫腸',price:10},{name:'鱈魚丸',price:10},{name:'蟹肉棒',price:10} ] },
+  { id:'wan', label:'鍋物', bundle:{qty:2,price:25}, items:[
+    {name:'貢丸',price:15},{name:'香菇貢丸',price:15},{name:'魚包蛋',price:15},
+    {name:'龍蝦沙拉',price:15},{name:'花枝丸',price:15},{name:'北海貝',price:15},
+    {name:'麻糬燒',price:15} ] },
   { id:'b20', label:'20元區', bundle:{qty:2,price:35}, items:[
     {name:'竹輪',price:20},{name:'炸豆包',price:20},{name:'鱈魚燒',price:20},
-    {name:'豬皮',price:20},{name:'素肚',price:20} ] },
+    {name:'豬皮',price:20},{name:'素肚',price:20,unit:'一份半個'} ] },
   { id:'b25', label:'25元區', bundle:{qty:2,price:45}, items:[
     {name:'素雞',price:25},{name:'素胗',price:25},{name:'雞心',price:25},
     {name:'雞胗',price:25},{name:'豆腸',price:25},{name:'芋粿',price:25},
@@ -2279,19 +2309,34 @@ function buildOrderPage(){
 }
 
 function buildGroupSection(g){
-  // v2：每個品項自帶價格與單位；有優惠的子區在自己的格子上方標規則
-  // （優惠是「自動湊」：客人自由加，購物車自動用最便宜算法，不用選盤）
-  const inner = g.cats.map(cat => {
-    const note = cat.bundle
-      ? `<div class="combo-note">單點 $${cat.items[0].price}・此區任選 ${cat.bundle.qty} 樣 $${cat.bundle.price}（自動折抵）</div>`
-      : (cat.note ? `<div class="combo-note">${cat.note}</div>` : '');
-    return note + `<div class="items-grid" style="margin-bottom:12px">${cat.items.map(it=>itemCardHTML(`${cat.id}:${it.name}`,it.name,it.price,it.unit)).join('')}</div>`;
-  }).join('');
-  return `<div class="menu-section" id="sec-${g.id}">
-    <div class="section-hd">
-      <span class="section-title">${g.label}</span>
-      <span class="section-line"></span>
-    </div>${inner}</div>`;
+  // v2：每個品項自帶價格與單位；優惠是「自動湊」（客人自由加，購物車自動用最便宜算法）
+  //
+  // 2026-07-28 Riley 定稿：全站每一區都長成同一個樣子 ——
+  //     「區名 ・任選 N 樣 $M（自動折抵）─────────」
+  //
+  // 所以多子區的分類（鍋物 = 10元區 + 15元區）不再多包一層「鍋物 ────」的大標，
+  // 而是讓兩個子區各自成為一列標題（鍋物-10元區 / 鍋物-15元區，對齊老闆的紙本菜單）。
+  // 這樣字級、粗細、分隔線全部跟其他區一致，不會只有鍋物長得不一樣。
+  // ⚠️ tab 仍然只有一顆「鍋物」（老闆裁示不分丸類餃類）——tab 名稱與區塊標題本來就可以不同。
+  const hd = (title, bundle) =>
+    `<div class="section-hd">
+      <span class="section-title">${title}</span>`
+    + (bundle ? `<span class="section-note">・任選 ${bundle.qty} 樣 $${bundle.price}（自動折抵）</span>` : '')
+    + `<span class="section-line"></span>
+    </div>`;
+  const grid = cat =>
+    `<div class="items-grid" style="margin-bottom:12px">${cat.items.map(it=>itemCardHTML(`${cat.id}:${it.name}`,it.name,it.price,it.unit)).join('')}</div>`;
+
+  const multi = g.cats.length > 1;
+  const inner = multi
+    // 多子區：每個子區自己一列標題（名稱＝「鍋物-10元區」）
+    ? g.cats.map(cat => hd(`${g.label}-${cat.items[0].price}元區`, cat.bundle) + grid(cat)).join('')
+    // 單子區：標題就是分類名，優惠併在同一排
+    : hd(g.label, g.cats[0].bundle)
+      + (g.cats[0].note ? `<div class="combo-note">${g.cats[0].note}</div>` : '')
+      + grid(g.cats[0]);
+
+  return `<div class="menu-section" id="sec-${g.id}">${inner}</div>`;
 }
 
 function buildComboSection(cat){
@@ -2907,8 +2952,8 @@ function openCheckout(e){
     }).join('');
 
     document.getElementById('modalBox').innerHTML = `
-      <div class="modal-title">填寫訂單資料</div>
-      <div class="modal-sub">確認資料後送出</div>
+      <div class="modal-title">選擇口味偏好</div>
+      <div class="modal-sub">選好口味與備註，下一步填聯絡資料</div>
 
       ${multiOrder ? `
       <div class="modal-section-label">結 帳 方 式</div>
@@ -2921,33 +2966,12 @@ function openCheckout(e){
         </div>
       </div>` : ''}
 
-      <div class="form-group">
-        <label class="form-label">姓 名 <span class="req-mark">＊</span></label>
-        <input class="form-input" id="fName" placeholder="請輸入姓名" type="text" value="${LINE_USER ? String(LINE_USER.name).replace(/"/g,'&quot;') : ''}">
-      </div>
-      <div class="form-group">
-        <label class="form-label">電 話 <span class="req-mark">＊</span></label>
-        <input class="form-input" id="fPhone" placeholder="請輸入聯絡電話" type="tel">
-      </div>
-
-      <div class="modal-section-label">等待時間確認</div>
-      <div class="wait-confirm-box">
-        <div class="wait-confirm-text">
-          <span class="wait-dot" style="--wd:${waitDotColor(waitMinutes)}"></span>目前等待時間約 <span class="wait-confirm-time">${waitMinutes} 分鐘</span>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">備 註</label>
-        <textarea class="form-textarea" id="fNote" rows="2" placeholder="其他特殊需求..."></textarea>
-      </div>
-
-      <!-- 餐具免費勾選已退役（2026-07-19 Riley 拍板選 A）：
-           餐具改為收費品項，在菜單「餐具加購」區購買（紙碗$2/免洗筷$1），
-           免費勾選與付費加購並存會讓客人誤會免費 -->
+      <!-- 2026-07-28 流程重整（Riley 規格）：姓名／電話搬到下一頁、等待時間搬到菜單頁右上膠囊。
+           這一頁只做「口味 → 備註 → 看明細」一件事，下一頁只做「填資料 → 送出」一件事，
+           兩頁不再重複顯示同樣的東西。
+           餐具免費勾選已退役（2026-07-19 Riley 拍板選 A）：餐具改為收費品項，在菜單「餐具加購」區購買。 -->
 
       ${!multiOrder ? `
-      <div class="modal-section-label">口 味 偏 好</div>
       <div class="pref-hint">基本調味預設加<span class="pref-hl">蔥、蒜、胡椒</span>；若需調整，請勾選下方選項</div>
       <div style="margin-bottom:14px">
         <div class="pref-grid" style="grid-template-columns:1fr 1fr 1fr;">
@@ -2971,6 +2995,11 @@ function openCheckout(e){
         </div>
       </div>` : ''}
 
+      <div class="form-group">
+        <label class="form-label">備 註</label>
+        <textarea class="form-textarea" id="fNote" rows="2" placeholder="其他特殊需求...">${String(_noteDraft || '').replace(/</g, '&lt;')}</textarea>
+      </div>
+
       <div class="modal-section-label">訂 單 明 細</div>
       ${orderBlocks}
       <div class="recap-total"><span>總 計</span><span>$${grandTotal}</span></div>
@@ -2982,6 +3011,12 @@ function openCheckout(e){
 
     document.getElementById('modalBg').classList.add('open');
     lockScroll(true);
+    // 每次重畫都捲回最上面（2026-07-28 Riley 回報）：
+    // 彈窗是同一個 DOM 容器，重畫內容不會重置捲動位置 →
+    // 從下一頁返回、或切換合併/分開結帳時，會直接停在「訂單明細」那一段，
+    // 客人以為頁面就是從那裡開始的，看不到上面的口味選項。
+    const mb = document.getElementById('modalBox');
+    if (mb) mb.scrollTop = 0;
   }
 
   // 暴露給 modal 內按鈕用
@@ -3082,24 +3117,20 @@ function closeUtensilPrompt(){
 
 // 暫存當前結帳資料，給確認視窗用
 let _pendingOrder = null;
+// 備註草稿（2026-07-28）：備註輸入框在第一頁，客人若從第二頁按「返回修改」，
+// 那一頁會整個重畫、輸入框內容會消失 → 先存起來，重畫時填回去
+let _noteDraft = '';
 
 function showFinalConfirm(total, mode) {
   const ordersToShow = window._currentOrdersToShow || [];
-  const name = document.getElementById('fName')?.value.trim();
-  // 電話先洗成純數字（客人打 0912-345-678 也吃得下），再驗完整性
-  const phone = (document.getElementById('fPhone')?.value || '').replace(/\D/g, '');
+  // 2026-07-28 流程重整（Riley 規格）：上一頁只收「口味＋備註」，姓名／電話改到這一頁填。
+  // 所以這裡不再驗姓名電話（那時客人根本還沒填）——驗證整組搬到 validateAndSubmit()。
   const note = document.getElementById('fNote')?.value.trim() || '';
-
-  if (!name) { alert('請輸入姓名'); return; }
-  if (!phone) { alert('請輸入電話'); return; }
-  // 不完整視同沒填（Riley 拍板）：少一碼老闆就找不到人，寧可擋在這裡
-  if (!/^09\d{8}$/.test(phone)) {
-    alert('電話號碼不完整，請輸入 10 碼手機號碼\n（例：0977666777）');
-    return;
-  }
-  // 🔒 長度上限（深度防禦：擋超長 payload 灌爆／異常輸入）
-  if (name.length > 20) { alert('姓名過長，請控制在 20 字以內'); return; }
   if (note.length > 100) { alert('備註過長，請控制在 100 字以內'); return; }
+  _noteDraft = note;   // 存草稿：從這一頁按「返回修改」回去時，備註要還在
+  // 兩頁來回切換時，已經填過的姓名電話要留著，不要每次回來都重打
+  const prevName = (_pendingOrder && _pendingOrder.name) || (LINE_USER ? LINE_USER.name : '');
+  const prevPhone = (_pendingOrder && _pendingOrder.phone) || '';
 
   // 個人點餐：把偏好（含備註）存進 ordersToShow[0].prefs
   if (!groupMode && ordersToShow.length > 0) {
@@ -3114,56 +3145,83 @@ function showFinalConfirm(total, mode) {
     };
   }
 
-  _pendingOrder = { total, mode, ordersToShow, name, phone };  // 移除多餘的 note
+  // 姓名／電話先留空（或帶回上次填的），等這一頁填完由 validateAndSubmit() 補進來
+  _pendingOrder = { total, mode, ordersToShow, name: prevName, phone: prevPhone };
 
-  // 組合每張訂單的 HTML
-  let orderBlocksHtml = '';
-  ordersToShow.forEach(o => {
-    const prefLines = [];
-    if (o.prefs) {
-      // 蔥蒜胡椒預設加，只在客人選「不要」時才備註
-      if(o.prefs.scallion==='no') prefLines.push('不要蔥');
-      if(o.prefs.garlic==='no') prefLines.push('不要蒜');
-      if(o.prefs.pepper==='no') prefLines.push('不要胡椒');
-      if(o.prefs.spicy==='yes' && o.prefs.spiceLevel) prefLines.push('辣度：'+o.prefs.spiceLevel);
-      else if(o.prefs.spicy==='side') prefLines.push(o.prefs.spiceLevel?'辣度：'+o.prefs.spiceLevel+'（另外裝）':'辣另外裝');
-      else if(o.prefs.spicy==='no') prefLines.push('不加辣');
-      if(o.prefs.utensils==='yes') prefLines.push('需要餐具');
-      else if(o.prefs.utensils==='no') prefLines.push('不需要餐具');
-      if(o.prefs.note) prefLines.push('備註：'+o.prefs.note);
-    }
-    let itemRows = '';
-    Object.values(o.cart).forEach(v => {
-      itemRows += '<div class="confirm-item-row"><span>'+v.name+' × '+v.qty+'</span><span style="color:var(--gold2);font-weight:700">$'+(v.price*v.qty)+'</span></div>';
-    });
-    const prefHtml = prefLines.length > 0
-      ? '<div class="confirm-pref">'+prefLines.join('、')+'</div>'
-      : '';
-    orderBlocksHtml += '<div class="confirm-section">'
-      // 只有一張訂單時不顯示「訂單：×××」標題（Riley：沒有合併什麼，寫了反而怪）
-      + (ordersToShow.length>1 ? '<div class="confirm-section-title">訂單：'+o.name+'</div>' : '')
-      + itemRows + prefHtml
-      + '<div style="text-align:right;font-size:13px;color:var(--gold3);margin-top:6px;font-weight:700">小計 $'+o.total+'</div>'
-      + '</div>';
-  });
+  // 訂單明細不再重複印在這一頁（2026-07-28 Riley 規格）——
+  // 上一頁已經完整看過一次，這裡再印一次是同樣的東西看第二遍。
+
+  // 📩 送單告知（Riley 2026-07-27 裁示：要盡到告知義務）
+  //   為什麼一定要有這段：送出時系統會「以客人自己的名義」傳一則訊息給老闆，
+  //   沒先講的話，客人會看到自己的聊天室莫名其妙多一句話——那是嚇人不是服務。
+  //   順便處理另一種人：不是從 LINE 進來的客人在這裡就先擋，
+  //   不要等他填完資料、按下送出才被拒絕。
+  const inLineClient = typeof liff !== 'undefined' && liff.isInClient && liff.isInClient();
+  const lineNoticeHtml = !REQUIRE_LINE_CONFIRM ? ''
+    : inLineClient
+      // 輕量版（Riley 2026-07-27：金框太重、變成框中框）——拆掉底色與邊框，
+      // 改成跟「等待時間約 30 分鐘」同一種置中灰字，安靜地把該講的講完
+      // 分成「標題＋內文」兩層（2026-07-28）：原本四句同一個字級同一個顏色，
+      // 眼睛沒有落點、要從頭讀到尾才知道在講什麼。給它一個標題，內文就能降一級、
+      // 讀起來反而更輕鬆——這是「看起來擠」的真正解法，不是把字放大。
+      // 三行都用 <br> 明確斷句：交給瀏覽器自動折會把「將主動與您聯繫」攔腰折斷。
+      ? '<div style="text-align:center;margin:2px 0 22px;">'
+        + '<div style="font-size:15px;font-weight:700;color:#FFE8C2;letter-spacing:0.5px;margin-bottom:7px;">🔔 訂單提醒</div>'
+        + '<div style="font-size:14px;line-height:1.85;color:rgba(255,232,194,0.72);">'
+        + '送出後將立即透過 <span style="color:var(--gold2);font-weight:700">LINE</span> 通知店家。<br>'
+        + '店家確認接單後才會開始製作。<br>'
+        + '若有缺料或其他狀況，店家將主動與您聯繫。'
+        + '</div></div>'
+      : '<div style="background:rgba(204,68,68,0.12);border:1px solid rgba(204,68,68,0.42);border-radius:4px;padding:10px 12px;margin:0 0 14px;font-size:12px;line-height:1.7;color:rgba(255,255,255,0.72);">'
+        + '<span style="color:#ff9b9b;font-weight:700;">⚠️ 這個畫面沒辦法送出訂單</span><br>'
+        + '請從老滷仙 LINE 官方帳號下方的「我要點餐」進入點餐頁'
+        + '</div>';
 
   document.getElementById('modalBox').innerHTML =
-    '<div class="modal-title">確認訂單明細</div>'
-    + '<div class="modal-sub" style="margin-bottom:14px">請仔細確認後再送出</div>'
-    + '<div style="background:rgba(0,0,0,0.2);border-radius:4px;padding:10px 12px;margin-bottom:12px;font-size:13px;">'
-    + '<span style="color:rgba(255,255,255,0.5)">訂餐人：</span><strong style="color:var(--goldlight)">'+name+'</strong>'
-    + ' ｜ '
-    + '<span style="color:rgba(255,255,255,0.5)">電話：</span><strong style="color:var(--goldlight)">'+phone+'</strong>'
+    '<div class="modal-title">填寫訂單資料</div>'
+    + '<div class="modal-sub" style="margin-bottom:22px">僅需姓名與電話，即可完成訂單</div>'
+    + '<div class="form-group">'
+    + '<label class="form-label">姓 名 <span class="req-mark">＊</span></label>'
+    + '<input class="form-input" id="fName" placeholder="請輸入姓名" type="text" value="' + String(prevName).replace(/"/g, '&quot;') + '">'
     + '</div>'
-    + orderBlocksHtml
-    + '<div class="confirm-grand-total"><span>總 計</span><span>$'+total+'</span></div>'
-    + '<div style="font-size:12px;color:rgba(255,255,255,0.35);text-align:center;margin:10px 0 14px;letter-spacing:1px;">等待時間約 '+waitMinutes+' 分鐘</div>'
-    + '<div id="turnstileBox" style="display:flex;justify-content:center;margin:0 0 14px;min-height:65px;"></div>'
+    + '<div class="form-group">'
+    + '<label class="form-label">電 話 <span class="req-mark">＊</span></label>'
+    + '<input class="form-input" id="fPhone" placeholder="請輸入聯絡電話" type="tel" value="' + String(prevPhone).replace(/"/g, '&quot;') + '">'
+    + '</div>'
+    // 總計也不放這一頁（2026-07-28 Riley 裁示）：上一頁剛看過明細＋總計，
+    // 這裡再放一次反而讓「填資料」這件單純的事變吵；等待時間同理，菜單頁右上膠囊一直掛著
+    // 順序：告知在上、驗證在下（Riley 裁示）——
+    //   告知是「給人看的」、驗證是「給機器過的」，人的資訊要排在機器前面
+    + lineNoticeHtml
+    + (REQUIRE_TURNSTILE ? '<div id="turnstileBox" style="display:flex;justify-content:center;margin:4px 0 14px;min-height:65px;"></div>' : '')
     + '<div class="modal-actions">'
     + '<button class="btn-back" onclick="backToCheckout()">← 返 回 修 改</button>'
-    + '<button class="btn-order" onclick="submitOrder()">送 出 訂 單</button>'
+    + '<button class="btn-order" onclick="validateAndSubmit()">送 出 訂 單</button>'
     + '</div>';
-  renderTurnstile();   // 畫出防洗版驗證碼（多數客人自動通過，可疑才要點）
+  if (REQUIRE_TURNSTILE) renderTurnstile();   // 停用中：入口已鎖 LINE，這層改由 IP 限流接手
+}
+
+// 送出前的最後把關（2026-07-28 從 showFinalConfirm 拆出來）：
+// 姓名電話現在是在「填寫訂單資料」這一頁才填的，所以驗證必須貼在送出的那一刻做。
+function validateAndSubmit() {
+  const name = document.getElementById('fName')?.value.trim();
+  // 電話先洗成純數字（客人打 0912-345-678 也吃得下），再驗完整性
+  const phone = (document.getElementById('fPhone')?.value || '').replace(/\D/g, '');
+
+  if (!name) { alert('請輸入姓名'); return; }
+  if (!phone) { alert('請輸入電話'); return; }
+  // 不完整視同沒填（Riley 拍板）：少一碼老闆就找不到人，寧可擋在這裡
+  if (!/^09\d{8}$/.test(phone)) {
+    alert('電話號碼不完整，請輸入 10 碼手機號碼\n（例：0977666777）');
+    return;
+  }
+  // 🔒 長度上限（深度防禦：擋超長 payload 灌爆／異常輸入）
+  if (name.length > 20) { alert('姓名過長，請控制在 20 字以內'); return; }
+
+  if (!_pendingOrder) return;
+  _pendingOrder.name = name;
+  _pendingOrder.phone = phone;
+  submitOrder();
 }
 
 
@@ -3243,6 +3301,13 @@ const SUPABASE_URL = 'https://wwirnzsbqrqafyjrvgkn.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_eJLYMZhDGmE5dlYb4G5XbQ_DapXnnra';
 
 // 🛡 Cloudflare Turnstile 防洗版：Site Key 是公開的（放前端沒關係）；Secret Key 在 Supabase 保險箱
+/* 🔓 Turnstile 開關（2026-07-28 Riley 拍板停用）
+   當初（7/26）它的任務是「擋機器人洗版」——那時任何人打開網址就能送單。
+   今晚方案 B 上線後，下單必須：LINE 帳號 ＋ 授權代發訊息 ＋ 聊天室情境 ＋ 真的發出一則訊息，
+   機器人過不了這四關 → Turnstile 的價值沒了，卻還會在 LINE 內嵌瀏覽器裡誤擋真客人
+   （老闆實測就被擋住）。所以撤掉它，防洪改由 IP 限流負責。
+   要恢復：把這行改成 true，並把 place-order 的同名開關也改回 true。 */
+const REQUIRE_TURNSTILE = false;
 const TURNSTILE_SITEKEY = '0x4AAAAAAD-LiaktdZHWetoW';
 let _tsToken = null;      // 驗證成功後拿到的一次性通行證
 let _tsWidgetId = null;   // 目前渲染出的 widget 代號（重畫時先移除舊的）
@@ -3381,7 +3446,18 @@ function renderShopStatus() {
   ['coverNotice', 'orderNotice'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.textContent = lines.join('\n');
+    // 📣 紅色大聲公、喇叭口朝右對著字（2026-07-28 Riley 指定）——
+    // 📢 那顆是藍灰色且喇叭朝左，會背對文字
+    // 紅色大聲公（2026-07-28 Riley 指定）：改用 SVG 自己畫，喇叭口朝右對著文字喊。
+    // ⚠️ 用 innerHTML 才塞得下 SVG → 公告文字（老闆在店務台自己輸入）必須先跳脫，
+    //    不然老闆打一個 < 就會弄壞版面，也是一個 XSS 破口
+    const escHtml = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const megaphone = '<svg class="notice-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">'
+      + '<path d="M4 9.5h3.2L14 5v14L7.2 14.5H4A1.5 1.5 0 0 1 2.5 13v-2A1.5 1.5 0 0 1 4 9.5Z" fill="#d94a3d"/>'
+      + '<path d="M17.5 9a4.2 4.2 0 0 1 0 6" stroke="#d94a3d" stroke-width="1.9" stroke-linecap="round"/>'
+      + '<path d="M20 6.5a8 8 0 0 1 0 11" stroke="#d94a3d" stroke-width="1.7" stroke-linecap="round" opacity="0.65"/>'
+      + '</svg>';
+    el.innerHTML = megaphone + escHtml(lines.join('\n'));
     el.style.display = (lines.length && !SHOP_CLOSED) ? 'block' : 'none';
   });
   // 公休日／時段外：看板是唯一焦點——等待時間、點餐鈕整組退場
@@ -3416,8 +3492,9 @@ function renderShopStatus() {
   const cbar = document.getElementById('cartBar');
   const waitPill = document.getElementById('orderWaitBar');
   if (waitPill) waitPill.style.display = blocked ? 'none' : '';  // 公休/未營業＝沒有等待時間，膠囊收起
-  const segBar = document.querySelector('.seg-bar');
-  if (segBar) segBar.style.display = blocked ? 'none' : '';      // 擋單時連分頁（點餐/我的訂單）也收起，全站不可操作
+  // （原本這裡會收起「點餐／我的訂單」分頁；2026-07-28 該分頁已整組移除，入口統一走 LINE）
+  const noticeBar = document.getElementById('orderNotice');
+  if (noticeBar && blocked) noticeBar.style.display = 'none';    // 公休/未營業＝打烊看板是唯一焦點，公告先收起
   const orderPageOn = document.getElementById('order-page') && document.getElementById('order-page').style.display !== 'none';
   if (ocb && ob) {
     if (blocked) {
@@ -3456,7 +3533,7 @@ function findSoldOutInOrders(list) {
 // 把訂單寫上雲端；失敗會丟出錯誤，由 submitOrder 決定怎麼善後
 async function sendOrderToCloud(records) {
   // 改走 place-order 守門員：先驗 Turnstile，再由伺服器寫入（直接寫資料庫的後門已關）
-  if (!_tsToken) { const e = new Error('TURNSTILE_MISSING'); e._userMsg = '請先完成畫面上的安全驗證再送出 🙏'; throw e; }
+  if (REQUIRE_TURNSTILE && !_tsToken) { const e = new Error('TURNSTILE_MISSING'); e._userMsg = '請先完成畫面上的安全驗證再送出 🙏'; throw e; }
   const res = await fetch(SUPABASE_URL + '/functions/v1/place-order', {
     method: 'POST',
     headers: {
@@ -3464,7 +3541,7 @@ async function sendOrderToCloud(records) {
       'apikey': SUPABASE_KEY,
       'Authorization': 'Bearer ' + SUPABASE_KEY
     },
-    body: JSON.stringify({ token: _tsToken, records })
+    body: JSON.stringify({ token: _tsToken || '', records })   // 停用時送空字串，後端同步放行
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -3476,22 +3553,36 @@ async function sendOrderToCloud(records) {
   _tsToken = null;   // 通行證一次性，用過作廢
 }
 
-// 📮 訂單摘要代貼：從 LINE 開的客人，送出後在聊天室貼一則訂單摘要
-// （需 LIFF 有 chat_message.write 權限＋從聊天室開；沒權限/非聊天情境就靜默略過，不影響下單）
-async function postOrderSummaryToLine(orderNo, name, total, ordersToShow) {
+// 📮 送單確認訊息（2026-07-27 Riley 拍板：送單＝同時以客人身分傳一則訊息給老滷仙官方 LINE）
+//
+// 【為什麼要這樣做】老闆為了省訊息額度關掉了主動推播，於是客人點完餐
+//   在老闆的聊天室裡沒有留下任何痕跡 → 電話填錯或填假，老闆就找不到人。
+//   讓客人自己傳一則出來，一次解決三件事：
+//     ① 老闆聊天室從此有這個人 → 電話填錯也能直接在 LINE 找他
+//     ② 「確認會前往取餐」是客人親手按的一句承諾 → 比事後黑名單更早一步防棄單
+//     ③ 這則訊息是「以客人身分」發送（官方定義：sends messages on behalf of the user），
+//        不吃老闆官方帳號的訊息額度
+//
+// 【回傳值】true＝訊息確實送出；false＝送不出去（呼叫端要中止下單，不寫訂單）
+async function sendOrderConfirmToLine(orderNo, phone) {
+  // 不是在 LINE 裡開的（一般瀏覽器）＝根本沒有聊天室可以傳，直接判定失敗
+  if (typeof liff === 'undefined' || !liff.isInClient || !liff.isInClient()) return false;
+  const tail = (phone || '').replace(/\D/g, '').slice(-3);   // 只取末三碼：聊天室不貼完整號碼，老闆看單台有全碼
+  // 訊息內容不放 emoji（Riley 2026-07-27 裁示）：這是客人「自己說出口的承諾」，
+  // 文字乾淨才像一句話，貼滿表情符號會變成系統罐頭訊息。
+  // 排版拆成短行（Riley 定稿）：LINE 泡泡窄，長句會亂折，短行才好讀。
+  // ⚠️ 改這段字時，line-webhook 的辨識規則要一起改
+  //    （它靠「我已送出訂單」這句話＋內文的 #編號 認出這是一則送單確認）
+  const text = '您好~\n我已送出訂單囉~\n\n訂單編號：#' + orderNo
+    + (tail ? '\n手機末三碼：' + tail : '')
+    + '\n\n我會前往取餐，\n麻煩店家確認接單，謝謝！';
   try {
-    if (typeof liff === 'undefined' || !liff.isInClient || !liff.isInClient()) return;
-    const lines = [];
-    (ordersToShow || []).forEach(o => {
-      Object.values(o.cart || {}).forEach(v => lines.push('・' + v.name + ' ×' + v.qty));
-    });
-    const text = '🍢 老滷仙 · 訂單已送出\n取餐編號 #' + orderNo
-      + '\n訂餐人：' + name + '\n'
-      + lines.join('\n')
-      + '\n合計 $' + total
-      + '\n（老闆確認接單後會通知取餐時間）';
     await liff.sendMessages([{ type: 'text', text }]);
-  } catch (e) { /* 沒權限或非聊天情境＝略過，絕不擋下單 */ }
+    return true;
+  } catch (e) {
+    console.error('送單確認訊息失敗：', e);   // 沒 chat_message.write 權限、或不是從聊天室開的 LIFF
+    return false;
+  }
 }
 
 // 把畫面上的訂單整理成資料表格式（回傳一筆或多筆的陣列）
@@ -3573,30 +3664,45 @@ async function submitOrder() {
 
   const orderNo = await genOrderNo(); // 跟雲端發號櫃檯領號（await：要等號碼拿到手才往下走）
 
+  // 📮 送單確認（Riley 2026-07-27 拍板・方案 B）：先傳訊息、成功了才寫訂單。
+  //    順序不能反過來——先寫訂單的話，客人訊息沒傳成功就會產生
+  //    「老闆收到單、卻不知道是誰」的幽靈單，正是這次要根治的問題。
+  if (REQUIRE_LINE_CONFIRM) {
+    const sent = await sendOrderConfirmToLine(orderNo, phone);
+    if (!sent) {
+      if (btn) { btn.disabled = false; btn.textContent = '送 出 訂 單'; }
+      alert('⚠️ 訂單尚未送出\n\n'
+        + '請從老滷仙 LINE 官方帳號下方的「我要點餐」進入點餐頁。\n\n'
+        + '送出時系統會同時幫你通知老闆，這樣才算完成訂購 🙏');
+      return;
+    }
+  }
+
   // ☁️ 關鍵一步：訂單先飛上雲端（老闆才收得到）；失敗就不算送出
   try {
     await sendOrderToCloud(buildCloudRecords(orderNo, name, phone, total, ordersToShow, mode));
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = '送 出 訂 單'; }
     // 守門員有回白話訊息（驗證未過／太頻繁）就直接顯示；否則給通用網路提示
+    // ⚠️ 走到這裡代表：LINE 確認訊息已經發出去了，但訂單沒寫進資料庫。
+    //    對客人講白話＝「這張還沒算數，要再按一次」，免得他以為送出成功在家乾等。
     alert(e && e._userMsg
       ? '⚠️ ' + e._userMsg
-      : '⚠️ 訂單傳送失敗（可能是網路不穩），請再按一次「送出訂單」。\n若一直失敗，請直接致電 0939-955-888 訂購。');
+      : '⚠️ 訂單傳送失敗（可能是網路不穩），請再按一次「送出訂單」。\n（剛才 LINE 上那則訊息不算數，以老闆看到的訂單為準）\n若一直失敗，請直接致電 0939-955-888 訂購。');
     return;
   }
 
   // 儲存訂單（本機備份，給下面「查詢我的訂單」功能用）
   saveOrderToHistory(orderNo, name, phone, total, ordersToShow, mode);
 
-  // 📮 訂單摘要「不再」代貼到客人聊天室——今日訂單追蹤頁已能看完整明細，
-  //    省下聊天室洗版；老闆的新單通知(line-push)照舊。
+  // 📮 備註：客人的「送單確認訊息」在上面領號之後就發出去了（sendOrderConfirmToLine），
+  //    不是在這裡發——因為傳不出去就要中止下單，必須擋在寫資料庫之前。
 
   // 📱 LINE 客人：送出後直接跳「今日訂單」追蹤（免看舊成功畫面＋查詢表單）
   //    先清購物車/狀態（同 finishOrder），再打開追蹤；追蹤會自動用 LINE ID 撈到這張新單
   if (LINE_USER && LINE_USER.id) {
     finishOrder();                                   // 清購物車＋關結帳彈窗
-    document.getElementById('segMenu')?.classList.remove('active');
-    document.getElementById('segOrders')?.classList.add('active');
+    // （原本這裡要切換「點餐／我的訂單」分頁的高亮；分頁已於 2026-07-28 移除）
     setTimeout(() => openCoverQuery(), 150);          // 給關閉動畫一點時間再開追蹤
     return;
   }
@@ -3869,6 +3975,15 @@ document.addEventListener('visibilitychange', function(){ if (!document.hidden) 
    認出客人 → 結帳姓名自動帶入＋訂單自動綁定（免傳取餐編號）。
    任何一步出錯都靜默放棄——點餐永遠不能被 LIFF 卡住（可用性優先）。 */
 const LIFF_ID = '2010753920-y35aYY9d';  // 2026-07-19 開通（LINE Login channel「老滷仙點餐」）
+
+/* 🔒 送單必須同時通知老闆（2026-07-27 Riley 拍板・方案 B）
+   true ＝ 客人按「送出訂單」時會以他自己的身分傳一則訊息給老滷仙官方 LINE，
+          傳不出去就不算下單完成（訂單不會寫進資料庫）。
+   為什麼要這麼硬：這是目前唯一能保證「每一張線上單都找得到人」的辦法。
+   ⚠️ 副作用：只有從 LINE 官方帳號「我要點餐」進來的客人才下得了單，
+      用一般瀏覽器開網址的人會被擋（8/1 起入口本來就統一走 LINE，這是刻意的）。
+   要臨時關掉（例如用電腦除錯）把這行改成 false 即可。 */
+const REQUIRE_LINE_CONFIRM = true;
 // 官方帳號「加好友」連結：沒加好友的客人收不到取餐通知 → 提示他加。
 // ⚠️ 換成老滷仙 OA 的加好友短連結（LINE Official Account Manager → 加入好友 → 網址，形如 https://lin.ee/xxxxxxx）
 const OA_ADD_URL = 'https://lin.ee/oNj8nyC';
@@ -4013,18 +4128,18 @@ function _hm(iso) { return iso ? new Date(iso).toLocaleTimeString('zh-TW', { tim
 
 // 進度時間軸 4 步驟（已送出→老闆接單→製作中→可取餐）；stage＝目前到第幾步
 function timelineStepsHTML(r, stage) {
-  const st = r.status, pk = r.pickup_at ? _hm(r.pickup_at) : '';
-  const overdue = r.pickup_at && (new Date(r.pickup_at).getTime() < Date.now());  // 已過預計取餐時間
-  const makingSub = st === 'done' ? '已完成'
-    : stage >= 2 ? (overdue ? '即將製作完成，請稍候' : ('正在滷…預計 ' + (pk || '—') + ' 完成'))
-    : '等待製作';
+  // 四步驟（Riley 2026-07-27 定稿）：小字寫成「老闆在回話」的口氣，不是系統報告狀態。
+  //   收到!! ／ 等我一下～ ／ 快好了～ ／ 可以來囉～
+  // 四句固定不隨狀態變化——因為時間軸本來就有 done／current／future 三種樣式，
+  // 還沒輪到的步驟是暗的，客人一眼就看得出「這句還沒發生」。
+  // 預計完成時間也不在這裡重複印（Hero 卡上方已經用大字寫著取餐時間）。
   const steps = [
-    { t: '已送出',  time: _hm(r.created_at),   sub: '訂單成立' },
-    { t: '老闆接單', time: _hm(r.confirmed_at), sub: stage >= 2 ? '開始準備' : '等待老闆確認' },
-    { t: '製作中',  time: '', sub: makingSub },
-    { t: '可取餐',  time: '', sub: st === 'done' ? '餐點完成，請取餐' : '老闆製作完成即可取餐' },
+    { t: '訂單已送出', time: _hm(r.created_at),   sub: '收到!!' },
+    { t: '等待確認',   time: _hm(r.confirmed_at), sub: '等我一下～' },
+    { t: '製作中',     time: '', sub: '快好了～' },
+    { t: '可取餐',     time: '', sub: '可以來囉～' },
   ];
-  const icons = ['📤', '🔔', '🍲', '🍜'];
+  const icons = ['📤', '⌛', '🍲', '🍜'];   // 🔔 改 ⌛：鈴鐺是「通知」，這一步的語意是「等待」
   let rows = '';
   steps.forEach((s, i) => {
     const cls = i < stage ? 'done' : (i === stage ? 'current' : 'future');
@@ -4088,8 +4203,13 @@ function heroOrderHTML(r) {
   const st = r.status, pk = r.pickup_at ? _hm(r.pickup_at) : '';
   let statusLabel, timeBlock, bar = '', extraCls = '';
   if (st === 'new') {
-    statusLabel = '🔔 等待老闆確認';
-    timeBlock = '<div class="hero-wait-plain">已送出，老闆接單後會顯示取餐時間</div>';
+    // 🟡 等待確認（Riley 2026-07-27 UX 重整）：
+    //   舊文案「已送出」會被理解成「店家已收到並開始做」，但事實是老闆還沒點頭。
+    //   這裡把真相講白：訂單只是「建立」了，老闆確認後才會下鍋。
+    //   ⚠️ 刻意不寫「通常 1~3 分鐘」——那是承諾，老闆在忙時做不到，寫了反而製造焦慮。
+    //   鈴鐺 🔔 換成 ⌛：鈴鐺的語意是「通知」，這裡的狀態是「等待」。
+    statusLabel = '<span class="hero-waiting-ico">⌛</span> 等待老闆確認';
+    timeBlock = '<div class="hero-wait-plain">老闆確認後，將立即開始現滷製作，<br>並在這裡更新預計取餐時間。</div>';
   } else if (st === 'done') {
     // 完成後仍用大卡＋完整進度表（綠色），並保留取餐時間讓客人知道幾點取
     extraCls = ' done';
@@ -4122,11 +4242,16 @@ function heroOrderHTML(r) {
     + timelineStepsHTML(r, stage) + '</div>';
 }
 
-// 今天較早訂單（done／cancelled）：收合成一列＋查看明細
+// 今天其他訂單（進行中的第二張以後／已完成／已取消）：收合成一列＋查看明細
 function pastOrderRowHTML(r) {
   const st = r.status;
-  const label = st === 'done' ? '<span class="pr-done">✔ 已完成</span>' : '<span class="pr-cancel">✕ 已取消</span>';
-  const when = _hm(st === 'done' ? (r.pickup_at || r.created_at) : r.created_at);
+  // 2026-07-27：這裡原本只認得 done／cancelled，現在「還在進行中」的舊單也會排進來，
+  // 所以補上等待確認／製作中兩種狀態，不然它們會被誤標成「已取消」
+  const label = st === 'done' ? '<span class="pr-done">✔ 已完成</span>'
+    : st === 'cancelled' ? '<span class="pr-cancel">✕ 已取消</span>'
+    : st === 'confirmed' ? '<span class="pr-active">🍲 製作中</span>'
+    : '<span class="pr-active">⌛ 等待確認</span>';
+  const when = _hm((st === 'done' || st === 'confirmed') ? (r.pickup_at || r.created_at) : r.created_at);
   const id = 'pd-' + r.order_no;
   // 明細用共用函式＝跟 Hero 卡一樣完整（含每項價格＋優惠折抵＋分區折抵），不再只有品項名稱
   return '<div><div class="past-row">'
@@ -4151,25 +4276,32 @@ function toggleOrderDetail(id, el) {
 
 // 組整頁：進行中(Hero) ＋ 最近一筆完成單(綠色大卡) ＋ 其餘(收合) ＋ 最後更新
 function renderMyOrders(rows, el) {
-  const active = rows.filter(r => r.status === 'new' || r.status === 'confirmed');
-  // 完成單依時間新→舊排；只把「最近一筆」留成大卡，其餘收到下面
-  const doneAll = rows.filter(r => r.status === 'done')
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  const latestDone = doneAll.slice(0, 1);   // 保留最近一筆完成單當大卡（逾時來取餐也看得到已完成＋進度表）
-  const olderDone = doneAll.slice(1);
-  const cancelled = rows.filter(r => r.status === 'cancelled');
+  // 🐛 2026-07-27 修：原本「所有進行中訂單」都被畫成 Hero 大卡（完成單有做只留一張、
+  //    進行中的漏了）→ 一天點兩次以上，畫面就疊出好幾張大卡，要滑很久。
+  //    規則改成：全頁永遠只有一張大卡，其餘一律收合。
+  const byNew = (a, b) => new Date(b.created_at) - new Date(a.created_at);
+  const active = rows.filter(r => r.status === 'new' || r.status === 'confirmed').sort(byNew);
+  const doneAll = rows.filter(r => r.status === 'done').sort(byNew);
+
+  // 誰有資格當那張大卡：優先「進行中的最新一張」（客人最想知道的就是這張好了沒）；
+  // 完全沒有進行中的，才退而用最近完成的那張（讓剛取餐完的人也看得到紀錄）
+  const heroRow = active[0] || doneAll[0] || null;
+  const rest = rows.filter(r => r !== heroRow).sort(byNew);   // 其餘全部收進下面那條
 
   let html = '';
-  if (active.length) html += active.map(heroOrderHTML).join('');
-  if (latestDone.length) html += latestDone.map(heroOrderHTML).join('');   // 綠色✅大卡＋完整進度表
-  if (!active.length && !latestDone.length) {
+  if (heroRow) html += heroOrderHTML(heroRow);
+  else {
     html += '<div class="query-result-empty">目前沒有進行中的訂單 🍢<br><small style="opacity:0.7">下單後這裡會顯示製作進度</small></div>';
   }
-  // 其餘（較早的完成單＋取消單）收合在最下面；標題依內容精準命名
-  const past = olderDone.concat(cancelled);
+  // 其餘訂單收合在最下面；標題依內容精準命名
+  const past = rest;
   if (past.length) {
-    const label = (olderDone.length && cancelled.length) ? '先前訂單'
-                : cancelled.length ? '已取消訂單' : '已完成訂單';
+    const hasActive = past.some(r => r.status === 'new' || r.status === 'confirmed');
+    const hasCancelled = past.some(r => r.status === 'cancelled');
+    const hasDone = past.some(r => r.status === 'done');
+    const label = hasActive ? '今日其他訂單'
+                : (hasDone && hasCancelled) ? '先前訂單'
+                : hasCancelled ? '已取消訂單' : '已完成訂單';
     html += '<div class="past-orders"><div class="past-toggle" onclick="togglePastOrders(this)">' + label + '（' + past.length + '）<span class="past-arrow">▼</span></div>'
       + '<div class="past-list" style="display:none">' + past.map(pastOrderRowHTML).join('') + '</div></div>';
   }
@@ -4205,8 +4337,7 @@ function closeCoverQuery() {
   // LINE 客人：內容留著，下次開瞬間顯示上次的、再原地無縫刷新（不閃）；非 LINE 才清空還原查詢表單
   if (!(LINE_USER && LINE_USER.id)) document.getElementById('coverQueryResult').innerHTML = '';
   clearInterval(_myOrdersTimer);   // 停掉自動刷新
-  document.getElementById('segMenu')?.classList.add('active');       // 分頁切回「點餐」
-  document.getElementById('segOrders')?.classList.remove('active');
+  // （分頁高亮切換已隨「點餐／我的訂單」分頁一起移除，2026-07-28）
   lockScroll(false);
 }
 
@@ -4258,6 +4389,9 @@ function updateWaitDisplay(){
   if (c) c.innerHTML = `目前等待時間：約 <strong>${waitMinutes} 分鐘</strong>`;
   const o = document.getElementById('orderWaitNum');
   if (o) o.textContent = waitMinutes;
+  // 菜單頁右上膠囊的呼吸燈：顏色跟著等待分鐘走（2026-07-28）
+  const dot = document.getElementById('orderWaitDot');
+  if (dot) dot.style.setProperty('--wd', waitDotColor(waitMinutes));
 }
 
 // 呼吸燈顏色依等待分鐘：越久越紅，提醒客人心裡有底

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>滷味菜單（A5）</title>
+<style>
+  /* ===== 頁面設定：A5 直式（148mm x 210mm） ===== */
+  @page {
+    size: A5 portrait;
+    margin: 0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 148mm;
+    font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .menu {
+    width: 148mm;
+    height: 210mm;
+    padding: 5mm 5mm 4mm;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ===== 標題 ===== */
+  .head {
+    text-align: center;
+    border-bottom: 2.5px solid #8b2a1d;
+    padding-bottom: 1.5mm;
+    margin-bottom: 2.5mm;
+  }
+  .head h1 {
+    font-size: 18pt;
+    letter-spacing: 6px;
+    color: #8b2a1d;
+    font-weight: 900;
+  }
+  .head .sub {
+    font-size: 8pt;
+    color: #555;
+    letter-spacing: 2px;
+    margin-top: 0.5mm;
+  }
+
+  /* ===== 內容：左右兩欄（手動分配，列印才不會跑版） ===== */
+  .body {
+    flex: 1;
+    display: flex;
+    gap: 4mm;
+  }
+  .col {
+    flex: 1;
+    min-width: 0;
+  }
+
+  table.sec {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    break-inside: avoid;
+    margin-bottom: 2.5mm;
+  }
+  table.sec th {
+    background: #8b2a1d;
+    color: #fff;
+    font-size: 10.5pt;
+    font-weight: 700;
+    padding: 1.2mm 1.5mm;
+    text-align: left;
+    border: 1px solid #8b2a1d;
+  }
+  /* 標題右側的「此區任選 X 樣 XX元」黃底小標籤
+     nowrap：不讓優惠字被擠成兩行；字級壓到 8pt 才塞得進半頁寬的欄位 */
+  table.sec th .deal {
+    float: right;
+    font-size: 8pt;
+    font-weight: 700;
+    background: #f5d78e;
+    color: #6b2015;
+    border-radius: 1mm;
+    padding: 0 1.5mm;
+    white-space: nowrap;
+    line-height: 1.5;
+  }
+  table.sec th.plain { background: #4a4a4a; border-color: #4a4a4a; }
+
+  table.sec td {
+    border: 1px solid #b5a08e;
+    font-size: 10.5pt;
+    text-align: center;
+    padding: 1.4mm 0.5mm;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  table.sec td em {
+    font-style: normal;
+    font-size: 7.5pt;
+    color: #777;
+  }
+  table.sec td b {
+    font-weight: 700;
+    color: #8b2a1d;
+    font-size: 10pt;
+  }
+  table.sec td.blank { background: #f3efe9; }
+
+  /* 蔬菜區一列四格，字稍小 */
+  table.veg td { font-size: 10pt; padding: 1.2mm 0.3mm; }
+
+  /* ===== 頁尾 ===== */
+  .foot {
+    border-top: 1.5px solid #8b2a1d;
+    padding-top: 1.2mm;
+    font-size: 8pt;
+    color: #555;
+    text-align: center;
+    letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="menu">
+  <div class="head">
+    <h1>滷 味 菜 單</h1>
+    <div class="sub">選擇多元，優惠五元</div>
+  </div>
+
+  <div class="body">
+
+    <div class="col">
+
+    <table class="sec">
+      <tr><th colspan="3">15元區<span class="deal">此區任選 2 樣 25元</span></th></tr>
+      <tr><td>蘿蔔</td><td>黑輪</td><td>海帶</td></tr>
+      <tr><td>甜不辣</td><td>年糕 <em>4條</em></td><td>鳥蛋 <em>4顆</em></td></tr>
+    </table>
+
+    <table class="sec">
+      <tr><th colspan="3">鍋物-15元區<span class="deal">此區任選 2 樣 25元</span></th></tr>
+      <tr><td>貢丸</td><td>香菇貢丸</td><td>魚包蛋</td></tr>
+      <tr><td>龍蝦沙拉</td><td>花枝丸</td><td>北海貝</td></tr>
+      <tr><td>麻糬燒</td><td class="blank"></td><td class="blank"></td></tr>
+    </table>
+
+    <table class="sec">
+      <tr><th colspan="3">鍋物-10元區<span class="deal">此區任選 4 樣 35元</span></th></tr>
+      <tr><td>小豆干</td><td>凍豆腐</td><td>起司燒</td></tr>
+      <tr><td>水晶餃</td><td>魚餃</td><td>魚豆腐</td></tr>
+      <tr><td>鑫鑫腸</td><td>鱈魚丸</td><td>蟹肉棒</td></tr>
+    </table>
+
+    <table class="sec">
+      <tr><th colspan="3">20元區<span class="deal">此區任選 2 樣 35元</span></th></tr>
+      <tr><td>竹輪</td><td>炸豆包</td><td>鱈魚燒</td></tr>
+      <tr><td>豬皮</td><td>素肚 <em>/半個</em></td><td class="blank"></td></tr>
+    </table>
+
+    <table class="sec">
+      <tr><th colspan="3">25元區<span class="deal">此區任選 2 樣 45元</span></th></tr>
+      <tr><td>素雞</td><td>素胗</td><td>雞心</td></tr>
+      <tr><td>雞胗</td><td>豆腸</td><td>芋粿</td></tr>
+      <tr><td>米血糕</td><td>百頁豆腐</td><td>麵腸</td></tr>
+    </table>
+
+    </div>
+
+    <div class="col">
+
+    <table class="sec">
+      <tr><th colspan="3">30元區<span class="deal">此區任選 2 樣 55元</span></th></tr>
+      <tr><td>大熱狗</td><td>德國香腸</td><td>豆皮</td></tr>
+      <tr><td>蘭花干</td><td>大豆干</td><td class="blank"></td></tr>
+    </table>
+
+    <table class="sec">
+      <tr><th class="plain" colspan="3">切料單點</th></tr>
+      <tr><td>鴨血 <b>35</b></td><td>大腸 <b>50</b></td><td class="blank"></td></tr>
+    </table>
+
+    <table class="sec">
+      <tr><th colspan="3">肉類 40元<span class="deal">此區任選 2 樣 75元</span></th></tr>
+      <tr><td>豬肉片</td><td>嘴邊肉</td><td>肝連肉</td></tr>
+      <tr><td>豬頭皮</td><td>豬耳朵</td><td class="blank"></td></tr>
+    </table>
+
+    <table class="sec veg">
+      <tr><th colspan="4">蔬菜・菇類 35元<span class="deal">此區任選 3 樣 100元</span></th></tr>
+      <tr><td>金針菇</td><td>香菇</td><td>秀珍菇</td><td>杏鮑菇</td></tr>
+      <tr><td>木耳</td><td>花椰菜</td><td>玉米筍</td><td>水蓮</td></tr>
+      <tr><td>娃娃菜</td><td>小黃瓜</td><td>洋蔥</td><td>青椒</td></tr>
+      <tr><td>茼蒿</td><td>絲瓜</td><td>高麗菜</td><td>大陸妹</td></tr>
+      <tr><td>空心菜</td><td>菠菜</td><td>四季豆</td><td class="blank"></td></tr>
+    </table>
+
+    <table class="sec">
+      <tr><th class="plain" colspan="3">麵類・冬粉</th></tr>
+      <tr><td>王子麵 <b>15</b></td><td>滷味麵 <b>15</b></td><td>細冬粉 <b>15</b></td></tr>
+      <tr><td>寬冬粉 <b>15</b></td><td>烏龍麵 <b>20</b></td><td>蒸煮麵 <b>25</b></td></tr>
+    </table>
+
+    <table class="sec">
+      <tr><td>紙碗 一個 <b>2元</b></td></tr>
+      <tr><td>免洗筷 一雙 <b>1元</b></td></tr>
+    </table>
+
+    </div>
+
+  </div>
+
+  <div class="foot">犒賞自己 好好吃飯</div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,36 @@
+# 🔒 不上傳到 Cloudflare Pages 的檔案（2026-07-27 建立）
+#
+# 為什麼需要這個檔：wrangler 部署＝「把整個資料夾丟上網」，它【不看 .gitignore】。
+# 2026-07-27 就是這樣把 laolu-line-keys.txt（LINE token／老闆密語）公開到網路上的。
+# 以後任何不該給客人看到的東西，寫進這裡。
+#
+# ⚠️ 但真正的保險是「機密根本不要放在這個資料夾」——
+#    金鑰檔已移到 D:\laolu-secrets\，這裡只是第二道防線。
+
+# 機密
+laolu-line-keys.txt
+*.key
+*.env
+
+# 內部文件：部署卡、資料庫腳本（不含密碼，但沒必要公開給客人看）
+*.md
+*.sql
+
+# 開發用的測試頁與暫存
+_test_*.html
+index-uber.html
+.wrangler/
+dumped.html
+debug.html
+dbg_dump.html
+d2.html
+tiny.html
+
+# 只給 LINE 後台上傳用的圖文選單原圖（客人端用不到）
+richmenu-*.png
+richmenu-*.jpg
+line_bar.png
+bg-boss.png.png
+
+# 紙本菜單原稿
+*.pdf

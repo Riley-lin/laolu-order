@@ -11,6 +11,12 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
+// 🔓 Turnstile 開關（2026-07-28 Riley 拍板停用）
+//   原因：客人端入口已鎖死在 LINE（LIFF 身分＋授權代發訊息＋送出時真的發一則訊息），
+//   機器人過不了那四關；而 Turnstile 在 LINE 內嵌瀏覽器裡會誤擋真客人（老闆實測被擋）。
+//   防洪工作改由下面的「IP 限流」單獨負責。
+//   要恢復：這行改 true，並把 index.html 的同名開關也改回 true。
+const REQUIRE_TURNSTILE = false
 const TURNSTILE_SECRET = Deno.env.get('TURNSTILE_SECRET') ?? ''
 const db = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -62,9 +68,11 @@ Deno.serve(async (req) => {
   const token: string = payload?.token ?? ''
   const records = payload?.records
 
-  // ① Turnstile 驗證
-  if (!token || !(await verifyTurnstile(token, ip))) {
-    return json({ error: 'turnstile_failed', message: '安全驗證未通過，請重新整理頁面再送一次 🙏' }, 403)
+  // ① Turnstile 驗證（停用中，見檔案開頭的 REQUIRE_TURNSTILE 說明）
+  if (REQUIRE_TURNSTILE) {
+    if (!token || !(await verifyTurnstile(token, ip))) {
+      return json({ error: 'turnstile_failed', message: '安全驗證未通過，請重新整理頁面再送一次 🙏' }, 403)
+    }
   }
 
   // ② IP 限流（先數這個 IP 近 10 分鐘幾張，超過就擋）
@@ -80,6 +88,18 @@ Deno.serve(async (req) => {
   // ③ 基本形狀檢查（其餘由 DB 的 guard_order_price 觸發器把關：金額重算、未知品項、數量）
   if (!Array.isArray(records) || records.length === 0 || records.length > 10) {
     return json({ error: 'bad_records', message: '訂單格式異常，請重新整理再試' }, 400)
+  }
+
+  // ③.5 必須帶 LINE 身分（2026-07-28 起，取代 Turnstile 的守門位置）
+  //   客人端已強制「從 LINE 進來才送得出訂單」，這裡再擋一次，
+  //   避免有人直接對這支 API 灌單。
+  //   ⚠️ 誠實說明：line_user_id 目前是前端送來的，刻意偽造擋不住
+  //     （真正的解法是 ID Token 驗簽，排在黑名單工程一起做）。
+  //     但對「洗版」而言，真正的主力是下面已經在跑的 IP 限流。
+  const badLineId = (records as any[]).some(r =>
+    typeof r?.line_user_id !== 'string' || !/^U[0-9a-f]{32}$/i.test(r.line_user_id))
+  if (badLineId) {
+    return json({ error: 'no_line_id', message: '請從老滷仙 LINE 官方帳號下方的「我要點餐」進入下單 🙏' }, 403)
   }
 
   // ④ 用 service_role 寫入（繞過 RLS；價格防護觸發器仍在 INSERT 前重算覆寫金額）
