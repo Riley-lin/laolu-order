@@ -58,6 +58,8 @@
       <li>收到新訂單 → 接單 → 完成</li>
       <li>要取消訂單怎麼辦</li>
       <li>店務台裡能做什麼（看單／改單／改時間／營業設定／日報）</li>
+      <li>客人現在都從 LINE 點餐（怎麼知道是誰訂的）</li>
+      <li>通知漏掉了會自己補（🔁 補發通知）</li>
       <li>常見情況怎麼處理</li>
     </ol>
   </div>
@@ -111,28 +113,51 @@
     <tr><td><strong>日報</strong></td><td>看今天賣了什麼、熱賣排行、營收</td><td>點「📊 日報」</td></tr>
   </table>
 
-  <h2>五、客人不想加 LINE，也能點餐！</h2>
-  <p>不是每個客人都愛加官方帳號。放心，<strong>不加 LINE 一樣能點、一樣能查進度</strong>，你這邊照樣收到單。分兩種：</p>
-  <table>
-    <tr><th>客人類型</th><th>怎麼點餐</th><th>怎麼看進度</th></tr>
-    <tr><td><strong>用 LINE 的客人</strong></td><td>LINE 裡點「🍢 我要點餐」</td><td>LINE 裡點「我的訂單」自動顯示進度</td></tr>
-    <tr><td><strong>不想加 LINE 的客人</strong></td><td>用手機瀏覽器打開<br><strong>點餐網址</strong>（見下）</td><td>送出後記下<strong>取餐編號</strong>，用網頁的「查詢我的訂單」打姓名＋電話查</td></tr>
-  </table>
-  <div class="step">
-    <p><span class="n">1</span><strong>準備一張「網址 QR 碼」貼在店裡</strong>：指向點餐網址 <strong>https://laolusian.pages.dev</strong>（不用 LINE，任何手機掃了就能點）。這張 QR 找 Riley 幫你產。</p>
-    <p style="font-size:13px;color:#8a7d6b;margin-top:2px;">※ 若是<strong>貼網址到 LINE 或訊息</strong>給客人，記得<strong>前面要加 https://</strong>（手機才會變成可點的連結）。</p>
-    <p><span class="n">2</span>不用 LINE 的客人 → 掃這張 QR → 直接點餐 → 送出後記住<strong>取餐編號</strong>。</p>
-    <p><span class="n">3</span>你這邊<strong>照樣收到訂單</strong>（不管客人從 LINE 還是網頁來，老闆端接單流程完全一樣）。</p>
-  </div>
-  <div style="text-align:center;border:1px solid var(--line);border-radius:10px;padding:18px;margin:14px 0;background:var(--box);">
-    <div style="font-weight:900;margin-bottom:10px;">📱 點餐網址 QR（給不用 LINE 的客人掃）</div>
-    <img src="qr-order.png" alt="點餐網址 QR" style="width:160px;height:160px;">
-    <div style="margin-top:8px;font-size:14px;">網址：<strong>https://laolusian.pages.dev</strong></div>
-    <div style="font-size:12px;color:var(--soft);margin-top:4px;">掃了直接打開點餐頁、不用加 LINE。印出來貼桌上／店門口即可。</div>
-  </div>
-  <div class="tip">💡 一句話：<strong>加不加 LINE 都能點餐、都能查進度</strong>；差別只在「有沒有被主動通知」。店裡同時擺「LINE 加好友 QR」和「直接點餐 QR」，兩種客人都接得住。</div>
+  <h2>五、客人現在都從 LINE 點餐（怎麼知道是誰訂的）</h2>
+  <div class="warn">⚠️ <strong>2026-07-28 起改了規則：點餐一律要從 LINE 進來</strong>，不能只掃網址點餐了。原本店裡那張「直接點餐 QR」請換成 <strong>LINE 加好友 QR</strong>。</div>
 
-  <h2>六、常見情況怎麼處理</h2>
+  <h3>為什麼要改？因為「找得到人」比「方便一點」重要</h3>
+  <p>以前客人用網頁點餐，你手上只有他自己打的姓名和電話。<u>電話打錯一個數字，這張單就變成人間蒸發</u>——菜做好了、人沒來、也聯絡不上。</p>
+  <p>現在客人送出訂單的同時，<strong>系統會用他自己的 LINE 身分，傳一則訊息到老滷仙官方帳號</strong>，長這樣：</p>
+  <div class="step" style="background:#f6f2e8;">
+    <p style="margin:0;font-size:14px;line-height:1.9;">您好~<br>我已送出訂單囉~<br><br>訂單編號：#018<br>手機末三碼：222<br><br>我會前往取餐，<br>麻煩店家確認接單，謝謝！</p>
+  </div>
+  <p>所以<strong>你的 LINE 聊天列表裡，每一張單都會留下一個活生生的人</strong>。電話打錯也沒關係——直接在 LINE 上回他就好。</p>
+  <div class="tip">💡 這則訊息<strong>是客人自己傳的</strong>（系統只是幫他按送出），所以<strong>不算你的訊息額度</strong>，一毛錢都不會多花。</div>
+
+  <h3>客人怎麼進來點餐</h3>
+  <table>
+    <tr><th>客人狀況</th><th>怎麼做</th></tr>
+    <tr><td><strong>已經加了老滷仙</strong></td><td>聊天室下方點 <span class="btn gold">🍢 我要點餐</span> → 直接點</td></tr>
+    <tr><td><strong>還沒加</strong></td><td>掃店裡的<strong>加好友 QR</strong> → 加了之後就會看到「我要點餐」</td></tr>
+    <tr><td><strong>硬要用瀏覽器點</strong></td><td>可以看菜單，但<strong>送不出去</strong>，畫面會提醒他回 LINE 點</td></tr>
+  </table>
+  <div class="tip">💡 客人查進度一樣簡單：LINE 聊天室下方點「訂單查詢」，隨時看得到目前狀態和取餐時間。</div>
+
+  <h2>六、通知漏掉了會自己補（🔁 補發通知）</h2>
+  <p><strong>2026-07-29 新增的保險。</strong>7/28 那天發生過一次：客人的單好好地進了店務台，但你的 LINE <u>沒有響</u>。查出來是 LINE 那邊和雲端服務各出了一次狀況——不是我們的系統壞掉，但結果一樣糟：<strong>你不知道有單。</strong></p>
+
+  <h3>現在的保險長怎樣</h3>
+  <div class="step">
+    <p><span class="n">1</span>訂單進來 → 照常推「🔔 新訂單」金色卡片給你</p>
+    <p><span class="n">2</span>如果這張單<strong>超過 3 分鐘還沒被接單</strong>，系統會判斷「可能沒送到」→ <strong>自動再推一次</strong></p>
+    <p><span class="n">3</span>補推的卡片標題是 <strong style="color:#C0703A;">🔁 補發通知 #018</strong>（橘色），跟新單的金色分得出來</p>
+  </div>
+  <div class="tip">💡 <strong>看到橘色「🔁 補發通知」＝ 這不是新客人，是同一張單再提醒你一次。</strong>直接接單就好，不用擔心重複。</div>
+  <div class="tip">💡 你手機關著、螢幕鎖著、店務台沒開，<strong>照樣收得到</strong>——這是在雲端跑的，不需要你開著任何畫面。</div>
+
+  <h3>會不會一直吵？會不會花錢？</h3>
+  <table>
+    <tr><th>問題</th><th>答案</th></tr>
+    <tr><td>會補幾次？</td><td><strong>最多 3 次</strong>，不會沒完沒了</td></tr>
+    <tr><td>什麼時候停？</td><td><strong>你一接單就停</strong>——正常接單的話，補推永遠不會啟動</td></tr>
+    <tr><td>會多花訊息額度嗎？</td><td>只有「單子放著沒接」才會補推。<strong>正常接單＝一毛不多花</strong></td></tr>
+  </table>
+  <div class="warn">⚠️ 換句話說：<strong>你越快接單，這個功能越不會出現。</strong>它出現，就代表剛剛有一則通知可能真的漏掉了。</div>
+
+  <div class="pagebreak"></div>
+
+  <h2>七、常見情況怎麼處理</h2>
 
   <div class="qa">
     <div class="q">Q1. 太忙了，暫時不想收單怎麼辦？</div>
@@ -152,7 +177,11 @@
   </div>
   <div class="qa">
     <div class="q">Q5. 新訂單通知沒跳出來？</div>
-    <div class="a">先確認你的 LINE 有「加老滷仙好友並綁定」（傳「老闆綁定 加上你的密語」給官方帳號）。若還是收不到，開店務台也看得到所有單。</div>
+    <div class="a">照這個順序看：<br>
+    ・<strong>等 3 分鐘</strong>——如果是通知漏掉，系統會自己補一張橘色「🔁 補發通知」給你（見第六章）。<br>
+    ・<strong>打開店務台</strong>——訂單一定在裡面。<u>收不到通知 ≠ 沒有單</u>，這兩件事是分開的。<br>
+    ・<strong>還是沒有</strong>——確認你的 LINE 有綁定（傳「老闆綁定 加上你的密語」給官方帳號，見第八章）。<br>
+    ※ 訂單資料<strong>從來不會因為通知失敗而消失</strong>，它一進資料庫就存好了。</div>
   </div>
   <div class="qa">
     <div class="q">Q6. 客人在 LINE 傳訊息問問題？</div>
@@ -163,11 +192,12 @@
     <div class="a">看得到。用店務台的<strong>「編輯訂單」</strong>改完，客人的<strong>「我的訂單」約 30 秒內會自動更新</strong>品項、金額、折抵（客人自己開來看就是最新的）。<br>※ 一定要用「編輯訂單」功能改，資料才會同步；口頭說改不算。</div>
   </div>
   <div class="qa">
-    <div class="q">Q8. 點餐頁面下面那個「☑️ 我不是機器人」的勾勾是什麼？</div>
-    <div class="a">那是<strong>防機器人洗版的保全</strong>（Cloudflare Turnstile），送單前確認「是真人在點」，擋掉有人寫程式一秒灌上百張假單塞爆你的看單台。<br>
-    ・<strong>正常客人幾乎不用手動點</strong>——系統會自動判斷放行，一瞬間就過，不影響點餐。<br>
-    ・只有偵測到<strong>可疑流量</strong>（同一台狂送、機器人特徵）才會要求手動勾一下。<br>
-    ・這是<strong>免費</strong>的、自動運作，你什麼都不用設定或維護。客人若問「這是什麼」，回他「防詐防灌單的安全驗證，點一下就好」即可。</div>
+    <div class="q">Q8. 客人說「我送不出訂單，跳出叫我從 LINE 進去」？</div>
+    <div class="a">這是<strong>正常的保護，不是壞掉</strong>。他多半是用瀏覽器或舊書籤打開點餐頁的。<br>
+    ・<strong>怎麼跟客人講</strong>：「不好意思～現在要從我們 LINE 裡面點喔，加好友後點下面的『🍢 我要點餐』就可以了 🙏」<br>
+    ・<strong>為什麼要這樣</strong>：這樣每張單都對得到一個真人，電話填錯我們也找得到你（見第五章）。<br>
+    ・順便也擋掉了有人寫程式灌假單塞爆看單台。<br>
+    ※ 如果客人真的不方便用 LINE，就<strong>直接電話幫他記單</strong>，不要讓他在那邊一直重試。</div>
   </div>
   <div class="qa">
     <div class="q">Q9. 我在店務台按了接單，但 LINE 那張「新訂單」卡片沒變，是不是沒接到？</div>
@@ -177,7 +207,7 @@
     ※ 反過來，<strong>直接在 LINE 卡片按分鐘接單</strong>的話，卡片會自己變成「✅ 已接單 · 製作中」。</div>
   </div>
 
-  <h2>七、老闆綁定／解除綁定（收不收新單通知）</h2>
+  <h2>八、老闆綁定／解除綁定（收不收新單通知）</h2>
   <p>「綁定」＝讓你這支手機收到「🔔 新訂單」通知。做法是傳訊息給老滷仙官方帳號：</p>
   <div class="step">
     <p><span class="n">1</span><strong>要收通知（綁定）</strong>：傳 <span class="btn">老闆綁定 你的密語</span> 給官方帳號（例如「老闆綁定 abc123」）。看到「✅ 綁定成功」就會開始收新單通知。<br><span style="font-size:13px;color:var(--soft)">※ 密語找 Riley 拿；可以多支手機都綁（老闆＋幫手都收得到）。</span></p>
@@ -186,10 +216,12 @@
   <div class="tip">💡 解除綁定<strong>只會移除你自己這支手機</strong>，不影響其他綁定的手機。</div>
 
   <div class="tip">💡 <strong>最重要的三步就是：收到「🔔新訂單」→ 點分鐘接單 → 做好按「🏁完成」。</strong> 其他都是輔助功能，用到再看這本手冊就好。</div>
+  <div class="tip">💡 <strong>看到橘色「🔁 補發通知」也一樣處理</strong>——那是同一張單在提醒你，接單就好。</div>
 
   <div class="foot">
     有任何問題，直接找 Riley 🙌<br>
-    老滷仙 · 道地滷味 · 八德廣福店
+    老滷仙 · 道地滷味 · 八德廣福店<br>
+    <span style="font-size:12px;">手冊版本 2026-07-29（新增：LINE 專屬入口、🔁 補發通知）</span>
   </div>
 
 </div>
