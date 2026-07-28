@@ -175,6 +175,7 @@
       <button class="btn-plain" onclick="openShopSettings()">🚪 營業</button>
       <button class="btn-plain" onclick="openDailyReport()">📊 日報</button>
       <button class="btn-plain" onclick="openMenuManager()">🍢 菜單</button>
+      <button class="btn-plain" id="soundBtn" onclick="toggleSound()" title="點一下切換；顯示的是【目前狀態】不是動作">🔊 音效：開</button>
       <button class="btn-plain" id="refreshBtn" onclick="refreshOrders()">↻ 重新整理</button>
     </div>
     <div id="orderList"><div class="empty">載入中…</div></div>
@@ -237,6 +238,7 @@ function showBoard() {
   startRealtime();
   clearInterval(pollTimer);
   pollTimer = setInterval(loadOrders, 60000);
+  startOrderWatch();      // 🔔 三種提示音的監看（新單／取餐時間到／該按完成）
   handleBossDeepLink();   // 圖文選單 4 格：依 ?tab= 直開對應面板
 }
 
@@ -264,6 +266,162 @@ function handleBossDeepLink() {
   } catch (e) { /* 跳轉失敗無傷，看單列表照常 */ }
 }
 
+/* ============================================================
+   🔔 三種提示音（2026-07-28 事故後新增）
+   為什麼要有：#015 那次 LINE 通知沒送到，老闆完全無感。
+   這條路走 Realtime／輪詢，【完全不經過 LINE 與通知程式】——
+   就算那條鏈整個斷掉，只要店務台開著就聽得到。
+
+   三種聲音刻意設計成不同語氣，不用看螢幕就能分辨：
+     ① 新訂單    「叮—咚」上行兩音，明亮   → 有生意上門
+     ② 取餐時間到「嗶嗶嗶」中音三連，急促   → 客人要到了，該備餐
+     ③ 該按完成  「噹—」低音單響，柔和     → 只是提醒歸檔，不急
+
+   用瀏覽器內建的音效合成（Web Audio），不需要任何音檔：
+   不會被 CSP 擋、不用載入、不會有檔案遺失的問題。
+   ============================================================ */
+let _audioCtx = null;
+let _soundOn = true;
+try { _soundOn = localStorage.getItem('laolu-boss-sound') !== 'off'; } catch (e) {}
+
+function _ctx() {
+  if (!_audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    _audioCtx = new AC();
+  }
+  // 瀏覽器規定：使用者沒互動過不准出聲。老闆登入時已經點過畫面，這裡把它喚醒。
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+
+/* 依「音符清單」合成聲音。每個音：f=頻率 d=長度 v=音量 type=音色 gap=間隔 */
+function _playNotes(notes) {
+  const ctx = _ctx();
+  if (!ctx) return;
+  let t = ctx.currentTime + 0.02;
+  notes.forEach(n => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = n.type || 'sine';
+    osc.frequency.setValueAtTime(n.f, t);
+    // 音量包絡：快速起音→指數衰減，聽起來像「叮」而不是「嗶——」的長音
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(n.v || 0.25, t + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + n.d);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(t); osc.stop(t + n.d + 0.03);
+    t += n.d + (n.gap !== undefined ? n.gap : 0.04);
+  });
+}
+
+/* 2026-07-28 Riley 實測：「超小聲，現場老闆肯定聽不到」
+   → 攤位有抽油煙機＋人聲，柔和的正弦波會被整個蓋掉。三個方向一起加強：
+     ① 音量拉到接近上限（0.85；再高會破音）
+     ② 音色從 sine（純淨但軟）改成 square（方波，泛音多、穿透力強，像鬧鐘/門鈴）
+     ③ 頻率往上移到 1000~1600Hz —— 人耳對這一段最敏感，也最容易穿過低頻的環境噪音
+     ④ 新訂單重複兩輪（漏聽一次還有第二次） */
+const SOUNDS = {
+  // ① 新訂單：C6→G6 上行，連響兩輪（有生意上門，要最搶耳）
+  newOrder:  [{ f: 1046, d: 0.13, v: 0.85, type: 'square', gap: 0.02 },
+              { f: 1568, d: 0.22, v: 0.85, type: 'square', gap: 0.12 },
+              { f: 1046, d: 0.13, v: 0.85, type: 'square', gap: 0.02 },
+              { f: 1568, d: 0.26, v: 0.85, type: 'square' }],
+  // ② 取餐時間到：E6 四連急促（客人要到了，最急）
+  pickupDue: [{ f: 1318, d: 0.10, v: 0.85, type: 'square', gap: 0.06 },
+              { f: 1318, d: 0.10, v: 0.85, type: 'square', gap: 0.06 },
+              { f: 1318, d: 0.10, v: 0.85, type: 'square', gap: 0.06 },
+              { f: 1318, d: 0.20, v: 0.85, type: 'square' }],
+  // ③ 該按完成：A5 兩聲下行、三角波（提醒而非警報，但也要聽得到）
+  needDone:  [{ f: 880, d: 0.16, v: 0.6, type: 'triangle', gap: 0.05 },
+              { f: 660, d: 0.34, v: 0.6, type: 'triangle' }],
+};
+
+/* 手機震動：老闆手機放圍裙口袋時，震動比聲音更可靠。
+   ⚠️ iPhone 的 Safari 不支援震動 API（只有 Android 有效）；不支援時靜默略過，不影響聲音。 */
+const VIBES = {
+  newOrder:  [180, 90, 180],        // 震—震（跟兩聲叮咚呼應）
+  pickupDue: [90, 60, 90, 60, 200], // 短短短長（急）
+  needDone:  [300],                 // 單一長震（提醒）
+};
+
+function playSound(kind) {
+  if (!_soundOn) return;
+  const notes = SOUNDS[kind];
+  if (notes) _playNotes(notes);
+  // 同步震動（Android 有效、iPhone 無效但不會出錯）
+  try { if (navigator.vibrate && VIBES[kind]) navigator.vibrate(VIBES[kind]); } catch (e) {}
+}
+
+/* 開關：短按切換靜音；靜音狀態記在這台裝置上（換手機要各自設定） */
+function toggleSound() {
+  _soundOn = !_soundOn;
+  try { localStorage.setItem('laolu-boss-sound', _soundOn ? 'on' : 'off'); } catch (e) {}
+  const b = document.getElementById('soundBtn');
+  if (b) b.textContent = _soundOn ? '🔊 音效：開' : '🔇 音效：關';
+  if (_soundOn) playSound('newOrder');   // 打開時響一聲，證明喇叭是通的
+}
+
+/* 試聽三種音（依序播）——老闆第一次用時先聽過，才分得出來 */
+function testSounds() {
+  const old = _soundOn; _soundOn = true;
+  playSound('newOrder');
+  setTimeout(() => playSound('pickupDue'), 900);
+  setTimeout(() => playSound('needDone'), 2000);
+  setTimeout(() => { _soundOn = old; }, 2600);
+}
+
+/* ---------- 訂單監看：決定什麼時候該響 ----------
+   獨立於畫面上的分頁查詢（老闆在「新單」分頁時也要聽得到製作中的提醒），
+   所以這裡自己查一份「未完成的訂單」。
+   三個 Set 記住「已經響過的」，同一張單不會重複吵。 */
+let _watchTimer = null;
+let _seenNew = new Set();       // 已通知過的新單
+let _alertedDue = new Set();    // 已提醒過「取餐時間到」
+let _alertedDone = new Set();   // 已提醒過「該按完成」
+let _watchFirstRun = true;      // 第一次載入不出聲（不然一進來就叮一串舊單）
+
+async function checkOrderAlerts(src) {
+  const { data, error } = await db.from('orders')
+    .select('id, order_no, status, pickup_at')
+    .in('status', ['new', 'confirmed'])
+    .limit(100);
+  if (error || !data) return;
+  const now = Date.now();
+  data.forEach(r => {
+    // ① 新單進來
+    if (r.status === 'new') {
+      if (!_seenNew.has(r.id)) {
+        _seenNew.add(r.id);
+        if (!_watchFirstRun) playSound('newOrder');
+      }
+      return;
+    }
+    // 以下是製作中的單，需要取餐時間才判斷得了
+    if (!r.pickup_at) return;
+    const due = new Date(r.pickup_at).getTime();
+    // ② 取餐時間到 → 客人要來了
+    if (now >= due && !_alertedDue.has(r.id)) {
+      _alertedDue.add(r.id);
+      if (!_watchFirstRun) playSound('pickupDue');
+    }
+    // ③ 超過取餐時間 5 分鐘還在「製作中」→ 多半是客人拿走了、老闆忘了按完成
+    if (now >= due + 5 * 60000 && !_alertedDone.has(r.id)) {
+      _alertedDone.add(r.id);
+      if (!_watchFirstRun) playSound('needDone');
+    }
+  });
+  _watchFirstRun = false;
+}
+
+function startOrderWatch() {
+  if (_watchTimer) return;
+  const b = document.getElementById('soundBtn');
+  if (b) b.textContent = _soundOn ? '🔊 音效：開' : '🔇 音效：關';
+  checkOrderAlerts();                                   // 先跑一次建立基準（這次不出聲）
+  _watchTimer = setInterval(checkOrderAlerts, 20000);   // 每 20 秒巡一次
+}
+
 /* ---------- ⚡ Realtime 即時跳單（M0.9-C） ----------
    訂閱 orders 表的即時廣播：資料庫一有動靜馬上重抓列表。
    廣播一樣過 RLS 門禁——沒登入的人就算訂閱了也收不到訂單資料。 */
@@ -271,7 +429,13 @@ let rtChannel = null;
 function startRealtime() {
   if (rtChannel) return;
   rtChannel = db.channel('orders-live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => loadOrders())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+      loadOrders();
+      // 2026-07-28：資料庫一有動靜就【立刻】檢查要不要出聲，
+      // 不要等 20 秒的巡邏——新單進來卻要等 20 秒才叮，感覺就像壞掉。
+      // （20 秒巡邏保留當保底：Realtime 斷線時仍然會響）
+      if (typeof checkOrderAlerts === 'function') checkOrderAlerts('Realtime');
+    })
     .subscribe();
 }
 
@@ -797,6 +961,14 @@ async function openShopSettings() {
     '<div class="menu-mgr">'
     + '<div class="lp-title">🚪 營業設定</div>'
     + '<div class="mm-list">'
+    +   '<div class="dr-sec">🔔 提示音</div>'
+    +   '<div class="lp-note" style="text-align:left">'
+    +     '① 叮咚叮咚（連兩輪）＝ <b>有新訂單</b><br>'
+    +     '② 嗶嗶嗶嗶（急促）＝ <b>取餐時間到了</b>，客人要來了<br>'
+    +     '③ 噹—噹（下行）＝ 超過取餐時間 5 分鐘，<b>記得按完成</b><br>'
+    +     '工具列的「🔊 音效：開／🔇 音效：關」顯示的是<b>目前狀態</b>，點一下切換；只影響這台裝置。<br>'
+    +     'Android 手機會同時震動（iPhone 不支援震動）。'
+    +   '</div>'
     +   '<div class="dr-sec">⏸ 臨時打烊</div>'
     +   '<button id="pauseBtn" class="' + (pausedToday ? 'btn-accept' : 'btn-cancel') + '" style="width:100%;padding:12px;font-size:15px;" onclick="togglePauseToday(' + pausedToday + ')">'
     +     (pausedToday ? '▶️ 恢復營業（目前：今日公休中）' : '🚪 臨時公休（今天不開）')

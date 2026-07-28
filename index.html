@@ -449,7 +449,7 @@ body::before{
 .section-title{font-family:'CashSign','Noto Serif TC',serif;font-size:16px;font-weight:700;color:var(--gold2);white-space:nowrap;letter-spacing:2px;text-shadow:0 0 12px rgba(212,165,32,0.2);}
 /* 併進標題那一排的優惠說明（2026-07-28）：比標題小一截、字重不加粗，
    讓「15元區」仍是主角；手機窄時自動截斷成「…」，不把裝飾線擠掉 */
-.section-note{font-size:11.5px;color:rgba(233,166,76,0.78);font-weight:600;letter-spacing:0.3px;
+.section-note{font-size:13.5px;color:rgba(233,166,76,0.78);font-weight:600;letter-spacing:0.3px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0;margin-left:-4px;}
 .section-line{flex:1 1 20px;min-width:12px;height:1px;background:linear-gradient(90deg,rgba(212,165,32,0.25),rgba(212,165,32,0.05),transparent);}
 
@@ -1990,7 +1990,7 @@ body::before{
       </div>
     </div>
 
-    <button class="btn-back" style="width:100%;margin-top:14px;padding:11px;" onclick="closeCoverQuery()">關 閉</button>
+    <button class="btn-back" style="width:100%;margin-top:14px;padding:11px;" onclick="closeOrderPage()">關 閉</button>
   </div>
 </div>
 
@@ -3226,7 +3226,30 @@ function validateAndSubmit() {
 
 
 function backToCheckout() {
+  // 2026-07-28 Riley 回報「電話沒有記憶」：
+  //   舊版只有在「按下送出、驗證通過」時才把姓名電話寫進 _pendingOrder，
+  //   中途按返回修改就沒存到 → 再進來輸入框是空的，要重打一次。
+  //   這裡在離開前先把當下輸入的值存起來（不驗證、有什麼存什麼）。
+  if (_pendingOrder) {
+    const n = document.getElementById('fName')?.value.trim();
+    const p = (document.getElementById('fPhone')?.value || '').replace(/\D/g, '');
+    if (n) _pendingOrder.name = n;
+    if (p) _pendingOrder.phone = p;
+  }
   openCheckout({ stopPropagation: ()=>{} });
+}
+
+// 訂單進度頁的「關閉」（2026-07-28 Riley：按了跳回菜單，客人會以為沒下單成功）
+//   從 LINE 進來的 → 直接把 LIFF 視窗關掉，回到聊天室，語意最乾淨
+//   一般瀏覽器開的 → 沒有視窗可關，退回原本行為（收起訂單頁）
+function closeOrderPage() {
+  try {
+    if (typeof liff !== 'undefined' && liff.isInClient && liff.isInClient()) {
+      liff.closeWindow();
+      return;
+    }
+  } catch (e) { /* 關不掉就退回原本行為 */ }
+  closeCoverQuery();
 }
 
 function backToMenu() {
@@ -3673,7 +3696,7 @@ async function submitOrder() {
       if (btn) { btn.disabled = false; btn.textContent = '送 出 訂 單'; }
       alert('⚠️ 訂單尚未送出\n\n'
         + '請從老滷仙 LINE 官方帳號下方的「我要點餐」進入點餐頁。\n\n'
-        + '送出時系統會同時幫你通知老闆，這樣才算完成訂購 🙏');
+        + '送出時系統會同時幫你通知店家，這樣才算完成訂購 🙏');
       return;
     }
   }
@@ -3688,7 +3711,7 @@ async function submitOrder() {
     //    對客人講白話＝「這張還沒算數，要再按一次」，免得他以為送出成功在家乾等。
     alert(e && e._userMsg
       ? '⚠️ ' + e._userMsg
-      : '⚠️ 訂單傳送失敗（可能是網路不穩），請再按一次「送出訂單」。\n（剛才 LINE 上那則訊息不算數，以老闆看到的訂單為準）\n若一直失敗，請直接致電 0939-955-888 訂購。');
+      : '⚠️ 訂單傳送失敗（可能是網路不穩），請再按一次「送出訂單」。\n（剛才 LINE 上那則訊息不算數，以店家看到的訂單為準）\n若一直失敗，請直接致電 0939-955-888 訂購。');
     return;
   }
 
@@ -4208,8 +4231,8 @@ function heroOrderHTML(r) {
     //   這裡把真相講白：訂單只是「建立」了，老闆確認後才會下鍋。
     //   ⚠️ 刻意不寫「通常 1~3 分鐘」——那是承諾，老闆在忙時做不到，寫了反而製造焦慮。
     //   鈴鐺 🔔 換成 ⌛：鈴鐺的語意是「通知」，這裡的狀態是「等待」。
-    statusLabel = '<span class="hero-waiting-ico">⌛</span> 等待老闆確認';
-    timeBlock = '<div class="hero-wait-plain">老闆確認後，將立即開始現滷製作，<br>並在這裡更新預計取餐時間。</div>';
+    statusLabel = '<span class="hero-waiting-ico">⌛</span> 等待店家確認';
+    timeBlock = '<div class="hero-wait-plain">接單後，將立即開始製作，<br>並更新預計取餐時間</div>';
   } else if (st === 'done') {
     // 完成後仍用大卡＋完整進度表（綠色），並保留取餐時間讓客人知道幾點取
     extraCls = ' done';

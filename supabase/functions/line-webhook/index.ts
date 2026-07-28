@@ -89,7 +89,7 @@ async function handleBossButton(ev: any, userId: string) {
   const { data: admin } = await db.from('line_admins')
     .select('line_user_id').eq('line_user_id', userId).maybeSingle()
   if (!admin) {
-    await reply(ev.replyToken, '這些按鈕只有老闆能按喔 🍢')
+    await reply(ev.replyToken, '這些按鈕只有老闆能按喔')
     return
   }
 
@@ -123,7 +123,7 @@ async function handleBossButton(ev: any, userId: string) {
       await reply(ev.replyToken, '這張單不在製作中，可能已完成或已取消囉')
       return
     }
-    await reply(ev.replyToken, '🏁 訂單 #' + rows[0].order_no + ' 完成，辛苦了！')
+    await reply(ev.replyToken, '訂單 #' + rows[0].order_no + ' 完成，辛苦了！')
     return
   }
 
@@ -172,13 +172,13 @@ async function handleBossButton(ev: any, userId: string) {
       await reply(ev.replyToken, '這張單已經不能取消了（可能已完成或已取消）')
       return
     }
-    await reply(ev.replyToken, '❌ 訂單 #' + rows[0].order_no + ' 已取消')
+    await reply(ev.replyToken, '訂單 #' + rows[0].order_no + ' 已取消')
     return
   }
 
   // 🙆 不取消
   if (p.a === 'keep') {
-    await reply(ev.replyToken, '好，訂單留著繼續做 🍢')
+    await reply(ev.replyToken, '好，訂單留著繼續做')
     return
   }
 }
@@ -250,7 +250,7 @@ Deno.serve(async (req) => {
       await reply(ev.replyToken,
         '🍢 歡迎光臨 🙌\n'
         + '點擊下方『我要點餐』就能線上預訂，\n'
-        + '獨立作業敬請耐心等候 🙏')
+        + '獨立作業敬請耐心等候')
       continue
     }
 
@@ -264,32 +264,19 @@ Deno.serve(async (req) => {
       continue
     }
 
-    // ②.5 傳「休假日」／「公休」→ 回店務設定檔的公告＋近期公休日
-    //     資料來自 app_config（老闆在店務頁維護），改了即生效不用重部署
-    if (text === '休假日' || text === '公休') {
-      const { data: rows } = await db.from('app_config')
-        .select('name,value').in('name', ['notice', 'closed_dates', 'closed_now'])
-      const cfg: Record<string, string> = {}
-      for (const r of rows ?? []) cfg[r.name] = r.value ?? ''
-      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date())
-      const upcoming = (cfg.closed_dates ?? '').split(/[,，\s]+/).filter(d => d && d >= today)
-      let msg = '🍢 老滷仙營業資訊\n\n'
-      if (cfg.closed_now === today || upcoming.includes(today)) msg += '⚠️ 今日公休，明天見！\n\n'
-      msg += upcoming.length
-        ? '近期公休日：\n' + upcoming.map(d => {
-            const p = d.split('-')  // 顯示 7/19 短格式（Riley 裁示）
-            return '・' + parseInt(p[1], 10) + '/' + parseInt(p[2], 10)
-          }).join('\n')
-        : '近期未排定公休 😊'
-      if ((cfg.notice ?? '').trim()) msg += '\n\n📢 ' + cfg.notice.trim()
-      await reply(ev.replyToken, msg)
-      continue
-    }
+    // ❌ 已移除：公休／營業時間的自動回覆（2026-07-28 Riley 拍板關閉）
+    //   關鍵字比對不懂上下文，只要句子裡出現那幾個字就會噴答案，例如：
+    //     「上次公休沒買到好可惜」→ 回一串公休日（人家在感嘆）
+    //     「我明天休假要去買」    → 回一串公休日（講的是自己休假）
+    //     「不是問公休啦，我問有沒有素的」→ 還是回公休日（更慘）
+    //   而它的價值早就被取代了：公休日就掛在點餐頁最上面的公告條，客人一進去就看到。
+    //   價值低、誤觸代價高（機器人顯得很笨）→ 關掉，這類問題留給老闆在後台人工回。
+    //   要恢復請不要用「包含比對」；改用完全比對，或直接接語意理解。
 
     // ③.5 老闆解除綁定：傳「老闆解除綁定」→ 把自己從管理員名簿移除（換手機/員工異動用；只會移除自己，免密語）
     if (text === '老闆解除綁定' || text === '解除綁定') {
       await db.from('line_admins').delete().eq('line_user_id', userId)
-      await reply(ev.replyToken, '✅ 已解除綁定，這支手機之後不會再收到新訂單通知。')
+      await reply(ev.replyToken, '已解除綁定，這支手機之後不會再收到新訂單通知。')
       continue
     }
 
@@ -297,72 +284,71 @@ Deno.serve(async (req) => {
     if (text.startsWith('老闆綁定')) {
       const code = text.replace('老闆綁定', '').trim()
       if (!BOSS_BIND_CODE || code !== BOSS_BIND_CODE) {
-        await reply(ev.replyToken, '密語不對喔 🤔')
+        await reply(ev.replyToken, '密語不對喔')
         continue
       }
       await db.from('line_admins').upsert({ line_user_id: userId })
-      await reply(ev.replyToken, '✅ 老闆綁定成功！之後有新訂單會通知你。')
+      await reply(ev.replyToken, '老闆綁定成功！之後有新訂單會通知你。')
       continue
     }
 
-    // ④.0 送單確認訊息（2026-07-27 上線・Riley 拍板方案 B）
-    //   客人按「送出訂單」時，點餐頁會以【客人自己的身分】傳一則
-    //   「我已送出訂單 #001 / 手機末三碼 XXX / 確認會前往取餐」進來。
-    //   目的：老闆的聊天室從此有這個人（電話填錯也找得到），而且客人親口承諾會來取餐。
+    // ④.0 送單確認（2026-07-28 Riley 升級：三重驗證才回覆）
     //
-    //   這裡只做一件事：免費回一則「收到」。
-    //   ⚠️ 為什麼不順便查訂單：這則訊息是在「訂單寫進資料庫之前」發的（先發訊息、
-    //      成功才寫單，這樣才不會產生找不到人的幽靈單）→ 現在查一定查不到，
-    //      所以回覆只確認收到，取餐時間請客人到訂單頁看。
-    //   ⚠️ 只認這個開頭；其他閒聊照舊完全安靜，不做「丟一句回一句」的自動回覆機器人。
-    //   辨識方式：整段訊息裡有「我已送出訂單」這句話，且找得到 #編號 就算數。
-    //   ⚠️ 不用「開頭必須是…」的嚴格比對——客人端文案改版時（例如前面加了「您好～」）
-    //      嚴格比對會整個失效，這種靜默失效最難查。
+    //   客人按「送出訂單」時，點餐頁會以【客人自己的身分】傳一則訊息進來：
+    //     您好~ / 我已送出訂單囉~ / 訂單編號：#005 / 手機末三碼：888 / 我會前往取餐…
+    //
+    //   ⚠️ 為什麼要驗三樣（Riley 抓到的問題）：
+    //     舊版只要句子裡有「我已送出訂單 #任何數字」就回「已收到」，
+    //     於是隨便打 #999 也會得到確認 → 那是【假確認】，客人打錯編號會被誤導。
+    //     現在必須「同一個人 × 同一張單 × 同一支電話」三者都對得上才回。
+    //
+    //   ⚠️ 為什麼要先等 2 秒：
+    //     這則訊息是在【訂單寫進資料庫之前】發出的（先發訊息、成功才寫單，
+    //     這樣才不會產生「老闆收到單卻不知道是誰」的幽靈單）→ 馬上查一定查不到。
+    //     等 2 秒讓前端把訂單寫完，再查就對得上。
+    //     （LINE 的 replyToken 還在有效期內，2 秒很安全。）
+    //
+    //   驗不過就【完全不回】——寧可少一則確認，也不要給錯誤的確認。
     const oc = text.includes('我已送出訂單') ? text.match(/#([0-9]{1,4}[A-Za-z]?)/) : null
     if (oc) {
-      await reply(ev.replyToken,
-        '✅ 已收到訂單 #' + oc[1].toUpperCase() + '\n'
-        + '老闆確認接單後，可在下方「訂單查詢」查看取餐時間 🍢')
-      continue
-    }
+      const orderNo = oc[1].toUpperCase()
+      const tailM = text.match(/末三碼[：:]\s*(\d{3})/)
+      const tail = tailM ? tailM[1] : ''
+      if (!tail) continue                       // 沒帶末三碼＝不是我們發的格式 → 安靜
 
-    // ④ 傳取餐編號（例如 004 / #004 / 004A）→ 綁到今天的那張訂單
-    const m = text.match(/^#?(\d{1,4}[A-Za-z]?)$/)
-    if (m) {
-      const orderNo = m[1].toUpperCase()
-      // 只找「今天」的訂單——跟查詢頁同一個規則，昨天的編號不算數
-      // （雲端主機的時鐘是世界標準時間，要明確講「台北的今天零點」它才不會算錯日）
+      // 只找「今天」的單（跟看單台同一個規則；雲端時鐘是 UTC，要明講台北零點）
       const ymd = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date())
       const taipeiMidnight = new Date(ymd + 'T00:00:00+08:00').toISOString()
-      const { data: order } = await db
+      const findOrder = async () => (await db
         .from('orders')
-        .select('id, order_no, status, pickup_at')
-        .eq('order_no', orderNo)
+        .select('order_no, customer_phone, line_user_id')
+        .eq('order_no', orderNo)                 // ② 訂單編號要存在
+        .eq('line_user_id', userId)              // ① 必須是【他自己】下的單
         .gte('created_at', taipeiMidnight)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+        .maybeSingle()).data
 
-      if (!order) {
-        await reply(ev.replyToken, '找不到今天的訂單 #' + orderNo + ' 耶，確認一下編號？')
-        continue
-      }
+      // 先查一次；查不到才等 1.5 秒重試一次（訂單可能還在寫入途中）。
+      // 這樣正常客人不用每次都白等，亂傳的人也只是多等一下下、照樣得不到回應。
+      let order = await findOrder()
+      if (!order) { await new Promise(r => setTimeout(r, 1500)); order = await findOrder() }
 
-      // 把這位客人的 LINE 記到訂單上
-      await db.from('orders').update({ line_user_id: userId }).eq('id', order.id)
+      // ③ 手機末三碼要對得上（資料庫存的是完整號碼，取後三碼比對）
+      const dbTail = (order?.customer_phone ?? '').replace(/\D/g, '').slice(-3)
+      if (!order || dbTail !== tail) continue    // 三者只要有一樣對不上 → 安靜，不給假確認
 
-      // 依訂單目前的狀態，給對應的回覆
-      if (order.status === 'confirmed' && order.pickup_at) {
-        await reply(ev.replyToken,
-          '✅ 綁定成功！你的訂單 #' + order.order_no + ' 老闆已經在滷了，\n'
-          + '請於 ' + fmtHM(order.pickup_at) + ' 前往取餐 🍢')
-      } else {
-        await reply(ev.replyToken,
-          '✅ 綁定成功！訂單 #' + order.order_no + ' 等老闆確認接單後，\n'
-          + '可在點餐頁「我的訂單」查看取餐時間')
-      }
+      await reply(ev.replyToken,
+        '已收到訂單 #' + order.order_no + '\n'
+        + '店家確認接單後，可在下方「訂單查詢」查看取餐時間')
       continue
     }
+
+    // ❌ 已移除：「傳純數字取餐編號 → 綁定訂單」（2026-07-28 Riley 抓到）
+    //   為什麼砍：它是【覆蓋式】綁定——任何人傳「001」就把那張單的 line_user_id
+    //   改成自己，於是
+    //     ① 真正下單的客人收不到取餐通知
+    //     ② 亂打數字的人反而收到別人的訂單內容（姓名、電話、明細）
+    //   而這個功能本來的用途（客人手動把 LINE 綁到訂單）已經被 LIFF 自動綁定取代，
+    //   留著只剩風險。要恢復的話必須先做「只能綁自己剛下的單」的驗證。
 
     // 其他訊息 → 「不自動回覆」：讓機器人安靜，客人留給老闆的話乖乖留著、老闆可在 LINE 後台人工回
     //   （引導已在「加好友歡迎詞」講過；特定指令 公休/取餐編號/老闆綁定 仍照常有反應）

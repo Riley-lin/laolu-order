@@ -24,21 +24,55 @@ const db = createClient(
 )
 
 // ---------- 發 LINE 推播 ----------
-async function push(to: string, text: string) {
-  await pushMessages(to, [{ type: 'text', text }])
+async function push(to: string, text: string, meta?: { orderNo?: string, kind?: string }) {
+  await pushMessages(to, [{ type: 'text', text }], meta)
 }
 
 // 進階版：可以發任何形式的訊息（文字、按鈕卡片…）
-async function pushMessages(to: string, messages: unknown[]) {
-  const res = await fetch('https://api.line.me/v2/bot/message/push', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${ACCESS_TOKEN}`,
-    },
-    body: JSON.stringify({ to, messages }),
-  })
-  if (!res.ok) console.error('LINE push 失敗：', res.status, await res.text())
+/* 2026-07-28（#015 事故後）：每一次推播都寫進 push_log。
+   為什麼要做：那天查「為什麼老闆沒收到」，只能靠 pg_net 表 ＋ Invocations ＋ Logs
+   三個地方交叉比對才拼出真相。有了這張表，以後開一張表就有答案。
+   ⚠️ userId 只留前 8 碼——足夠辨識是誰，又不會把完整身分存成一份新的個資。 */
+async function logPush(orderNo: string, kind: string, to: string,
+                       ok: boolean, statusCode: number | null, error: string | null) {
+  try {
+    await db.from('push_log').insert({
+      order_no: orderNo || null,
+      kind,
+      target: to ? to.slice(0, 8) + '…' : null,
+      ok,
+      status_code: statusCode,
+      error: error ? String(error).slice(0, 300) : null,
+    })
+  } catch (e) { console.error('push_log 寫入失敗（不影響推播）：', e) }
+}
+
+async function pushMessages(to: string, messages: unknown[], meta?: { orderNo?: string, kind?: string }) {
+  const kind = meta?.kind || 'push'
+  const orderNo = meta?.orderNo || ''
+  try {
+    const res = await fetch('https://api.line.me/v2/bot/message/push', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ACCESS_TOKEN}`,
+      },
+      body: JSON.stringify({ to, messages }),
+    })
+    if (!res.ok) {
+      const body = await res.text()
+      console.error('LINE push 失敗：', res.status, body)
+      await logPush(orderNo, kind, to, false, res.status, body)
+      return false
+    }
+    await logPush(orderNo, kind, to, true, res.status, null)
+    return true
+  } catch (e) {
+    // 網路層直接失敗（連 LINE 都沒連上）
+    console.error('LINE push 連線失敗：', e)
+    await logPush(orderNo, kind, to, false, null, String(e))
+    return false
+  }
 }
 
 // ---------- 台北時間 HH:MM ----------
@@ -197,9 +231,11 @@ function buildEditedCard(r: any, oldTotal?: number) {
 
 // ---------- 老闆訊息：新訂單「按鈕卡片」（M2）----------
 // 老闆的裁示：「完成鍵要在 LINE 按，要去後台就不行」——
-// 所以新單直接給按鈕：✅25/30/35分＝一鍵接單（客人自動收到取餐時間）；❌＝取消（會再問一次防手滑）。
+// 所以新單直接給按鈕：✅25/30/35分＝一鍵接單；❌＝取消（會再問一次防手滑）。
+// ⚠️ 2026-07-28 更正：客人推播已於 07-26 關閉（CUSTOMER_PUSH_ENABLED=false，省訊息額度），
+//    接單後【客人不會收到通知】，要自己到「訂單查詢」看取餐時間 → 卡片文案不可再寫「客人自動收到」。
 // 按鈕按下去由接待員（line-webhook）處理，只有名簿裡的老闆按了有效。
-function buildNewOrderCard(r: any) {
+function buildNewOrderCard(r: any, isRetry = false) {
   // 對帳版排版統一走 flexItemRows——老闆卡片跟客人卡片同一份帳
   // 按鈕文字只放「25分」三個字——三顆擠一排，帶 emoji 會被手機截成「2...」
   const acceptBtn = (m: number) => ({
@@ -213,16 +249,18 @@ function buildNewOrderCard(r: any) {
   })
   return {
     type: 'flex',
-    altText: '🔔 新訂單 #' + r.order_no + '（$' + r.total + '）',
+    altText: (isRetry ? '🔁 補發通知 #' : '🔔 新訂單 #') + r.order_no + '（$' + r.total + '）',
     contents: {
       type: 'bubble',
       body: {
         type: 'box', layout: 'vertical', spacing: 'sm', contents: [
-          { type: 'text', text: '🔔 新訂單 #' + r.order_no, weight: 'bold', size: 'lg', color: '#B8860B' },
+          // 補發的卡片要標出來——不然老闆會以為是新的一張單（2026-07-28）
+          { type: 'text', text: (isRetry ? '🔁 補發通知 #' : '🔔 新訂單 #') + r.order_no,
+            weight: 'bold', size: 'lg', color: isRetry ? '#C0703A' : '#B8860B' },
           { type: 'text', text: '👤 ' + (r.customer_name ?? '') + '　📞 ' + (r.customer_phone ?? ''), size: 'sm', wrap: true },
           { type: 'separator', margin: 'sm' },
           ...flexItemRows(r, true),
-          { type: 'text', text: '👇 選等候分鐘＝接單，客人自動收到取餐時間', size: 'xs', color: '#999999', wrap: true, margin: 'md' },
+          { type: 'text', text: '👇 選等候分鐘＝接單（客人自己到「訂單查詢」看取餐時間）', size: 'xs', color: '#999999', wrap: true, margin: 'md' },
         ],
       },
       footer: {
@@ -249,7 +287,16 @@ Deno.serve(async (req) => {
     return new Response('forbidden', { status: 403 })
   }
 
-  const { kind, record, old_total, old_pickup_at } = await req.json()
+  const { kind, record, old_total, old_pickup_at, retry } = await req.json()
+
+  /* 🔥 保溫請求（2026-07-28 新增）：排程每 5 分鐘戳一次，讓這支函式不要進入休眠。
+     #015 的成因就是「29 分鐘沒人叫 → 睡著 → 叫不醒（503）」。
+     收到 ping 什麼事都不做，直接回 OK——重點只是「它醒過來了」，計時器歸零。 */
+  if (kind === 'ping') {
+    return new Response(JSON.stringify({ ok: true, pong: true }), {
+      headers: { 'content-type': 'application/json' },
+    })
+  }
 
   // 🔕 客人主動通知總開關（2026-07-26 Riley 拍板：目前不做主動通知，客人靠「我的訂單」自查）
   //    老闆的新單通知不受此開關影響（老闆一定要收單）。日後想開回來把它改 true 即可。
@@ -258,22 +305,23 @@ Deno.serve(async (req) => {
   if (kind === 'new_order') {
     // 撈出所有登記過的管理員，逐一發「按鈕卡片」（M2：接單直接在 LINE 按）——老闆通知，永遠開
     const { data: admins } = await db.from('line_admins').select('line_user_id')
-    const card = buildNewOrderCard(record)
+    const card = buildNewOrderCard(record, !!retry)
+    const kindTag = retry ? 'retry' : 'new_order'   // 補發的標記成 retry，方便日後對帳
     for (const a of admins ?? []) {
-      await pushMessages(a.line_user_id, [card])
+      await pushMessages(a.line_user_id, [card], { orderNo: record?.order_no, kind: kindTag })
     }
   }
 
   if (CUSTOMER_PUSH_ENABLED && kind === 'confirmed' && record?.line_user_id) {
-    await pushMessages(record.line_user_id, [buildCustomerCard(record)])
+    await pushMessages(record.line_user_id, [buildCustomerCard(record)], { orderNo: record?.order_no, kind: 'confirmed' })
   }
 
   if (CUSTOMER_PUSH_ENABLED && kind === 'edited' && record?.line_user_id) {
-    await pushMessages(record.line_user_id, [buildEditedCard(record, old_total)])
+    await pushMessages(record.line_user_id, [buildEditedCard(record, old_total)], { orderNo: record?.order_no, kind: 'edited' })
   }
 
   if (CUSTOMER_PUSH_ENABLED && kind === 'retimed' && record?.line_user_id) {
-    await push(record.line_user_id, buildRetimedMessage(record, old_pickup_at))
+    await push(record.line_user_id, buildRetimedMessage(record, old_pickup_at), { orderNo: record?.order_no, kind: 'retimed' })
   }
 
   return new Response('ok')
