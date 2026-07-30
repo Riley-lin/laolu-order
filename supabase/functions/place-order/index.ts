@@ -219,6 +219,33 @@ async function alertBoss(text: string) {
 
 const minutesAgo = (m: number) => new Date(Date.now() - m * 60000).toISOString()
 
+/* 🚨 應急模式：LINE 掛掉時的備援通道（2026-07-30）
+
+   平常入口鎖死在 LINE，這是優點——每張單都對得到一個真人。
+   但 LINE 平台一掛（07-28 發生過），整間店的線上訂餐就歸零。
+
+   應急模式讓客人用「帶通行碼的網址」下單，不需要 LINE 身分。
+   三道限制讓它夠安全：平常開關是關的 ＋ 通行碼可一鍵換新 ＋ 只開幾小時。
+
+   ⚠️ 開關與通行碼分開放：
+     開關 emergency_on 在 app_config（前端讀得到——客人端要知道現在是不是應急模式）
+     通行碼 emergency_code 在 app_secrets（前端讀不到，只有這裡比對）
+   放同一個地方的話，通行碼等於印在門上。 */
+async function checkEmergency(code: string): Promise<boolean> {
+  if (!code) return false
+  try {
+    const { data: cfg } = await db.from('app_config')
+      .select('value').eq('name', 'emergency_on').maybeSingle()
+    if (cfg?.value !== '1') return false          // 開關沒開 → 網址外流也是死的
+    const { data: sec } = await db.from('app_secrets')
+      .select('value').eq('name', 'emergency_code').maybeSingle()
+    return !!sec?.value && sec.value === code
+  } catch (e) {
+    console.error('應急模式檢查失敗：', e)
+    return false
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
@@ -275,7 +302,18 @@ Deno.serve(async (req) => {
     if (userId) console.warn('⚠️ 身分驗章未過，暫用前端身分：', v.why, '→', userId.slice(0, 8) + '…')
   }
 
+  // ②.5 應急模式：沒有 LINE 身分，但帶著有效通行碼 → 放行
+  //     這種單標記成 ⚡ 應急單，老闆看單台一眼分得出來
+  //     （沒有 LINE 身分＝出問題只能靠電話找人，他要知道）
+  let isEmergency = false
   if (!userId) {
+    isEmergency = await checkEmergency(String(payload?.e ?? ''))
+    if (isEmergency && !precheck) {
+      for (const r of records as any[]) { r.emergency = true; r.line_user_id = null }
+    }
+  }
+
+  if (!userId && !isEmergency) {
     return json({
       error: 'no_line_id',
       // ⚠️ 這句話要同時對兩種人講得通：
@@ -289,12 +327,16 @@ Deno.serve(async (req) => {
   }
   // 🔑 關鍵一行：不管前端送來什麼，一律用驗過的身分覆蓋。
   //    少了這行，前面的驗章就全白做了。
-  if (!precheck) for (const r of records as any[]) r.line_user_id = userId
+  //    （應急單沒有 LINE 身分，上面已經設成 null，這裡就不要再動它）
+  if (!precheck && userId) for (const r of records as any[]) r.line_user_id = userId
 
   // ③ 黑名單（棄單封鎖中）
   //    設計成「比對到期時間」，所以 30 天一到自然就過期，不需要任何排程去解封。
-  const { data: blocked } = await db.from('blocklist')
-    .select('until').eq('line_user_id', userId).maybeSingle()
+  //    ⚠️ 應急單沒有 LINE 身分 → 查不了黑名單，只能靠 IP 限流把關。
+  //       這是應急模式的已知代價：故障期間，防護會退化成「擋得住洪水，擋不住特定人」。
+  const { data: blocked } = userId
+    ? await db.from('blocklist').select('until').eq('line_user_id', userId).maybeSingle()
+    : { data: null }
   if (blocked && new Date(blocked.until) > new Date()) {
     const until = new Date(blocked.until).toLocaleDateString('zh-TW',
       { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric' })
@@ -314,10 +356,13 @@ Deno.serve(async (req) => {
   //      認人 → 換網路（4G 切 WiFi）也繞不過，因為 LINE 身分不變
   //      認 IP → 有人寫程式用一堆假身分灌單時，還有這道
   //    只要任一條超標就擋。
+  //    ⚠️ 應急單沒有身分，那一軌自動跳過，只剩 IP（見上面黑名單處的說明）
   const since = minutesAgo(RATE_WINDOW_MIN)
   const [byUser, byIp] = await Promise.all([
-    db.from('order_throttle').select('*', { count: 'exact', head: true })
-      .eq('line_user_id', userId).gte('at', since),
+    userId
+      ? db.from('order_throttle').select('*', { count: 'exact', head: true })
+          .eq('line_user_id', userId).gte('at', since)
+      : Promise.resolve({ count: 0 }),
     db.from('order_throttle').select('*', { count: 'exact', head: true })
       .eq('ip', ip).gte('at', since),
   ])
@@ -328,9 +373,12 @@ Deno.serve(async (req) => {
     // 爆量偵測：這些單是不是「2 分鐘內」灌出來的？
     //   10 分鐘 5 張 ＝ 可能是幫朋友分批訂（正常人）
     //   2 分鐘 5 張  ＝ 不像人手動點得出來 → 通知老闆留意
-    const { count: burst } = await db.from('order_throttle')
-      .select('*', { count: 'exact', head: true })
-      .eq('line_user_id', userId).gte('at', minutesAgo(BURST_WINDOW_MIN))
+    const burstQ = userId
+      ? db.from('order_throttle').select('*', { count: 'exact', head: true })
+          .eq('line_user_id', userId).gte('at', minutesAgo(BURST_WINDOW_MIN))
+      : db.from('order_throttle').select('*', { count: 'exact', head: true })
+          .eq('ip', ip).gte('at', minutesAgo(BURST_WINDOW_MIN))
+    const { count: burst } = await burstQ
     if ((burst ?? 0) >= BURST_MAX) {
       await alertBoss(
         '⚠️ 疑似洗版\n\n有人在 ' + BURST_WINDOW_MIN + ' 分鐘內連續送出 ' + burst + ' 張訂單，'
@@ -355,9 +403,11 @@ Deno.serve(async (req) => {
   if (orderTotal > HIGH_VALUE_AMOUNT) {
     const hvSince = minutesAgo(HIGH_VALUE_WINDOW_MIN)
     const [prevUser, prevIp] = await Promise.all([
-      db.from('order_throttle').select('total, at')
-        .eq('line_user_id', userId).gte('at', hvSince).gt('total', HIGH_VALUE_AMOUNT)
-        .order('at', { ascending: false }),
+      userId
+        ? db.from('order_throttle').select('total, at')
+            .eq('line_user_id', userId).gte('at', hvSince).gt('total', HIGH_VALUE_AMOUNT)
+            .order('at', { ascending: false })
+        : Promise.resolve({ data: [] as any[] }),
       db.from('order_throttle').select('total, at')
         .eq('ip', ip).gte('at', hvSince).gt('total', HIGH_VALUE_AMOUNT)
         .order('at', { ascending: false }),

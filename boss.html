@@ -394,8 +394,14 @@ function renderCard(r) {
   // ⚠️ 高額連續下單：place-order 在寫入時標記的，這裡只負責讓老闆看見
   const hvTag = r.high_value ? '<div class="oc-warn">⚠️ 高額連續下單，請留意</div>' : '';
 
+  // ⚡ 應急單：LINE 掛掉期間從備援網址進來的單，【沒有 LINE 身分】
+  //    → 這張單在聊天室找不到人，有問題只能打電話。老闆必須一眼看見。
+  const emgTag = r.emergency
+    ? '<div class="oc-warn" style="background:#3a1f12;border-color:#7a4020;color:#ffb08a;">'
+      + '⚡ 應急單 · 客人沒有 LINE 身分，有事請直接電聯</div>' : '';
+
   return '<div class="order-card' + (r.status === 'new' ? ' is-new' : '') + (r.no_show ? ' is-noshow' : '') + '">'
-    + hvTag
+    + emgTag + hvTag
     + '<div class="oc-head"><span class="oc-no">#' + esc(r.order_no) + pickupTag + '</span><span class="oc-time">' + t + '</span></div>'
     + '<div class="oc-cust">👤 ' + esc(r.customer_name) + '　📞 <a href="tel:' + esc(r.customer_phone) + '">' + esc(r.customer_phone) + '</a></div>'
     + body
@@ -975,6 +981,8 @@ async function openShopSettings() {
     +   '<div class="dr-sec">📢 公告文字</div>'
     +   '<textarea id="cfgNotice" rows="3" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--line);background:#141210;color:var(--text);font-size:14px;">' + esc(cfg.notice) + '</textarea>'
     +   '<div class="lp-note" style="text-align:left">顯示在客人點餐頁最上方（例：7/21(二)、7/28(二) 公休）；留空＝不顯示</div>'
+    +   '<div class="dr-sec">🚨 應急模式（LINE 掛掉時才用）</div>'
+    +   '<div id="emgBox" class="lp-note" style="text-align:left">讀取中…</div>'
     + '</div>'
     + '<div class="dr-actions">'
     +   '<button class="btn-plain" style="flex:1;padding:10px;" onclick="document.getElementById(\'shopSettings\').remove()">關 閉</button>'
@@ -987,6 +995,78 @@ async function openShopSettings() {
   _cfgDates = (cfg.closed_dates || '').split(/[,，\s]+/).filter(d => d && d >= today);
   renderCfgDateChips();
   cfgWaitHighlight(); // 等待時間快選鈕標示目前值
+  renderEmergencyBox();
+}
+
+/* ============================================================
+   🚨 應急模式（2026-07-30）
+
+   平常客人只能從 LINE 進來點餐——每張單都對得到一個真人，這是優點。
+   但 LINE 平台一掛（07-28 真的發生過），線上訂餐就整個歸零。
+   這個模式讓客人用「帶通行碼的網址」直接下單，不需要 LINE。
+
+   為什麼不另外做一個網站：兩份程式碼遲早不同步
+   （素肚單位、紙本錯價都是這個坑咬出來的）。同一個網站 ＋ 一個開關就好。
+
+   通行碼存在保險櫃（前端讀不到），所以這裡透過三支受控函式操作：
+   emergency_status / set_emergency / rotate_emergency_code
+   ============================================================ */
+async function renderEmergencyBox() {
+  const box = document.getElementById('emgBox');
+  if (!box) return;
+  const { data, error } = await db.rpc('emergency_status');
+  if (error || !data || !data.length) {
+    box.innerHTML = '⚠️ 讀取失敗——還沒跑 setup-emergency.sql？';
+    return;
+  }
+  const st = data[0];
+  const on = st['是否啟用'];
+  const url = st['網址'];
+  box.innerHTML =
+    '<button class="' + (on ? 'btn-accept' : 'btn-cancel') + '" style="width:100%;padding:12px;font-size:15px;" '
+    + 'onclick="toggleEmergency(' + (on ? 'false' : 'true') + ')">'
+    +   (on ? '🟢 關閉應急模式（目前：啟用中）' : '🚨 啟動應急模式')
+    + '</button>'
+    + (on
+      ? '<div style="margin-top:10px;background:#241f18;border:1px solid var(--line);border-radius:8px;padding:10px;">'
+        + '<div style="font-size:12px;color:var(--dim);margin-bottom:6px;">把這個網址給客人（用 LINE、簡訊、寫在店門口都行）</div>'
+        + '<div style="font-size:13px;word-break:break-all;color:var(--gold2);font-weight:900;">' + esc(url) + '</div>'
+        + '<div style="display:flex;gap:8px;margin-top:10px;">'
+        +   '<button class="btn-wait" style="flex:1;padding:9px;" onclick="copyEmergencyUrl(\'' + esc(url) + '\')">📋 複製網址</button>'
+        +   '<button class="btn-cancel" style="flex:1;padding:9px;" onclick="rotateEmergency()">🔄 換新碼</button>'
+        + '</div>'
+        + '<div style="font-size:12px;color:var(--dim);margin-top:8px;line-height:1.7;">'
+        +   '・換新碼＝舊網址立刻失效（傳出去被亂轉發時用）<br>'
+        +   '・這條路徑<b>不會</b>傳訂單訊息到 LINE 聊天室 → 訂單會標 ⚡ 應急單<br>'
+        +   '・客人靠「取餐編號 ＋ 姓名電話」自己查進度'
+        + '</div>'
+        + '</div>'
+      : '<div class="lp-note" style="text-align:left">平常關著。開了之後客人可以用專屬網址直接下單，'
+        + '不需要 LINE。<b>LINE 恢復正常就記得關掉</b>，回到「每張單都找得到人」的狀態。</div>');
+}
+
+async function toggleEmergency(on) {
+  if (on && !confirm('要啟動應急模式嗎？\n\n啟動後，拿到專屬網址的人不需要 LINE 就能下單。\nLINE 恢復正常記得回來關掉。')) return;
+  const { error } = await db.rpc('set_emergency', { on_off: on });
+  if (error) { alert('切換失敗：' + error.message); return; }
+  renderEmergencyBox();
+}
+
+async function rotateEmergency() {
+  if (!confirm('要換一組新的通行碼嗎？\n\n舊網址會【立刻失效】，已經拿到舊網址的客人要重新給他新的。')) return;
+  const { error } = await db.rpc('rotate_emergency_code');
+  if (error) { alert('換碼失敗：' + error.message); return; }
+  renderEmergencyBox();
+  alert('✅ 已換新碼，舊網址已失效');
+}
+
+async function copyEmergencyUrl(url) {
+  try {
+    await navigator.clipboard.writeText(url);
+    alert('✅ 網址已複製，貼給客人就好 📋');
+  } catch (e) {
+    prompt('請複製下面的網址給客人：', url);
+  }
 }
 
 /* 📅 公休日期籤（Riley 裁示：用日曆選、顯示 7/19 短格式；儲存格式仍是完整日期） */

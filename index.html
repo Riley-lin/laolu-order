@@ -3421,13 +3421,50 @@ let SHOP_OFFHOURS = false;     // 還沒到接單時段（老闆拍板 17:00–0
 let SHOP_PAUSED = false;       // 暫停接單（老闆忙不過來，臨時按下；值＝當天日期，隔天自動失效）
 let SHOP_HOURS_LABEL = '';     // 顯示用：「17:00 – 00:00」
 
+/* 🚨 應急模式（2026-07-30）：LINE 掛掉時的備援下單通道
+   平常入口鎖死在 LINE，這是優點——每張單都對得到一個真人。
+   但 LINE 平台一掛（07-28 發生過），線上訂餐就整個歸零。
+
+   啟用需要【兩個條件同時成立】：
+     ① 老闆在店務台按了開關（app_config.emergency_on = '1'）
+     ② 客人的網址帶著通行碼（?e=xxxx，由 place-order 跟保險櫃比對）
+   少了①，網址外流也是死的；少了②，任何人打開首頁都變成應急客人。 */
+let EMERGENCY_MODE = false;    // 兩個條件都成立才是 true
+let EMERGENCY_CODE = '';       // 網址上帶的通行碼（真偽由伺服器判斷，前端只負責轉交）
+
 function taipeiTodayStr() {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' });
 }
 
+/* 應急模式期間，頁面最上面掛一條說明。
+   為什麼一定要讓客人看到：這條路徑【不會】把訂單訊息傳進 LINE 聊天室，
+   客人也就不會收到那句「已收到訂單」的回覆。
+   不講清楚的話，他會以為沒送出去而重複下單。 */
+function updateEmergencyBanner() {
+  const id = 'emergencyBar';
+  const old = document.getElementById(id);
+  if (!EMERGENCY_MODE) {
+    if (old) { old.remove(); document.body.style.paddingTop = ''; }
+    return;
+  }
+  if (old) return;
+  // 橫幅是固定在最上面的，要把整頁往下推，不然會蓋住第一排內容
+  document.body.style.paddingTop = '56px';
+  const bar = document.createElement('div');
+  bar.id = id;
+  bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#7a2d12;'
+    + 'color:#ffe8c2;font-size:13px;line-height:1.6;padding:8px 14px;text-align:center;'
+    + 'box-shadow:0 2px 8px rgba(0,0,0,.35);';
+  bar.innerHTML = '⚡ <b>應急訂餐模式</b>　LINE 系統異常中，此頁可直接下單<br>'
+    + '<span style="font-size:12px;opacity:.85">送出後請記下取餐編號，用下方「查詢我的訂單」查看進度</span>';
+  document.body.appendChild(bar);
+}
+
 async function syncShopConfig() {
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/app_config?select=name,value&name=in.(notice,closed_dates,closed_now,pause_now,open_hours,wait_minutes)', {
+    // 網址上的應急通行碼（?e=xxxx）——真偽由伺服器比對，這裡只是接住它
+    if (!EMERGENCY_CODE) EMERGENCY_CODE = getLaunchParam('e') || '';
+    const res = await fetch(SUPABASE_URL + '/rest/v1/app_config?select=name,value&name=in.(notice,closed_dates,closed_now,pause_now,open_hours,wait_minutes,emergency_on)', {
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
     });
     if (!res.ok) return;
@@ -3438,6 +3475,10 @@ async function syncShopConfig() {
     const dates = (cfg.closed_dates || '').split(/[,，\s]+/).filter(Boolean);
     SHOP_CLOSED = (cfg.closed_now === today) || dates.includes(today);
     SHOP_PAUSED = (cfg.pause_now === today);   // 暫停接單：值＝今天才算數（隔天自動失效）
+    // 🚨 應急模式：老闆開啟 ＋ 客人網址帶著通行碼，兩個都成立才算數
+    //    只有開關開著不夠——不然任何人打開首頁都變成應急客人，等於入口整個敞開
+    EMERGENCY_MODE = (cfg.emergency_on === '1') && !!EMERGENCY_CODE;
+    updateEmergencyBanner();
     SHOP_CLOSED_UPCOMING = dates.filter(d => d >= today).sort();
     // 🕔 接單時段：格式 HH:MM-HH:MM（24:00＝收到半夜）；沒設定＝整天可點
     // ⏱ 等待時間：雲端有值就換上（老闆在看單台改，10 秒內全客同步）
@@ -3590,7 +3631,11 @@ function getLineAccessToken() {
 
 // 兩張票一起送，後端先試耐用的那張，不行才用備援的
 function lineTickets() {
-  return { access_token: getLineAccessToken(), id_token: getLineIdToken() };
+  return {
+    access_token: getLineAccessToken(),
+    id_token: getLineIdToken(),
+    e: EMERGENCY_CODE || ''   // 應急模式的通行碼（沒有就是空字串，後端會忽略）
+  };
 }
 
 // 統一呼叫守門員（下面「預檢」和「真的送單」共用同一段）
@@ -3759,7 +3804,8 @@ async function submitOrder() {
 
   // 🔍 預檢：發任何訊息、領任何號碼之前，先問守門員「這個人現在能下單嗎」
   //    （擋的是黑名單。放在最前面，被擋的人不會留下任何痕跡）
-  if (REQUIRE_LINE_CONFIRM) {
+  //    ⚡ 應急模式跳過：那條路本來就沒有 LINE 身分可驗
+  if (REQUIRE_LINE_CONFIRM && !EMERGENCY_MODE) {
     try {
       await precheckOrder();
     } catch (e) {
@@ -3779,7 +3825,10 @@ async function submitOrder() {
   // 📮 送單確認（Riley 2026-07-27 拍板・方案 B）：先傳訊息、成功了才寫訂單。
   //    順序不能反過來——先寫訂單的話，客人訊息沒傳成功就會產生
   //    「老闆收到單、卻不知道是誰」的幽靈單，正是這次要根治的問題。
-  if (REQUIRE_LINE_CONFIRM) {
+  //    ⚡ 應急模式跳過：LINE 掛了才會開這個模式，訊息本來就傳不出去；
+  //       代價是這張單在老闆聊天室沒有痕跡 → 所以訂單會標記 ⚡ 應急單，
+  //       老闆看單台一眼就知道「這張只能靠電話找人」。
+  if (REQUIRE_LINE_CONFIRM && !EMERGENCY_MODE) {
     const sent = await sendOrderConfirmToLine(orderNo, phone);
     if (!sent) {
       if (btn) { btn.disabled = false; btn.textContent = '送 出 訂 單'; }
