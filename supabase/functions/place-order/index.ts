@@ -39,8 +39,8 @@ const RATE_WINDOW_MIN = 10
 const BURST_MAX = 5          // 爆量：2 分鐘內就下滿 5 張 → 疑似洗版，通知老闆
 const BURST_WINDOW_MIN = 2
 const HIGH_VALUE_AMOUNT = 500   // 高額門檻：每張都超過這個數字
-const HIGH_VALUE_WINDOW_MIN = 30
-const HIGH_VALUE_COUNT = 2      // 30 分鐘內第 2 張就算「連續高額」
+const HIGH_VALUE_WINDOW_MIN = 10   // 2026-07-30 Riley 從 30 分鐘收緊成 10 分鐘
+const HIGH_VALUE_COUNT = 2      // 10 分鐘內第 2 張就算「連續高額」
 
 // 🔔 高額警示要不要發 LINE 給老闆（會扣 1 則訊息額度）
 //   老闆嫌吵就改 false——改成 false 之後，看單台的 ⚠️ 標記照樣會有，
@@ -246,25 +246,39 @@ Deno.serve(async (req) => {
   }
 
   // ⑤ 高額連續下單警示（提醒，不擋）
-  //    Riley 選的是嚴格版：30 分鐘內 2 張、【每張都】超過 500 才算。
-  //    為什麼要「每張都」——只要求「加起來超過」的話，
-  //    一群同事各訂各的午餐很容易誤觸，警示變成狼來了就沒人看了。
+  //    條件（Riley 拍板，2026-07-30 收緊）：
+  //      同一人 【或】 同一 IP，10 分鐘內 2 張、且【每張都】超過 $500
+  //
+  //    為什麼要「每張都」而不是「加起來」——只看加總的話，
+  //    一群同事各訂各的午餐很容易破 500，警示天天響就沒人看了。
+  //
+  //    為什麼人和 IP 都要看：跟限流同一個道理。
+  //      認人  → 換網路也躲不掉
+  //      認 IP → 用不同 LINE 帳號輪流下單也躲不掉
+  //    這裡是「提醒」不是「擋」，所以寧可多提醒一點。
   const orderTotal = (records as any[]).reduce((s, r) => s + (Number(r?.total) || 0), 0)
   let isHighValue = false
   if (orderTotal > HIGH_VALUE_AMOUNT) {
-    const { data: prev } = await db.from('order_throttle')
-      .select('total, at')
-      .eq('line_user_id', userId)
-      .gte('at', minutesAgo(HIGH_VALUE_WINDOW_MIN))
-      .gt('total', HIGH_VALUE_AMOUNT)
-      .order('at', { ascending: false })
-    if ((prev?.length ?? 0) >= HIGH_VALUE_COUNT - 1) {
+    const hvSince = minutesAgo(HIGH_VALUE_WINDOW_MIN)
+    const [prevUser, prevIp] = await Promise.all([
+      db.from('order_throttle').select('total, at')
+        .eq('line_user_id', userId).gte('at', hvSince).gt('total', HIGH_VALUE_AMOUNT)
+        .order('at', { ascending: false }),
+      db.from('order_throttle').select('total, at')
+        .eq('ip', ip).gte('at', hvSince).gt('total', HIGH_VALUE_AMOUNT)
+        .order('at', { ascending: false }),
+    ])
+    // 哪一條先湊滿就用哪一條的資料報給老闆（同一人優先，訊息比較好懂）
+    const hitUser = (prevUser.data?.length ?? 0) >= HIGH_VALUE_COUNT - 1
+    const hitIp = (prevIp.data?.length ?? 0) >= HIGH_VALUE_COUNT - 1
+    if (hitUser || hitIp) {
       isHighValue = true
-      const last = prev![0]
+      const last = (hitUser ? prevUser.data![0] : prevIp.data![0])
+      const who = hitUser ? '同一位客人' : '同一個網路（可能是同一群人）'
       const mins = Math.max(1, Math.round((Date.now() - new Date(last.at).getTime()) / 60000))
       if (HIGH_VALUE_PUSH) {
         await alertBoss(
-          '⚠️ 高額連續下單\n\n同一位客人 ' + mins + ' 分鐘前下單 $' + last.total
+          '⚠️ 高額連續下單\n\n' + who + ' ' + mins + ' 分鐘前下單 $' + last.total
           + '，本次 $' + orderTotal + '，請留意。\n\n（訂單照常成立，看單台會標記這張單）')
       }
     }
