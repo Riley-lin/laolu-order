@@ -1968,7 +1968,7 @@ body::before{
 <div class="modal-bg" id="coverQueryBg">
   <div class="modal-box" style="max-width:400px;">
     <div class="modal-title">訂單查詢</div>
-    <div class="modal-sub" style="margin-bottom:16px;">輸入訂單編號或姓名＋電話查詢</div>
+    <div class="modal-sub" style="margin-bottom:16px;">輸入訂餐時填的姓名＋電話查詢</div>
 
     <div class="query-box" style="margin-top:0;">
       <div class="query-box-header">
@@ -3165,9 +3165,9 @@ function showFinalConfirm(total, mode) {
       ? '<div style="text-align:center;margin:2px 0 22px;">'
         + '<div style="font-size:15px;font-weight:700;color:#FFE8C2;letter-spacing:0.5px;margin-bottom:7px;">🔔 訂單提醒</div>'
         + '<div style="font-size:14px;line-height:1.85;color:rgba(255,232,194,0.72);">'
-        + '送出後請記下<span style="color:var(--gold2);font-weight:700">取餐編號</span>。<br>'
-        + '本頁不會發送 LINE 通知，<br>'
-        + '請用上方「查詢我的訂單」查看進度。'
+        + '本頁不會發送 LINE 通知。<br>'
+        + '送出後可用<span style="color:var(--gold2);font-weight:700">姓名＋電話</span><br>'
+        + '在「查詢我的訂單」查看進度。'
         + '</div></div>'
     : inLineClient
       // 輕量版（Riley 2026-07-27：金框太重、變成框中框）——拆掉底色與邊框，
@@ -3471,16 +3471,13 @@ function updateEmergencyBanner() {
   // 查詢入口必須放在這裡：應急客人沒有 LINE 圖文選單那顆「訂單查詢」，
   // 而封面上的查詢鈕在一進來就跳過去菜單了 → 他等於找不到任何地方查進度。
   // 送出後看不到進度的客人，第一個反應就是再下一次單。
+  // 只留一顆按鈕，不放說明文字（2026-07-30 Riley：說明在「填寫訂單資料」那頁講過了，
+  // 這裡再講一次就是重複——同一句話講兩遍，客人兩遍都不會看）。
+  // 這條橫幅存在的唯一理由是【提供查詢入口】，不是宣導。
   bar.innerHTML =
-    '<div style="display:flex;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap;">'
-    + '<div style="text-align:left;">'
-    +   '🍢 <b>送出訂單後請記下取餐編號</b><br>'
-    +   '<span style="font-size:12px;opacity:.85">本頁不會發送 LINE 通知，請自行查詢進度</span>'
-    + '</div>'
-    + '<button onclick="openCoverQuery()" style="flex:none;background:#ffd9a8;color:#4a1d08;'
-    +   'border:none;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:900;cursor:pointer;">'
-    +   '🔍 查詢我的訂單</button>'
-    + '</div>';
+    '<button onclick="openCoverQuery()" style="background:#ffd9a8;color:#4a1d08;'
+    + 'border:none;border-radius:999px;padding:7px 18px;font-size:13px;font-weight:900;cursor:pointer;">'
+    + '🔍 查詢我的訂單</button>';
   document.body.appendChild(bar);
   // 橫幅固定在最上面，要把整頁往下推，不然會蓋住第一排內容。
   // 高度用「量出來的」不是寫死的——手機窄螢幕會換行變兩行，寫死就會蓋到東西。
@@ -4307,7 +4304,7 @@ function restoreQueryForm() {
   const title = document.querySelector('#coverQueryBg .modal-title');
   if (title) title.textContent = '訂單查詢';
   const sub = document.querySelector('#coverQueryBg .modal-sub');
-  if (sub) sub.textContent = '輸入訂單編號或姓名＋電話查詢';
+  if (sub) sub.textContent = '輸入訂餐時填的姓名＋電話查詢';
   const el = document.getElementById('coverQueryResult');
   if (el && el.innerHTML.indexOf('載入中') >= 0) el.innerHTML = '';
 }
