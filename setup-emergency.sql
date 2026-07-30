@@ -37,6 +37,28 @@ insert into public.app_secrets (name, value)
 values ('emergency_code', encode(gen_random_bytes(6), 'hex'))
 on conflict (name) do nothing;
 
+-- 🔴 把 emergency_on 加進 RLS 讀取白名單（2026-07-30 補：漏了這段，客人端讀不到開關）
+--
+--    app_config 的保護是【白名單制】：只有列出來的名字，前端才讀得到。
+--    這很好——它讓「不小心把敏感設定放進 app_config」不會直接外洩。
+--    但代價是【每加一格新設定，都要記得回來加名字】，忘了就是靜默失效：
+--    資料明明寫進去了，前端卻永遠讀到空的，而且不會報任何錯。
+--
+--    ⚠️ 通行碼 emergency_code 【不在】這裡——它在 app_secrets，前端永遠讀不到。
+drop policy if exists "config_public_read" on public.app_config;
+create policy "config_public_read" on public.app_config
+  for select to anon, authenticated
+  using (name in ('notice','closed_dates','closed_now','pause_now',
+                  'open_hours','wait_minutes','emergency_on'));
+
+drop policy if exists "config_boss_write" on public.app_config;
+create policy "config_boss_write" on public.app_config
+  for update to authenticated
+  using (name in ('notice','closed_dates','closed_now','pause_now',
+                  'open_hours','wait_minutes','emergency_on'))
+  with check (name in ('notice','closed_dates','closed_now','pause_now',
+                       'open_hours','wait_minutes','emergency_on'));
+
 
 -- ------------------------------------------------------------
 -- ② orders 加「應急單」標記
@@ -112,6 +134,14 @@ grant  execute on function public.rotate_emergency_code()   to authenticated;
 -- ------------------------------------------------------------
 select 'emergency_on 開關' as 項目,
        coalesce((select value from public.app_config where name = 'emergency_on'), '(沒建到)') as 內容
+union all
+-- 這一列最容易被忽略：白名單沒加，前端就永遠讀不到開關（靜默失效，不報錯）
+select '前端讀得到開關嗎',
+       case when exists (
+         select 1 from pg_policies
+          where tablename = 'app_config' and policyname = 'config_public_read'
+            and qual like '%emergency_on%'
+       ) then '✅ 白名單已包含' else '❌ 白名單沒加到 → 應急模式不會生效' end
 union all
 select '通行碼長度',
        coalesce((select length(value)::text from public.app_secrets where name = 'emergency_code'), '(沒建到)')
