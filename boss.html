@@ -498,11 +498,14 @@ async function markNoShow(id, orderNo, notify) {
 
   // ② 封鎖 30 天。存「到期時間」而不是「封鎖中與否」→ 時間到自然失效，
   //    不需要任何排程去解封（少一個會壞掉的零件）。
+  //    ⚠️ 2026-07-31 起改走 block_customer() 函式，不再直接寫 blocklist 表。
+  //    原因：原本的 RLS 是「任何 authenticated 都能寫」，而 authenticated 的意思是
+  //    「任何登入者」不是「老闆」——目前自助註冊關著所以攻擊前提不成立，
+  //    但不該把安全性押在另一個設定上（哪天有人為了別的需求打開註冊就破了）。
+  //    改成受控函式之後，能做的只有「封鎖某人 30 天」這一件事，天數也改不了。
   if (r.line_user_id) {
-    const until = new Date(Date.now() + 30 * 86400000).toISOString();
-    const { error: e3 } = await db.from('blocklist').upsert({
-      line_user_id: r.line_user_id, until,
-      reason: '棄單 #' + r.order_no, order_no: r.order_no,
+    const { error: e3 } = await db.rpc('block_customer', {
+      p_line_user_id: r.line_user_id, p_order_no: r.order_no,
     });
     if (e3) console.error('封鎖寫入失敗：', e3);
   }
@@ -529,7 +532,7 @@ async function unmarkNoShow(id, orderNo) {
   const { error } = await db.from('orders')
     .update({ no_show: false, no_show_notify: false }).eq('id', id);
   if (error) { alert('取消失敗：' + error.message); return; }
-  if (r?.line_user_id) await db.from('blocklist').delete().eq('line_user_id', r.line_user_id);
+  if (r?.line_user_id) await db.rpc('unblock_customer', { p_line_user_id: r.line_user_id });
   alert('✅ 已取消棄單註記，客人可以正常線上訂餐了');
   loadOrders();
 }
