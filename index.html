@@ -3553,10 +3553,26 @@ function findSoldOutInOrders(list) {
   return Array.from(hit);
 }
 
-// 把訂單寫上雲端；失敗會丟出錯誤，由 submitOrder 決定怎麼善後
-async function sendOrderToCloud(records) {
-  // 改走 place-order 守門員：先驗 Turnstile，再由伺服器寫入（直接寫資料庫的後門已關）
-  if (REQUIRE_TURNSTILE && !_tsToken) { const e = new Error('TURNSTILE_MISSING'); e._userMsg = '請先完成畫面上的安全驗證再送出 🙏'; throw e; }
+// 🎫 取得 LINE 的「身分票」（ID Token）
+//
+// 【為什麼要這個】以前訂單裡的 line_user_id 是前端自己寫上去的，
+//   後端只能選擇相信——等於任何人都可以冒名下單，黑名單形同虛設。
+//   ID Token 是 LINE 親自簽發、帶簽名的票，後端拿去跟 LINE 對章就知道真假。
+//   （官方說明：sends the ID token and channel ID to a dedicated API endpoint）
+//
+// 拿不到就回空字串，讓後端統一擋下並給「請從 LINE 進入」的提示。
+function getLineIdToken() {
+  try {
+    if (typeof liff === 'undefined' || !liff.getIDToken) return '';
+    return liff.getIDToken() || '';
+  } catch (e) {
+    console.error('取得 ID Token 失敗：', e);
+    return '';
+  }
+}
+
+// 統一呼叫守門員（下面「預檢」和「真的送單」共用同一段）
+async function callPlaceOrder(body) {
   const res = await fetch(SUPABASE_URL + '/functions/v1/place-order', {
     method: 'POST',
     headers: {
@@ -3564,16 +3580,45 @@ async function sendOrderToCloud(records) {
       'apikey': SUPABASE_KEY,
       'Authorization': 'Bearer ' + SUPABASE_KEY
     },
-    body: JSON.stringify({ token: _tsToken || '', records })   // 停用時送空字串，後端同步放行
+    body: JSON.stringify(body)
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    _tsToken = null; try { if (_tsWidgetId !== null) turnstile.reset(_tsWidgetId); } catch (e) {}  // 通行證作廢，讓客人可重驗
     const err = new Error(data.error || ('HTTP ' + res.status));
-    err._userMsg = data.message;   // 守門員回的白話訊息（驗證失敗/太頻繁…）
+    err._userMsg = data.message;   // 守門員回的白話訊息（被封鎖／太頻繁…）
+    err._code = data.error;        // 程式判斷用（blocked 要多給一顆「聯絡老闆」）
+    throw err;
+  }
+  return data;
+}
+
+// 🔍 送單前的預檢：先問守門員「我這個人現在能下單嗎」
+//
+// 【為什麼要多這一趟】送單流程是「先發 LINE 訊息 → 成功才寫訂單」，
+//   若等到寫訂單才發現被封鎖，客人已經把訊息發出去了 →
+//   老闆聊天室多一則「我已送出訂單 #018」，訂單卻不存在，比不擋還糟。
+//   先問一句，被擋就到此為止，什麼痕跡都不留。
+async function precheckOrder() {
+  return callPlaceOrder({ precheck: true, id_token: getLineIdToken() });
+}
+
+// 把訂單寫上雲端；失敗會丟出錯誤，由 submitOrder 決定怎麼善後
+async function sendOrderToCloud(records) {
+  // 改走 place-order 守門員：驗身分→查黑名單→限流，再由伺服器寫入（直接寫資料庫的後門已關）
+  if (REQUIRE_TURNSTILE && !_tsToken) { const e = new Error('TURNSTILE_MISSING'); e._userMsg = '請先完成畫面上的安全驗證再送出 🙏'; throw e; }
+  try {
+    await callPlaceOrder({ token: _tsToken || '', id_token: getLineIdToken(), records });
+  } catch (err) {
+    _tsToken = null; try { if (_tsWidgetId !== null) turnstile.reset(_tsWidgetId); } catch (e) {}  // 通行證作廢，讓客人可重驗
     throw err;
   }
   _tsToken = null;   // 通行證一次性，用過作廢
+}
+
+// 被封鎖時的提示：講清楚原因與期限，並給一條路走（打電話），不要讓客人卡在死路
+function alertBlocked(msg) {
+  const go = confirm('⚠️ ' + (msg || '您目前無法線上訂餐') + '\n\n要現在打電話給店家嗎？');
+  if (go) { try { location.href = 'tel:0939955888'; } catch (e) {} }
 }
 
 // 📮 送單確認訊息（2026-07-27 Riley 拍板：送單＝同時以客人身分傳一則訊息給老滷仙官方 LINE）
@@ -3685,6 +3730,22 @@ async function submitOrder() {
     return;
   }
 
+  // 🔍 預檢：發任何訊息、領任何號碼之前，先問守門員「這個人現在能下單嗎」
+  //    （擋的是黑名單。放在最前面，被擋的人不會留下任何痕跡）
+  if (REQUIRE_LINE_CONFIRM) {
+    try {
+      await precheckOrder();
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = '送 出 訂 單'; }
+      if (e && e._code === 'blocked') { alertBlocked(e._userMsg); return; }
+      // 其他原因（沒帶身分票／網路不穩）用原本那套提示，不要新增一種說法讓客人更混亂
+      alert('⚠️ 訂單尚未送出\n\n'
+        + (e && e._userMsg ? e._userMsg : '請從老滷仙 LINE 官方帳號下方的「我要點餐」進入點餐頁。')
+        + '\n\n若一直失敗，請直接致電 0939-955-888 訂購。');
+      return;
+    }
+  }
+
   const orderNo = await genOrderNo(); // 跟雲端發號櫃檯領號（await：要等號碼拿到手才往下走）
 
   // 📮 送單確認（Riley 2026-07-27 拍板・方案 B）：先傳訊息、成功了才寫訂單。
@@ -3709,6 +3770,7 @@ async function submitOrder() {
     // 守門員有回白話訊息（驗證未過／太頻繁）就直接顯示；否則給通用網路提示
     // ⚠️ 走到這裡代表：LINE 確認訊息已經發出去了，但訂單沒寫進資料庫。
     //    對客人講白話＝「這張還沒算數，要再按一次」，免得他以為送出成功在家乾等。
+    if (e && e._code === 'blocked') { alertBlocked(e._userMsg); return; }
     alert(e && e._userMsg
       ? '⚠️ ' + e._userMsg
       : '⚠️ 訂單傳送失敗（可能是網路不穩），請再按一次「送出訂單」。\n（剛才 LINE 上那則訊息不算數，以店家看到的訂單為準）\n若一直失敗，請直接致電 0939-955-888 訂購。');

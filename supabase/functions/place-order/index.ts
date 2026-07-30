@@ -1,12 +1,15 @@
 // ============================================================
 // 老滷仙 下單守門員（place-order）
-// 職責：客人送出訂單時，不再讓瀏覽器「直接寫資料庫」，而是先經過這道正門：
-//   ① 驗 Cloudflare Turnstile token（擋機器人／洗版）
-//   ② 依 IP 限流（同一 IP 10 分鐘最多 10 張，防洪但不誤傷幫朋友訂的客人）
-//   ③ 用 service_role 高權限寫入訂單（BEFORE INSERT 的 guard_order_price 仍會重算覆寫金額）
+// 職責：客人送出訂單時，不再讓瀏覽器「直接寫資料庫」，而是先經過這道正門。
 //
-// 搭配 RLS：orders 的「anon 直接 insert」政策會被移除 → 客人只能走這道正門，關掉後門。
-// 機密：TURNSTILE_SECRET 存 Supabase 保險箱（Secrets），不寫在程式碼裡。
+// 這道門依序檢查五關（2026-07-30 大改版）：
+//   ① 身分驗章：客人說「我是誰」不算數，拿 LINE 的 ID Token 去跟 LINE 對章
+//   ② 黑名單：有棄單紀錄還在封鎖期內的，客氣地擋下
+//   ③ 限流：同一人 或 同一 IP，10 分鐘 5 張就擋（2 分鐘內爆 5 張還會通知老闆）
+//   ④ 高額連續下單：30 分鐘內 2 張且每張都 > $500 → 標記＋通知老闆（提醒，不擋）
+//   ⑤ 形狀檢查 → 用 service_role 寫入（金額仍由資料庫觸發器重算覆寫）
+//
+// 搭配 RLS：orders 的「anon 直接 insert」政策已移除 → 客人只能走這道正門。
 // ============================================================
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
@@ -14,23 +17,43 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 // 🔓 Turnstile 開關（2026-07-28 Riley 拍板停用）
 //   原因：客人端入口已鎖死在 LINE（LIFF 身分＋授權代發訊息＋送出時真的發一則訊息），
 //   機器人過不了那四關；而 Turnstile 在 LINE 內嵌瀏覽器裡會誤擋真客人（老闆實測被擋）。
-//   防洪工作改由下面的「IP 限流」單獨負責。
 //   要恢復：這行改 true，並把 index.html 的同名開關也改回 true。
 const REQUIRE_TURNSTILE = false
 const TURNSTILE_SECRET = Deno.env.get('TURNSTILE_SECRET') ?? ''
+
+// LINE Login channel ID（＝ LIFF ID 的前半段）。驗 ID Token 時要告訴 LINE
+// 「我要驗的是發給我這個 channel 的票」，才不會收下別人家的票。
+const LINE_LOGIN_CHANNEL_ID = '2010753920'
+
+// 老闆通知用（Secrets 是專案共用的，line-push 設的這把這裡也讀得到）
+const ACCESS_TOKEN = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN') ?? ''
+
 const db = createClient(
   Deno.env.get('SUPABASE_URL')!,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 )
 
-// 防洪參數（數字可調）：同一 IP、10 分鐘、最多 10 張
-const RATE_MAX = 10
+// ---------- 防洪參數（要調就改這裡，全檔只有這一處）----------
+const RATE_MAX = 5           // 一般限流：10 分鐘最多 5 張
 const RATE_WINDOW_MIN = 10
+const BURST_MAX = 5          // 爆量：2 分鐘內就下滿 5 張 → 疑似洗版，通知老闆
+const BURST_WINDOW_MIN = 2
+const HIGH_VALUE_AMOUNT = 500   // 高額門檻：每張都超過這個數字
+const HIGH_VALUE_WINDOW_MIN = 30
+const HIGH_VALUE_COUNT = 2      // 30 分鐘內第 2 張就算「連續高額」
+
+// 🔔 高額警示要不要發 LINE 給老闆（會扣 1 則訊息額度）
+//   老闆嫌吵就改 false——改成 false 之後，看單台的 ⚠️ 標記照樣會有，
+//   只是不會主動推播打擾他。
+const HIGH_VALUE_PUSH = true
+
+// 擋下時給客人看的話（Riley 定稿，一字不改）
+const MSG_RATE_LIMITED =
+  '下單太頻繁，老闆會忙不過來，請稍等幾分鐘 ，如有多單需求，請跟店家聯繫喔!📞0939-955-888'
 
 // CORS：允許客人端網頁/LIFF 跨網域呼叫
 const cors: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
-  // 瀏覽器送出會帶 apikey/authorization（Supabase 慣例），預檢必須放行這幾個標頭，否則 fetch 被 CORS 擋
   'Access-Control-Allow-Headers': 'content-type, apikey, authorization, x-client-info',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
@@ -38,7 +61,7 @@ function json(obj: unknown, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { ...cors, 'content-type': 'application/json' } })
 }
 
-// 向 Cloudflare 驗證 Turnstile token（回 success=true 才放行）
+// ---------- 向 Cloudflare 驗證 Turnstile token（停用中）----------
 async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
   if (!TURNSTILE_SECRET) { console.error('TURNSTILE_SECRET 未設定'); return false }
   const form = new URLSearchParams()
@@ -56,6 +79,73 @@ async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
   }
 }
 
+// ============================================================
+// ① 身分驗章：把「客人自稱的身分」換成「LINE 認證過的身分」
+//
+// 【為什麼這是地基】在這之前，前端說「我是 U1234…」後端就信。
+//   於是任何人都能冒用別人的 LINE ID 下單——黑名單會變成紙糊的
+//   （被封鎖的人只要改一個字就能繞過），限流也一樣。
+//
+// 【怎麼做】LIFF 會發一張有 LINE 簽名的「身分票」（ID Token），
+//   我們把票寄回 LINE 問「這張是不是你發的、發給誰的」，
+//   LINE 回覆裡的 sub 就是【真正的】userId。
+//
+// LINE 官方文件（逐字）：
+//   "you can validate the ID token and get the corresponding user's profile information
+//    by simply sending the ID token ... and LINE Login channel ID to a dedicated API endpoint"
+//   POST https://api.line.me/oauth2/v2.1/verify  （id_token ＋ client_id）
+//   回應的 sub ＝ "the User ID for which the ID token is generated"
+//   https://developers.line.biz/en/docs/line-login/verify-id-token/
+// ============================================================
+async function verifyIdToken(idToken: string): Promise<string | null> {
+  if (!idToken) return null
+  try {
+    const form = new URLSearchParams()
+    form.set('id_token', idToken)
+    form.set('client_id', LINE_LOGIN_CHANNEL_ID)
+    const res = await fetch('https://api.line.me/oauth2/v2.1/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: form,
+    })
+    if (!res.ok) {
+      console.error('ID Token 驗證失敗：', res.status, await res.text())
+      return null
+    }
+    const data = await res.json()
+    // sub 才是可信的 userId；順便確認這張票確實是發給我們這個 channel 的
+    if (data?.aud !== LINE_LOGIN_CHANNEL_ID) {
+      console.error('ID Token 的 aud 不是我們的 channel：', data?.aud)
+      return null
+    }
+    return typeof data?.sub === 'string' ? data.sub : null
+  } catch (e) {
+    console.error('ID Token 驗證連線失敗：', e)
+    return null
+  }
+}
+
+// ---------- 推播給老闆（高額／洗版警示用）----------
+//   不經過 line-push，因為那支的職責是「訂單卡片」；
+//   警示是另一件事，直接發純文字最單純。失敗只記 log，絕不影響下單。
+async function alertBoss(text: string) {
+  if (!ACCESS_TOKEN) return
+  try {
+    const { data: admins } = await db.from('line_admins').select('line_user_id')
+    for (const a of admins ?? []) {
+      await fetch('https://api.line.me/v2/bot/message/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ACCESS_TOKEN}` },
+        body: JSON.stringify({ to: a.line_user_id, messages: [{ type: 'text', text }] }),
+      })
+    }
+  } catch (e) {
+    console.error('警示推播失敗（不影響下單）：', e)
+  }
+}
+
+const minutesAgo = (m: number) => new Date(Date.now() - m * 60000).toISOString()
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
@@ -66,43 +156,125 @@ Deno.serve(async (req) => {
   let payload: any
   try { payload = await req.json() } catch { return json({ error: 'bad_json' }, 400) }
   const token: string = payload?.token ?? ''
+  const idToken: string = payload?.id_token ?? ''
   const records = payload?.records
 
-  // ① Turnstile 驗證（停用中，見檔案開頭的 REQUIRE_TURNSTILE 說明）
+  // ⓪ Turnstile（停用中，見檔案開頭說明）
   if (REQUIRE_TURNSTILE) {
     if (!token || !(await verifyTurnstile(token, ip))) {
       return json({ error: 'turnstile_failed', message: '安全驗證未通過，請重新整理頁面再送一次 🙏' }, 403)
     }
   }
 
-  // ② IP 限流（先數這個 IP 近 10 分鐘幾張，超過就擋）
-  const since = new Date(Date.now() - RATE_WINDOW_MIN * 60000).toISOString()
-  const { count } = await db.from('order_throttle')
-    .select('*', { count: 'exact', head: true })
-    .eq('ip', ip).gte('at', since)
-  if ((count ?? 0) >= RATE_MAX) {
-    return json({ error: 'rate_limited', message: '下單太頻繁囉，請稍等幾分鐘再試 🍢（幫多位朋友訂請分批稍候）' }, 429)
-  }
-  await db.from('order_throttle').insert({ ip })   // 記一筆這次下單，供限流計數
+  // 🔍 預檢模式（precheck）：只驗身分＋查黑名單，不寫任何東西
+  //
+  //   【為什麼需要它】客人端的送單順序是「先發 LINE 訊息 → 訊息成功才寫訂單」，
+  //   這是為了不要產生「老闆收到單卻不知道是誰」的幽靈單。
+  //   但這樣一來，被封鎖的客人會【先把訊息發出去】才被擋 →
+  //   老闆聊天室多一則「我已送出訂單 #018」，訂單卻不存在，反而更亂。
+  //   所以客人端在發訊息之前先來敲這道門問一句「我能下單嗎」。
+  const precheck = payload?.precheck === true
 
-  // ③ 基本形狀檢查（其餘由 DB 的 guard_order_price 觸發器把關：金額重算、未知品項、數量）
-  if (!Array.isArray(records) || records.length === 0 || records.length > 10) {
+  // ① 形狀檢查（先做，省得對垃圾資料做後面的網路查詢）
+  if (!precheck && (!Array.isArray(records) || records.length === 0 || records.length > 10)) {
     return json({ error: 'bad_records', message: '訂單格式異常，請重新整理再試' }, 400)
   }
 
-  // ③.5 必須帶 LINE 身分（2026-07-28 起，取代 Turnstile 的守門位置）
-  //   客人端已強制「從 LINE 進來才送得出訂單」，這裡再擋一次，
-  //   避免有人直接對這支 API 灌單。
-  //   ⚠️ 誠實說明：line_user_id 目前是前端送來的，刻意偽造擋不住
-  //     （真正的解法是 ID Token 驗簽，排在黑名單工程一起做）。
-  //     但對「洗版」而言，真正的主力是下面已經在跑的 IP 限流。
-  const badLineId = (records as any[]).some(r =>
-    typeof r?.line_user_id !== 'string' || !/^U[0-9a-f]{32}$/i.test(r.line_user_id))
-  if (badLineId) {
-    return json({ error: 'no_line_id', message: '請從老滷仙 LINE 官方帳號下方的「我要點餐」進入下單 🙏' }, 403)
+  // ② 身分驗章 —— 從這裡開始，只認 LINE 認證過的 userId
+  const userId = await verifyIdToken(idToken)
+  if (!userId) {
+    return json({
+      error: 'no_line_id',
+      // ⚠️ 這句話要同時對兩種人講得通：
+      //   ① 真的用瀏覽器開的人 → 要引導他回 LINE
+      //   ② 在 LINE 裡但身分票過期的人（頁面開太久）→ 要告訴他重開就好，
+      //      不然他會覺得「我明明就在 LINE 裡，這系統壞了」
+      message: '請從老滷仙 LINE 官方帳號下方的「我要點餐」進入下單 🙏\n'
+        + '（若你已經在 LINE 裡面，請把這頁關掉重新點一次「我要點餐」）',
+    }, 403)
+  }
+  // 🔑 關鍵一行：不管前端送來什麼，一律用驗過的身分覆蓋。
+  //    少了這行，前面的驗章就全白做了。
+  for (const r of records as any[]) r.line_user_id = userId
+
+  // ③ 黑名單（棄單封鎖中）
+  //    設計成「比對到期時間」，所以 30 天一到自然就過期，不需要任何排程去解封。
+  const { data: blocked } = await db.from('blocklist')
+    .select('until').eq('line_user_id', userId).maybeSingle()
+  if (blocked && new Date(blocked.until) > new Date()) {
+    const until = new Date(blocked.until).toLocaleDateString('zh-TW',
+      { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric' })
+    return json({
+      error: 'blocked',
+      message: '您有未取餐紀錄，線上訂餐暫停至 ' + until + '，造成不便請見諒，歡迎現場購買 🙏',
+      until: blocked.until,
+    }, 403)
   }
 
-  // ④ 用 service_role 寫入（繞過 RLS；價格防護觸發器仍在 INSERT 前重算覆寫金額）
+  // 預檢到這裡就結束——身分是真的、沒有被封鎖，可以放心去發 LINE 訊息了。
+  // （限流刻意不在預檢做：預檢不記帳，若在這裡擋，正常客人會被自己上一秒的預檢誤傷）
+  if (precheck) return json({ ok: true, precheck: true }, 200)
+
+  // ④ 限流：人 ＋ IP 雙軌
+  //    兩條軌道各司其職：
+  //      認人 → 換網路（4G 切 WiFi）也繞不過，因為 LINE 身分不變
+  //      認 IP → 有人寫程式用一堆假身分灌單時，還有這道
+  //    只要任一條超標就擋。
+  const since = minutesAgo(RATE_WINDOW_MIN)
+  const [byUser, byIp] = await Promise.all([
+    db.from('order_throttle').select('*', { count: 'exact', head: true })
+      .eq('line_user_id', userId).gte('at', since),
+    db.from('order_throttle').select('*', { count: 'exact', head: true })
+      .eq('ip', ip).gte('at', since),
+  ])
+  const userCount = byUser.count ?? 0
+  const ipCount = byIp.count ?? 0
+
+  if (userCount >= RATE_MAX || ipCount >= RATE_MAX) {
+    // 爆量偵測：這些單是不是「2 分鐘內」灌出來的？
+    //   10 分鐘 5 張 ＝ 可能是幫朋友分批訂（正常人）
+    //   2 分鐘 5 張  ＝ 不像人手動點得出來 → 通知老闆留意
+    const { count: burst } = await db.from('order_throttle')
+      .select('*', { count: 'exact', head: true })
+      .eq('line_user_id', userId).gte('at', minutesAgo(BURST_WINDOW_MIN))
+    if ((burst ?? 0) >= BURST_MAX) {
+      await alertBoss(
+        '⚠️ 疑似洗版\n\n有人在 ' + BURST_WINDOW_MIN + ' 分鐘內連續送出 ' + burst + ' 張訂單，'
+        + '系統已自動擋下。\n\n若是熟客要訂多份，請直接用 LINE 或電話幫他記單。')
+    }
+    return json({ error: 'rate_limited', message: MSG_RATE_LIMITED }, 429)
+  }
+
+  // ⑤ 高額連續下單警示（提醒，不擋）
+  //    Riley 選的是嚴格版：30 分鐘內 2 張、【每張都】超過 500 才算。
+  //    為什麼要「每張都」——只要求「加起來超過」的話，
+  //    一群同事各訂各的午餐很容易誤觸，警示變成狼來了就沒人看了。
+  const orderTotal = (records as any[]).reduce((s, r) => s + (Number(r?.total) || 0), 0)
+  let isHighValue = false
+  if (orderTotal > HIGH_VALUE_AMOUNT) {
+    const { data: prev } = await db.from('order_throttle')
+      .select('total, at')
+      .eq('line_user_id', userId)
+      .gte('at', minutesAgo(HIGH_VALUE_WINDOW_MIN))
+      .gt('total', HIGH_VALUE_AMOUNT)
+      .order('at', { ascending: false })
+    if ((prev?.length ?? 0) >= HIGH_VALUE_COUNT - 1) {
+      isHighValue = true
+      const last = prev![0]
+      const mins = Math.max(1, Math.round((Date.now() - new Date(last.at).getTime()) / 60000))
+      if (HIGH_VALUE_PUSH) {
+        await alertBoss(
+          '⚠️ 高額連續下單\n\n同一位客人 ' + mins + ' 分鐘前下單 $' + last.total
+          + '，本次 $' + orderTotal + '，請留意。\n\n（訂單照常成立，看單台會標記這張單）')
+      }
+    }
+  }
+  if (isHighValue) for (const r of records as any[]) r.high_value = true
+
+  // ⑥ 記一筆流量帳（限流與高額判斷都靠這張表回頭查）
+  await db.from('order_throttle').insert({ ip, line_user_id: userId, total: orderTotal })
+
+  // ⑦ 寫入訂單（繞過 RLS；價格防護觸發器仍會在 INSERT 前重算覆寫金額）
   const { data, error } = await db.from('orders').insert(records).select('order_no')
   if (error) {
     console.error('orders insert error：', error)

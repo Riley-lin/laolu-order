@@ -21,6 +21,12 @@ const CHANNEL_SECRET = Deno.env.get('LINE_CHANNEL_SECRET')!
 const ACCESS_TOKEN = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN')!
 const BOSS_BIND_CODE = Deno.env.get('BOSS_BIND_CODE') ?? '' // 老闆綁定密語
 
+// 老闆專用的圖文選單 ID（4 格版：即時看單／日報／菜單／點餐）
+// 綁定成功時掛到那個人身上，解除綁定時拿掉 → 自動掉回全體預設的客人版（2 格）。
+// 這串【不是機密】，只是選單的身分證號碼；換新選單圖之後要回來更新這一行。
+// 查目前有哪些選單：GET https://api.line.me/v2/bot/richmenu/list
+const RICHMENU_BOSS = 'richmenu-fe1d3d519470fc31a7082f91014f520f'
+
 // 用最高權限連自家資料庫（這段程式跑在雲端、不在瀏覽器，所以安全）
 const db = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -63,6 +69,38 @@ async function replyMessages(replyToken: string, messages: unknown[]) {
     body: JSON.stringify({ replyToken, messages }),
   })
   if (!res.ok) console.error('LINE reply 失敗：', res.status, await res.text())
+}
+
+// ---------- 個人圖文選單切換（2026-07-30 新增）----------
+//
+// 在這之前，「綁定成通知對象」和「看到哪一版圖文選單」是兩件不相干的事：
+// 綁定只寫進 line_admins，選單還要另外用工具頁一個一個掛，換手機就要重來一次。
+// 現在把兩件事綁在一起——傳一句話，通知跟選單一起換。
+//
+// LINE 官方 API（逐字）：
+//   掛上：POST   https://api.line.me/v2/bot/user/{userId}/richmenu/{richMenuId}
+//   拿掉：DELETE https://api.line.me/v2/bot/user/{userId}/richmenu
+//   https://developers.line.biz/en/docs/messaging-api/use-per-user-rich-menus/
+//
+// ⚠️ 這兩支【失敗也不擋流程】：選單沒換成功頂多是畫面不對，
+//    但「綁定/解綁」本身關係到收不收得到訂單通知，不能因為選單掛掉就整個失敗。
+async function linkBossMenu(userId: string) {
+  const res = await fetch(
+    `https://api.line.me/v2/bot/user/${userId}/richmenu/${RICHMENU_BOSS}`,
+    { method: 'POST', headers: { 'Authorization': `Bearer ${ACCESS_TOKEN}` } },
+  )
+  if (!res.ok) console.error('掛老闆選單失敗：', res.status, await res.text())
+  return res.ok
+}
+
+// 拿掉個人選單後，這個人就會掉回「全體預設選單」＝客人版 2 格
+async function unlinkBossMenu(userId: string) {
+  const res = await fetch(
+    `https://api.line.me/v2/bot/user/${userId}/richmenu`,
+    { method: 'DELETE', headers: { 'Authorization': `Bearer ${ACCESS_TOKEN}` } },
+  )
+  if (!res.ok) console.error('取消老闆選單失敗：', res.status, await res.text())
+  return res.ok
 }
 
 // ---------- 台北時間 HH:MM（跟 boss.html 的 fmtHM 同一套）----------
@@ -276,7 +314,10 @@ Deno.serve(async (req) => {
     // ③.5 老闆解除綁定：傳「老闆解除綁定」→ 把自己從管理員名簿移除（換手機/員工異動用；只會移除自己，免密語）
     if (text === '老闆解除綁定' || text === '解除綁定') {
       await db.from('line_admins').delete().eq('line_user_id', userId)
-      await reply(ev.replyToken, '已解除綁定，這支手機之後不會再收到新訂單通知。')
+      const ok = await unlinkBossMenu(userId)   // 順便把選單換回客人版
+      await reply(ev.replyToken,
+        '已解除綁定，這支手機之後不會再收到新訂單通知。'
+        + (ok ? '\n下方選單已換回客人版（重開聊天室即可看到）' : ''))
       continue
     }
 
@@ -288,7 +329,10 @@ Deno.serve(async (req) => {
         continue
       }
       await db.from('line_admins').upsert({ line_user_id: userId })
-      await reply(ev.replyToken, '老闆綁定成功！之後有新訂單會通知你。')
+      const ok = await linkBossMenu(userId)     // 順便換成老闆版 4 格選單
+      await reply(ev.replyToken,
+        '老闆綁定成功！之後有新訂單會通知你。'
+        + (ok ? '\n下方選單已換成店務版（重開聊天室即可看到）' : ''))
       continue
     }
 

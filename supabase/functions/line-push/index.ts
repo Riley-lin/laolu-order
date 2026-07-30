@@ -81,6 +81,12 @@ function fmtHM(iso: string): string {
     { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
+// ---------- 台北日期 M/D（棄單通知要講「哪一天那張單」）----------
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('zh-TW',
+    { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric' })
+}
+
 // ---------- 品項條列（對帳版）：一行一項＋每行金額（2026-07-19 Riley 拍板）----------
 function flatItems(r: any): any[] {
   return (r.items ?? []).flatMap((o: any) => (o.items ?? []))
@@ -322,6 +328,23 @@ Deno.serve(async (req) => {
 
   if (CUSTOMER_PUSH_ENABLED && kind === 'retimed' && record?.line_user_id) {
     await push(record.line_user_id, buildRetimedMessage(record, old_pickup_at), { orderNo: record?.order_no, kind: 'retimed' })
+  }
+
+  /* 🚫 棄單通知（2026-07-30 新增）
+     刻意【不受 CUSTOMER_PUSH_ENABLED 管】——那個開關關掉的是「取餐進度」這種
+     客人自己在「訂單查詢」看得到的東西；棄單通知不一樣，客人不會主動去看，
+     而且這是老闆在看單台【一張一張手動選】才發的（不是自動洪水），額度可控。
+
+     ⚠️ 語氣是這整套裡最需要小心的地方：對方很可能只是臨時有事，不是壞人。
+     所以：先講事實、把損失講成店家承擔、給申訴管道，不責備。 */
+  if (kind === 'no_show' && record?.line_user_id) {
+    await push(record.line_user_id,
+      '您好，您於 ' + fmtDate(record.created_at) + ' 訂購的 #' + record.order_no
+      + ' 餐點已製作完成，但未前往取餐。\n\n'
+      + '餐點已無法保存，這次的損失由店家承擔。為維持出餐品質，'
+      + '您的線上訂餐將暫停 30 天，期間仍歡迎現場購買。\n\n'
+      + '若有誤會或特殊狀況，請直接回覆這則訊息與我們聯繫，謝謝您 🙏',
+      { orderNo: record?.order_no, kind: 'no_show' })
   }
 
   return new Response('ok')

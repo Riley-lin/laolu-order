@@ -85,6 +85,17 @@
   .btn-wait{padding:8px 14px;border:1px solid var(--gold);border-radius:6px;background:rgba(212,165,32,0.12);color:var(--gold2);font-weight:900;font-size:13px;cursor:pointer;}
   .oc-pickup{font-size:12px;color:#ff9d5c;margin-left:10px;letter-spacing:1px;}
 
+  /* ====== 🚫 棄單／⚠️ 高額警示 ====== */
+  .oc-warn{background:#3a2a12;border:1px solid #7a5a20;color:#ffc46b;font-size:12px;font-weight:900;
+           padding:6px 10px;border-radius:6px;margin-bottom:8px;letter-spacing:1px;}
+  .order-card.is-noshow{opacity:.72;}
+  .ns-desc{font-size:13px;color:var(--dim);line-height:1.8;margin-bottom:14px;}
+  .ns-desc b{color:#ffc46b;}
+  .ns-opt{display:block;width:100%;text-align:left;padding:12px 14px;margin-bottom:8px;border-radius:8px;
+          border:1px solid var(--line);background:#241f18;color:#e8dfd0;font-size:14px;cursor:pointer;line-height:1.6;}
+  .ns-opt:hover{border-color:var(--gold);}
+  .ns-opt small{display:block;color:var(--dim);font-size:12px;margin-top:2px;}
+
   /* ====== 📱 LINE 訊息模擬預覽 ====== */
   .line-preview-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;z-index:99;padding:16px;}
   .line-preview{background:var(--card);border:1px solid var(--line);border-radius:10px;max-width:400px;width:100%;padding:18px;}
@@ -345,7 +356,8 @@ function renderCard(r) {
 
   const badge = r.status === 'new' ? '<span class="badge new">新單</span>'
               : r.status === 'confirmed' ? '<span class="badge cooking">製作中</span>'
-              : r.status === 'done' ? '<span class="badge done">已完成</span>'
+              : r.status === 'done' ? (r.no_show ? '<span class="badge cancelled">🚫 棄單</span>'
+                                                 : '<span class="badge done">已完成</span>')
               : '<span class="badge cancelled">已取消</span>';
 
   // 新單 → 確認接單（先選等候時間）；製作中 → 完成
@@ -363,6 +375,14 @@ function renderCard(r) {
       + '<button class="btn-wait" onclick="openConfirmModal(\'' + r.id + '\',\'' + esc(r.order_no) + '\',true)">⏰ 改時間</button>'
       + '<button class="btn-done" onclick="setStatus(\'' + r.id + '\',\'done\')">完 成</button>'
       + '</div>';
+  } else if (r.status === 'done') {
+    // 已完成的單才有「標記棄單」——因為棄單幾乎都是【做好了才發現沒來領】。
+    // 已經標記過的，改成提供「取消標記」的回頭路（老闆會誤按，也會有客人事後來領）。
+    actions = '<div class="oc-actions">' + badge
+      + (r.no_show
+        ? '<button class="btn-edit" onclick="unmarkNoShow(\'' + r.id + '\',\'' + esc(r.order_no) + '\')">↩️ 取消棄單註記</button>'
+        : '<button class="btn-cancel" onclick="openNoShowModal(\'' + r.id + '\',\'' + esc(r.order_no) + '\')">🚫 標記棄單</button>')
+      + '</div>';
   } else {
     actions = badge;
   }
@@ -371,7 +391,11 @@ function renderCard(r) {
   const pickupTag = (r.status === 'confirmed' && r.pickup_at)
     ? '<span class="oc-pickup">⏰ ' + fmtHM(r.pickup_at) + ' 取餐</span>' : '';
 
-  return '<div class="order-card' + (r.status === 'new' ? ' is-new' : '') + '">'
+  // ⚠️ 高額連續下單：place-order 在寫入時標記的，這裡只負責讓老闆看見
+  const hvTag = r.high_value ? '<div class="oc-warn">⚠️ 高額連續下單，請留意</div>' : '';
+
+  return '<div class="order-card' + (r.status === 'new' ? ' is-new' : '') + (r.no_show ? ' is-noshow' : '') + '">'
+    + hvTag
     + '<div class="oc-head"><span class="oc-no">#' + esc(r.order_no) + pickupTag + '</span><span class="oc-time">' + t + '</span></div>'
     + '<div class="oc-cust">👤 ' + esc(r.customer_name) + '　📞 <a href="tel:' + esc(r.customer_phone) + '">' + esc(r.customer_phone) + '</a></div>'
     + body
@@ -404,6 +428,105 @@ async function setStatus(id, status) {
 }
 
 /* ---------- 確認接單流程 ---------- */
+
+/* ============================================================
+   🚫 棄單註記（2026-07-30）
+
+   為什麼棄單要跟「取消」分成兩顆鈕（Riley 07-27 裁示）：
+     取消 ＝ 老闆知情（缺料、客人來電說不要了）→ 沒有損失，也不該怪客人
+     棄單 ＝ 做好了、客人沒來領 → 有實際成本損失，而且要防再犯
+   混在一起的話，日報會分不清「沒做」跟「做了賠掉」，也會冤枉臨時取消的客人。
+
+   為什麼放在【已完成】的單上：真實情況幾乎都是「滷都滷好了才發現人沒來」。
+   ============================================================ */
+function openNoShowModal(id, orderNo) {
+  const overlay = document.createElement('div');
+  overlay.className = 'line-preview-overlay';
+  overlay.id = 'noShowModal';
+  overlay.innerHTML =
+    '<div class="line-preview">'
+    + '<div class="lp-title">🚫 標記棄單 #' + orderNo + '</div>'
+    + '<div class="ns-desc">'
+    +   '標記後會做三件事：<br>'
+    +   '① 這張單<b>不計入營業額</b>，改列「棄單損失」<br>'
+    +   '② 這位客人的<b>線上訂餐暫停 30 天</b>（可隨時解除）<br>'
+    +   '③ 現場購買不受影響'
+    + '</div>'
+    + '<div class="ns-desc" style="margin-bottom:8px;">要怎麼告知客人？</div>'
+    + '<button class="ns-opt" onclick="markNoShow(\'' + id + '\',\'' + orderNo + '\',\'push\')">'
+    +   '📩 系統自動通知他<small>會扣 1 則訊息額度，語氣客氣、附申訴管道</small></button>'
+    + '<button class="ns-opt" onclick="markNoShow(\'' + id + '\',\'' + orderNo + '\',\'copy\')">'
+    +   '📋 複製訊息，我自己貼<small>不扣額度，你在聊天室貼上就好</small></button>'
+    + '<button class="ns-opt" onclick="markNoShow(\'' + id + '\',\'' + orderNo + '\',\'none\')">'
+    +   '🤐 先不通知<small>只做標記與暫停，什麼都不發</small></button>'
+    + '<div class="cm-actions" style="margin-top:12px;">'
+    +   '<button class="btn-plain" style="flex:1;padding:11px;" onclick="document.getElementById(\'noShowModal\').remove()">↩ 返回，不標記</button>'
+    + '</div>'
+    + '</div>';
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+/* 給老闆自己貼的版本（跟系統自動發的內容一致，客人看到的說法才不會兩套） */
+function noShowText(orderNo) {
+  return '您好，您訂購的 #' + orderNo + ' 餐點已製作完成，但未前往取餐。\n\n'
+    + '餐點已無法保存，這次的損失由店家承擔。為維持出餐品質，'
+    + '您的線上訂餐將暫停 30 天，期間仍歡迎現場購買。\n\n'
+    + '若有誤會或特殊狀況，請直接回覆這則訊息與我們聯繫，謝謝您 🙏';
+}
+
+async function markNoShow(id, orderNo, notify) {
+  document.getElementById('noShowModal')?.remove();
+
+  // 先拿到這張單的客人身分（要用來封鎖）
+  const { data: r, error: e1 } = await db.from('orders')
+    .select('id, order_no, line_user_id, total, status').eq('id', id).single();
+  if (e1 || !r) { alert('讀取訂單失敗，請重試'); return; }
+  if (r.status !== 'done') { alert('只有「已完成」的訂單可以標記棄單'); return; }
+
+  // ① 標記訂單（no_show_notify 決定資料庫的通知觸發器要不要動作）
+  const { error: e2 } = await db.from('orders')
+    .update({ no_show: true, no_show_notify: notify === 'push' })
+    .eq('id', id).eq('status', 'done');
+  if (e2) { alert('標記失敗：' + e2.message); return; }
+
+  // ② 封鎖 30 天。存「到期時間」而不是「封鎖中與否」→ 時間到自然失效，
+  //    不需要任何排程去解封（少一個會壞掉的零件）。
+  if (r.line_user_id) {
+    const until = new Date(Date.now() + 30 * 86400000).toISOString();
+    const { error: e3 } = await db.from('blocklist').upsert({
+      line_user_id: r.line_user_id, until,
+      reason: '棄單 #' + r.order_no, order_no: r.order_no,
+    });
+    if (e3) console.error('封鎖寫入失敗：', e3);
+  }
+
+  // ③ 老闆選「自己貼」→ 幫他把字複製好
+  if (notify === 'copy') {
+    try {
+      await navigator.clipboard.writeText(noShowText(orderNo));
+      alert('✅ 已標記棄單\n\n訊息已複製，到 LINE 聊天室貼上傳給客人就好 📋');
+    } catch (err) {
+      prompt('已標記棄單。請複製下面這段訊息傳給客人：', noShowText(orderNo));
+    }
+  } else {
+    alert('✅ 已標記棄單 #' + orderNo
+      + (notify === 'push' ? '\n\n已通知客人，並暫停他的線上訂餐 30 天。' : '\n\n已暫停他的線上訂餐 30 天（未發送通知）。'));
+  }
+  loadOrders();
+}
+
+/* 誤按了、或客人事後來領了 → 回頭路：取消註記並解除封鎖 */
+async function unmarkNoShow(id, orderNo) {
+  if (!confirm('要取消 #' + orderNo + ' 的棄單註記嗎？\n\n這張單會重新計入營業額，客人的封鎖也會一併解除。')) return;
+  const { data: r } = await db.from('orders').select('line_user_id').eq('id', id).single();
+  const { error } = await db.from('orders')
+    .update({ no_show: false, no_show_notify: false }).eq('id', id);
+  if (error) { alert('取消失敗：' + error.message); return; }
+  if (r?.line_user_id) await db.from('blocklist').delete().eq('line_user_id', r.line_user_id);
+  alert('✅ 已取消棄單註記，客人可以正常線上訂餐了');
+  loadOrders();
+}
 
 /* 按「確認接單」→ 彈出獨立小視窗選等候時間
    （做成彈窗有兩個理由：①15 秒自動刷新洗不掉它 ②有明確的返回、點背景＝取消，不會誤觸）*/
@@ -993,9 +1116,15 @@ async function openDailyReport(dateStr) {
 }
 
 function renderDailyReport(rows) {
-  const valid = rows.filter(r => r.status !== 'cancelled');
   const cancelled = rows.filter(r => r.status === 'cancelled');
+
+  // 🚫 棄單要從營業額裡分出來（Riley 定調：不收訂金，但棄單絕不算營業額，那是成本損失）
+  //    做好了沒人領 ＝ 材料、瓦斯、工都花掉了，卻一毛錢都沒進來。
+  //    混在營收裡看不見，這家店就永遠不知道自己被棄單吃掉多少。
+  const noShow = rows.filter(r => r.no_show);
+  const valid = rows.filter(r => r.status !== 'cancelled' && !r.no_show);
   const revenue = valid.reduce((s, r) => s + (r.total || 0), 0);
+  const lost = noShow.reduce((s, r) => s + (r.total || 0), 0);
 
   // 熱賣排行（只算沒取消的單）
   const tally = {};
@@ -1004,6 +1133,7 @@ function renderDailyReport(rows) {
   const medal = i => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.');
 
   const statusLabel = { new: '新單', confirmed: '製作中', done: '完成', cancelled: '已取消' };
+  const stLabel = r => r.no_show ? '棄單' : (statusLabel[r.status] || r.status);
   const title = _drDate + '（' + drWeekday(_drDate) + '）';
 
   // ── 畫面 ──
@@ -1016,28 +1146,32 @@ function renderDailyReport(rows) {
   const listHtml = rows.map(r => {
     const t = new Date(r.created_at).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
     const items = (r.items || []).flatMap(o => (o.items || []).map(v => v.name + '×' + v.qty)).join('、');
-    return '<div class="dr-order-row' + (r.status === 'cancelled' ? ' cancelled' : '') + '">'
+    return '<div class="dr-order-row' + (r.status === 'cancelled' || r.no_show ? ' cancelled' : '') + '">'
       + '<b>#' + esc(r.order_no) + '</b>　' + t + '　' + esc(r.customer_name) + '　$' + r.total
-      + '　[' + (statusLabel[r.status] || r.status) + ']<br>' + esc(items) + '</div>';
+      + '　[' + stLabel(r) + ']<br>' + esc(items) + '</div>';
   }).join('');
 
   // ── 分享文字版（手機傳 LINE 用）──
   _drShare = '🍢 老滷仙日報 ' + title + '\n'
-    + '訂單 ' + rows.length + ' 張（有效 ' + valid.length + '・取消 ' + cancelled.length + '）\n'
-    + '營收 $' + revenue + '\n\n'
+    + '訂單 ' + rows.length + ' 張（有效 ' + valid.length + '・取消 ' + cancelled.length
+    + (noShow.length ? '・棄單 ' + noShow.length : '') + '）\n'
+    + '營收 $' + revenue + '\n'
+    + (lost ? '棄單損失 -$' + lost + '\n' : '')
+    + '\n'
     + (rank.length ? rank.slice(0, 3).map(([nm, n], i) => medal(i) + ' ' + nm + ' ×' + n).join('\n') : '（本日無訂單）');
 
   // ── CSV（開頭加 BOM 記號 ﻿＝讓 Excel 認得中文；用明碼寫避免隱形字元事故）──
   const q = s => '"' + String(s).replace(/"/g, '""') + '"';
   _drCsv = '﻿' + '老滷仙日報,' + _drDate + '\n'
-    + '訂單數,' + rows.length + '\n有效單,' + valid.length + '\n取消單,' + cancelled.length + '\n營收,' + revenue + '\n\n'
+    + '訂單數,' + rows.length + '\n有效單,' + valid.length + '\n取消單,' + cancelled.length
+    + '\n棄單數,' + noShow.length + '\n營收,' + revenue + '\n棄單損失,' + lost + '\n\n'
     + '排行,品項,份數\n'
     + rank.map(([nm, n], i) => (i + 1) + ',' + q(nm) + ',' + n).join('\n')
     + '\n\n編號,時間,客人,金額,狀態,品項\n'
     + rows.map(r => {
         const t = new Date(r.created_at).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
         const items = (r.items || []).flatMap(o => (o.items || []).map(v => v.name + '×' + v.qty)).join('、');
-        return q(r.order_no) + ',' + t + ',' + q(r.customer_name) + ',' + r.total + ',' + (statusLabel[r.status] || r.status) + ',' + q(items);
+        return q(r.order_no) + ',' + t + ',' + q(r.customer_name) + ',' + r.total + ',' + stLabel(r) + ',' + q(items);
       }).join('\n');
 
   // ── 彈窗 ──
@@ -1058,6 +1192,13 @@ function renderDailyReport(rows) {
     +   '<div class="dr-stat"><b>' + cancelled.length + '</b><span>取消</span></div>'
     +   '<div class="dr-stat"><b>$' + revenue + '</b><span>營收</span></div>'
     + '</div>'
+    // 有棄單才顯示這一列——沒有的日子不要放一個「$0 損失」在那邊礙眼
+    + (noShow.length
+        ? '<div class="dr-stats" style="margin-top:-6px;">'
+          + '<div class="dr-stat"><b style="color:#ff8f6b">' + noShow.length + '</b><span>棄單</span></div>'
+          + '<div class="dr-stat"><b style="color:#ff8f6b">-$' + lost + '</b><span>棄單損失</span></div>'
+          + '</div>'
+        : '')
     + '<div class="mm-list">'
     +   '<div class="dr-sec">🏆 熱賣排行</div>' + rankHtml
     +   '<div class="dr-sec">📋 訂單清單</div>' + (listHtml || '<div class="empty" style="padding:14px 0">無</div>')
