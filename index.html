@@ -3564,11 +3564,33 @@ function findSoldOutInOrders(list) {
 function getLineIdToken() {
   try {
     if (typeof liff === 'undefined' || !liff.getIDToken) return '';
-    return liff.getIDToken() || '';
+    const t = liff.getIDToken() || '';
+    // JWT 一定長成「三段用點隔開」。不合格就當作沒有——
+    // 與其送一張爛票讓 LINE 回「格式錯誤」，不如自己先攔下來，
+    // 錯誤訊息才會指向真正的原因（2026-07-30 踩過這個坑）
+    return (typeof t === 'string' && t.split('.').length === 3) ? t : '';
   } catch (e) {
     console.error('取得 ID Token 失敗：', e);
     return '';
   }
+}
+
+// 🎫 主力身分票：access token（12 小時，比 ID token 的 1 小時耐用得多）
+//    客人在 LINE 裡開著點餐頁邊看邊聊，一小時後才送出是很正常的事——
+//    用 ID token 的話那張單就被擋了，用 access token 才撐得住真實使用情境。
+function getLineAccessToken() {
+  try {
+    if (typeof liff === 'undefined' || !liff.getAccessToken) return '';
+    return liff.getAccessToken() || '';
+  } catch (e) {
+    console.error('取得 Access Token 失敗：', e);
+    return '';
+  }
+}
+
+// 兩張票一起送，後端先試耐用的那張，不行才用備援的
+function lineTickets() {
+  return { access_token: getLineAccessToken(), id_token: getLineIdToken() };
 }
 
 // 統一呼叫守門員（下面「預檢」和「真的送單」共用同一段）
@@ -3587,6 +3609,7 @@ async function callPlaceOrder(body) {
     const err = new Error(data.error || ('HTTP ' + res.status));
     err._userMsg = data.message;   // 守門員回的白話訊息（被封鎖／太頻繁…）
     err._code = data.error;        // 程式判斷用（blocked 要多給一顆「聯絡老闆」）
+    err._why = data.why || '';     // 除錯代碼（E1~E5），只在被擋時附在最下面一行
     throw err;
   }
   return data;
@@ -3599,7 +3622,11 @@ async function callPlaceOrder(body) {
 //   老闆聊天室多一則「我已送出訂單 #018」，訂單卻不存在，比不擋還糟。
 //   先問一句，被擋就到此為止，什麼痕跡都不留。
 async function precheckOrder() {
-  return callPlaceOrder({ precheck: true, id_token: getLineIdToken() });
+  return callPlaceOrder(Object.assign({
+    precheck: true,
+    // 身分票驗不過時的退路（後端寬鬆模式會用它查黑名單）——正常情況以驗過的為準
+    line_user_id: (LINE_USER && LINE_USER.id) || ''
+  }, lineTickets()));
 }
 
 // 把訂單寫上雲端；失敗會丟出錯誤，由 submitOrder 決定怎麼善後
@@ -3607,7 +3634,7 @@ async function sendOrderToCloud(records) {
   // 改走 place-order 守門員：驗身分→查黑名單→限流，再由伺服器寫入（直接寫資料庫的後門已關）
   if (REQUIRE_TURNSTILE && !_tsToken) { const e = new Error('TURNSTILE_MISSING'); e._userMsg = '請先完成畫面上的安全驗證再送出 🙏'; throw e; }
   try {
-    await callPlaceOrder({ token: _tsToken || '', id_token: getLineIdToken(), records });
+    await callPlaceOrder(Object.assign({ token: _tsToken || '', records }, lineTickets()));
   } catch (err) {
     _tsToken = null; try { if (_tsWidgetId !== null) turnstile.reset(_tsWidgetId); } catch (e) {}  // 通行證作廢，讓客人可重驗
     throw err;
@@ -3741,7 +3768,8 @@ async function submitOrder() {
       // 其他原因（沒帶身分票／網路不穩）用原本那套提示，不要新增一種說法讓客人更混亂
       alert('⚠️ 訂單尚未送出\n\n'
         + (e && e._userMsg ? e._userMsg : '請從老滷仙 LINE 官方帳號下方的「我要點餐」進入點餐頁。')
-        + '\n\n若一直失敗，請直接致電 0939-955-888 訂購。');
+        + '\n\n若一直失敗，請直接致電 0939-955-888 訂購。'
+        + (e && e._why ? '\n\n[' + e._why + ']' : ''));   // 除錯代碼，查完原因就拿掉
       return;
     }
   }

@@ -25,6 +25,16 @@ const TURNSTILE_SECRET = Deno.env.get('TURNSTILE_SECRET') ?? ''
 // 「我要驗的是發給我這個 channel 的票」，才不會收下別人家的票。
 const LINE_LOGIN_CHANNEL_ID = '2010753920'
 
+/* 🔧 身分驗章的嚴格程度
+   true  ＝ 驗不過就擋（正式行為）
+   false ＝ 驗不過時退回用前端送來的 line_user_id（黑名單與限流照樣套用）
+
+   2026-07-30 一度改成 false，因為驗章誤擋了 Riley——
+   但後來查 log 發現真兇是我自己的 bug（預檢沒有 records，for...of 直接炸），
+   驗章其實是好的。同一晚把取票方式改成 access token（見下）之後，
+   誤擋的結構性原因也消失了，所以改回 true。 */
+const ID_TOKEN_STRICT = true
+
 // 老闆通知用（Secrets 是專案共用的，line-push 設的這把這裡也讀得到）
 const ACCESS_TOKEN = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN') ?? ''
 
@@ -97,8 +107,62 @@ async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
 //   回應的 sub ＝ "the User ID for which the ID token is generated"
 //   https://developers.line.biz/en/docs/line-login/verify-id-token/
 // ============================================================
-async function verifyIdToken(idToken: string): Promise<string | null> {
-  if (!idToken) return null
+/* ⏱ 為什麼主力改用 access token（2026-07-30 深夜修正）
+
+   LINE 官方逐字：
+     "The ID token is valid for **one hour** after it is issued."
+     "An access token is valid for **12 hours** after it is issued."
+     https://developers.line.biz/en/reference/liff/
+
+   ID token 只有 1 小時。客人在 LINE 裡開著點餐頁邊看邊聊、放著去忙，
+   一小時後送出訂單 → 票過期 → 被擋。這不是「可能發生」，是【一定會發生】。
+   一天 10 單的店，只要有一個客人這樣，那就是一張真實流失的訂單。
+
+   access token 有 12 小時，遠遠涵蓋一次點餐的時間。
+   驗法是兩步（缺一不可）：
+     ① GET /oauth2/v2.1/verify?access_token=…  → 回 client_id，確認這張票是【發給我們 channel】的
+        （只做第②步的話，別的 app 的 token 也能通過——那等於沒驗）
+     ② GET /v2/profile（Bearer 那張票）        → 回 userId，這才是可信的身分
+
+   ID token 保留當備援：萬一 access token 那條路出狀況，還有第二條腿。 */
+async function verifyAccessToken(accessToken: string): Promise<{ userId: string | null, why: string }> {
+  if (!accessToken) return { userId: null, why: 'A1_前端沒帶通行票' }
+  try {
+    // ① 這張票是發給我們 channel 的嗎
+    const vr = await fetch('https://api.line.me/oauth2/v2.1/verify?access_token='
+      + encodeURIComponent(accessToken))
+    const vtext = await vr.text()
+    if (!vr.ok) {
+      console.error('access token 驗證失敗：', vr.status, vtext)
+      return { userId: null, why: 'A2_LINE拒絕(' + vr.status + ')' + vtext.slice(0, 100) }
+    }
+    const vdata = JSON.parse(vtext)
+    if (String(vdata?.client_id) !== LINE_LOGIN_CHANNEL_ID) {
+      console.error('access token 的 client_id 不是我們的 channel：', vdata?.client_id)
+      return { userId: null, why: 'A3_channel不符(' + vdata?.client_id + ')' }
+    }
+    // ② 拿這張票去問 LINE「你是誰」
+    const pr = await fetch('https://api.line.me/v2/profile', {
+      headers: { 'Authorization': 'Bearer ' + accessToken },
+    })
+    const ptext = await pr.text()
+    if (!pr.ok) {
+      console.error('取 profile 失敗：', pr.status, ptext)
+      return { userId: null, why: 'A4_取身分失敗(' + pr.status + ')' }
+    }
+    const pdata = JSON.parse(ptext)
+    if (typeof pdata?.userId !== 'string') return { userId: null, why: 'A5_回應裡沒有 userId' }
+    return { userId: pdata.userId, why: '' }
+  } catch (e) {
+    console.error('access token 驗證連線失敗：', e)
+    return { userId: null, why: 'A6_連線失敗' }
+  }
+}
+
+// 回傳 { userId, why }：why 是失敗原因代碼，會一路帶到客人端，
+// 這樣「客人回報下不了單」時，看畫面上那個代碼就知道斷在哪，不用瞎猜。
+async function verifyIdToken(idToken: string): Promise<{ userId: string | null, why: string }> {
+  if (!idToken) return { userId: null, why: 'E1_前端沒帶身分票' }
   try {
     const form = new URLSearchParams()
     form.set('id_token', idToken)
@@ -108,21 +172,30 @@ async function verifyIdToken(idToken: string): Promise<string | null> {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: form,
     })
+    const text = await res.text()
     if (!res.ok) {
-      console.error('ID Token 驗證失敗：', res.status, await res.text())
-      return null
+      console.error('ID Token 驗證失敗：', res.status, text)
+      return { userId: null, why: 'E2_LINE拒絕(' + res.status + ')' + text.slice(0, 120) }
     }
-    const data = await res.json()
+    const data = JSON.parse(text)
     // sub 才是可信的 userId；順便確認這張票確實是發給我們這個 channel 的
     if (data?.aud !== LINE_LOGIN_CHANNEL_ID) {
-      console.error('ID Token 的 aud 不是我們的 channel：', data?.aud)
-      return null
+      console.error('ID Token 的 aud 不是我們的 channel：', data?.aud, '期待：', LINE_LOGIN_CHANNEL_ID)
+      return { userId: null, why: 'E3_channel不符(票是給 ' + data?.aud + ')' }
     }
-    return typeof data?.sub === 'string' ? data.sub : null
+    if (typeof data?.sub !== 'string') return { userId: null, why: 'E4_回應裡沒有 sub' }
+    return { userId: data.sub, why: '' }
   } catch (e) {
     console.error('ID Token 驗證連線失敗：', e)
-    return null
+    return { userId: null, why: 'E5_連線失敗' }
   }
+}
+
+// 從訂單內容裡撈出前端自報的 line_user_id（寬鬆模式的退路）
+function frontendUserId(records: any): string | null {
+  const first = Array.isArray(records) ? records[0] : null
+  const id = first?.line_user_id
+  return (typeof id === 'string' && /^U[0-9a-f]{32}$/i.test(id)) ? id : null
 }
 
 // ---------- 推播給老闆（高額／洗版警示用）----------
@@ -157,6 +230,7 @@ Deno.serve(async (req) => {
   try { payload = await req.json() } catch { return json({ error: 'bad_json' }, 400) }
   const token: string = payload?.token ?? ''
   const idToken: string = payload?.id_token ?? ''
+  const accessToken: string = payload?.access_token ?? ''
   const records = payload?.records
 
   // ⓪ Turnstile（停用中，見檔案開頭說明）
@@ -181,7 +255,26 @@ Deno.serve(async (req) => {
   }
 
   // ② 身分驗章 —— 從這裡開始，只認 LINE 認證過的 userId
-  const userId = await verifyIdToken(idToken)
+  //    主力走 access token（12 小時）；它不行才退而求其次用 ID token（1 小時）。
+  //    兩條腿都斷了才算失敗——這樣單一 API 抖一下不會讓客人下不了單。
+  let v = await verifyAccessToken(accessToken)
+  if (!v.userId) {
+    const v2 = await verifyIdToken(idToken)
+    if (v2.userId) v = v2
+    else v = { userId: null, why: v.why + ' ｜ ' + v2.why }
+  }
+  let userId = v.userId
+
+  if (!userId && !ID_TOKEN_STRICT) {
+    // 寬鬆模式：驗不過就退回前端自報的身分（黑名單與限流照樣往下套）
+    //   預檢時還沒有 records，所以前端會另外把 line_user_id 放在最外層
+    const claimed: string = payload?.line_user_id ?? ''
+    userId = (precheck
+      ? (/^U[0-9a-f]{32}$/i.test(claimed) ? claimed : null)
+      : frontendUserId(records))
+    if (userId) console.warn('⚠️ 身分驗章未過，暫用前端身分：', v.why, '→', userId.slice(0, 8) + '…')
+  }
+
   if (!userId) {
     return json({
       error: 'no_line_id',
@@ -191,11 +284,12 @@ Deno.serve(async (req) => {
       //      不然他會覺得「我明明就在 LINE 裡，這系統壞了」
       message: '請從老滷仙 LINE 官方帳號下方的「我要點餐」進入下單 🙏\n'
         + '（若你已經在 LINE 裡面，請把這頁關掉重新點一次「我要點餐」）',
+      why: v.why,     // 除錯用：客人端會把它印在提示最下面一行
     }, 403)
   }
   // 🔑 關鍵一行：不管前端送來什麼，一律用驗過的身分覆蓋。
   //    少了這行，前面的驗章就全白做了。
-  for (const r of records as any[]) r.line_user_id = userId
+  if (!precheck) for (const r of records as any[]) r.line_user_id = userId
 
   // ③ 黑名單（棄單封鎖中）
   //    設計成「比對到期時間」，所以 30 天一到自然就過期，不需要任何排程去解封。
