@@ -3157,7 +3157,18 @@ function showFinalConfirm(total, mode) {
   //   順便處理另一種人：不是從 LINE 進來的客人在這裡就先擋，
   //   不要等他填完資料、按下送出才被拒絕。
   const inLineClient = typeof liff !== 'undefined' && liff.isInClient && liff.isInClient();
+  // ⚡ 應急模式要排在最前面判斷：那些客人【本來就不在 LINE 裡】，
+  //    但他們是送得出訂單的——沿用下面「不在 LINE 就擋」的紅框會直接說謊，
+  //    客人看到「這個畫面沒辦法送出訂單」就直接走了（2026-07-30 Riley 實測抓到）。
   const lineNoticeHtml = !REQUIRE_LINE_CONFIRM ? ''
+    : EMERGENCY_MODE
+      ? '<div style="text-align:center;margin:2px 0 22px;">'
+        + '<div style="font-size:15px;font-weight:700;color:#FFE8C2;letter-spacing:0.5px;margin-bottom:7px;">🔔 訂單提醒</div>'
+        + '<div style="font-size:14px;line-height:1.85;color:rgba(255,232,194,0.72);">'
+        + '送出後請記下<span style="color:var(--gold2);font-weight:700">取餐編號</span>。<br>'
+        + '本頁不會發送 LINE 通知，<br>'
+        + '請用上方「查詢我的訂單」查看進度。'
+        + '</div></div>'
     : inLineClient
       // 輕量版（Riley 2026-07-27：金框太重、變成框中框）——拆掉底色與邊框，
       // 改成跟「等待時間約 30 分鐘」同一種置中灰字，安靜地把該講的講完
