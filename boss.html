@@ -577,18 +577,20 @@ function cmRefresh() {
   document.querySelectorAll('.cm-preset').forEach(b =>
     b.classList.toggle('active', parseInt(b.dataset.m) === _cmMins));
 }
-/* 選完時間按「確認送出」→ 先跳訊息預覽（⚠️ 此時什麼都還沒生效！）
-   預覽視窗按「知道了」才真正寫入資料庫（未來＝才真正發 LINE）；按「返回」可回來重選 */
+/* 選完時間按「確認送出」→ 直接生效
+   （2026-07-30 Riley 拍板拿掉中間那層「客人將收到的訊息」預覽）
+
+   為什麼可以拿掉：客人主動通知在 07-26 就關了（CUSTOMER_PUSH_ENABLED = false），
+   那則訊息【根本不會發出去】——預覽一個不存在的東西，只是讓老闆多按一次，
+   還會讓他誤以為客人收到了通知。
+
+   把關並沒有變少：選時間的視窗上就即時顯示「客人取餐時間 → HH:MM」，
+   老闆按下去之前就看得到結果；點背景或按返回都能取消。
+
+   ⚠️ 哪天把客人推播打開，這層預覽要跟著回來（改回呼叫 showLinePreview）。 */
 async function cmSubmit(id) {
   document.getElementById('confirmModal')?.remove();
-  // 撈這張單的內容，用「目前選的分鐘數」算出預覽用的取餐時間
-  const { data: r, error } = await db.from('orders').select('*').eq('id', id).single();
-  if (error || !r) { alert('讀取訂單失敗，請重試'); return; }
-  const preview = Object.assign({}, r, {
-    wait_minutes: _cmMins,
-    pickup_at: new Date(Date.now() + _cmMins * 60000).toISOString()
-  });
-  showLinePreview(preview);
+  await commitConfirm(id);
 }
 
 /* 預覽按「知道了」→ 真正生效：寫入確認狀態＋時間（送出後就不再改時間） */
@@ -678,7 +680,10 @@ function buildCustomerMessage(r) {
 }
 
 /* 送出前的最後把關：看到訊息長相才決定要不要放行
-   ↩ 返回＝回時間選擇（保留剛選的分鐘）；知道了＝真正送出生效 */
+   ↩ 返回＝回時間選擇（保留剛選的分鐘）；知道了＝真正送出生效
+
+   🔕 2026-07-30 起【暫時沒有人呼叫這支】——接單改成按下去直接生效。
+   刻意留著不刪：客人推播一旦打開，把 cmSubmit 改回呼叫它就恢復了。 */
 function showLinePreview(r) {
   const msg = buildCustomerMessage(r);
   const overlay = document.createElement('div');
@@ -879,9 +884,11 @@ function edPreview() {
   overlay.id = 'editPreview';
   overlay.innerHTML =
     '<div class="line-preview">'
-    + '<div class="lp-title">📱 客人將收到的訊息（送出前預覽）</div>'
+    + '<div class="lp-title">✏️ 確認修改內容</div>'
     + '<div class="lp-chat"><div class="lp-bubble">' + esc(msg).replace(/\n/g, '<br>') + '</div></div>'
-    + '<div class="lp-note">按「知道了」才會生效；📱 已綁定 LINE 的客人會自動收到這則訊息，未綁定的不發送</div>'
+    // 2026-07-30：這層保留（改單容易手滑，要看一眼改成什麼樣）
+    // 但說明改掉——客人推播已關，不能再寫「客人會自動收到」
+    + '<div class="lp-note">按「知道了」才會生效。客人不會收到通知，他自己開「訂單查詢」就會看到更新後的內容</div>'
     + '<div class="cm-actions" style="margin-top:14px;">'
     +   '<button class="btn-plain" style="flex:1;padding:10px;" onclick="document.getElementById(\'editPreview\').remove();renderEditModal()">↩ 返回</button>'
     +   '<button class="lp-close" style="flex:1;margin:0;" onclick="document.getElementById(\'editPreview\').remove();commitEdit()">知道了</button>'
