@@ -60,6 +60,7 @@
       <li>店務台裡能做什麼（看單／改單／改時間／營業設定／日報）</li>
       <li>客人現在都從 LINE 點餐（怎麼知道是誰訂的）</li>
       <li>通知漏掉了會自己補（🔁 補發通知）</li>
+      <li>系統自動幫你盯的三件事（防灌單／高額提醒／棄單）</li>
       <li>常見情況怎麼處理</li>
     </ol>
   </div>
@@ -110,7 +111,8 @@
     <tr><td><strong>改單</strong></td><td>改客人點的品項／數量（缺料、客人加點）</td><td>點該筆訂單的「編輯」→ 加減品項 → 送出前會先給你看客人會收到的訊息</td></tr>
     <tr><td><strong>改時間</strong></td><td>來不及了，把取餐時間往後改</td><td>訂單裡改時間，客人端會自動更新</td></tr>
     <tr><td><strong>營業設定</strong></td><td>暫停接單／臨時公休／未來公休／公告</td><td>店務台的「🚪 營業設定」（見下方第五點）</td></tr>
-    <tr><td><strong>日報</strong></td><td>看今天賣了什麼、熱賣排行、營收</td><td>點「📊 日報」</td></tr>
+    <tr><td><strong>標記棄單</strong></td><td>做好了客人沒來領 → 記成損失並暫停他線上訂餐</td><td>已完成的訂單上按 <span class="btn red">🚫 標記棄單</span>（見第七章）</td></tr>
+    <tr><td><strong>日報</strong></td><td>看今天賣了什麼、熱賣排行、營收、棄單損失</td><td>點「📊 日報」</td></tr>
   </table>
 
   <h2>五、客人現在都從 LINE 點餐（怎麼知道是誰訂的）</h2>
@@ -157,7 +159,62 @@
 
   <div class="pagebreak"></div>
 
-  <h2>七、常見情況怎麼處理</h2>
+  <h2>七、系統自動幫你盯的三件事</h2>
+  <p>這三道是<strong>自動的</strong>，你什麼都不用設定、不用記。寫在這裡只是讓你知道<u>它出現的時候代表什麼</u>，不會嚇一跳。</p>
+
+  <h3>🚦 第一道：防灌單（自動擋）</h3>
+  <table>
+    <tr><th>狀況</th><th>系統怎麼做</th></tr>
+    <tr><td><strong>同一個人（或同一個網路）10 分鐘內下了 5 張單</strong></td><td>第 6 張<strong>直接擋下</strong>，客人會看到請他稍等、或打電話訂的訊息</td></tr>
+    <tr><td><strong>那 5 張是 2 分鐘內灌出來的</strong></td><td>擋下，<strong>而且 LINE 通知你「⚠️ 疑似洗版」</strong></td></tr>
+  </table>
+  <div class="tip">💡 <strong>為什麼 10 分鐘 5 張才擋</strong>：幫朋友、幫同事訂好幾份是很正常的事，門檻太低會誤傷真客人。<br>
+  但<strong>2 分鐘連下 5 張</strong>就不是人手動點得出來的速度了——那多半是有人在惡作劇，所以會另外通知你。</div>
+  <div class="tip">💡 <strong>熟客真的要訂很多份怎麼辦</strong>：請他<strong>直接用 LINE 或打電話</strong>跟你講，你手動記單就好。被擋的訊息裡也已經寫了店裡電話。</div>
+
+  <h3>⚠️ 第二道：高額連續下單（只提醒，不擋）</h3>
+  <p><strong>同一個人（或同一個網路）10 分鐘內下了 2 張、而且每張都超過 $500</strong> —— 系統會做兩件事：</p>
+  <div class="step">
+    <p><span class="n">1</span>那張訂單的卡片上會出現 <strong style="color:#b8860b">⚠️ 高額連續下單，請留意</strong></p>
+    <p><span class="n">2</span>LINE 通知你：「同一位客人 8 分鐘前下單 $650，本次 $720，請留意」</p>
+  </div>
+  <div class="warn">⚠️ <strong>這是提醒，不是判定他是壞人。</strong>訂單一樣會成立。<br>
+  你要做的只是<strong>多看一眼</strong>：金額對不對、電話像不像真的。覺得怪就打過去確認一句，這通電話比事後賠一鍋滷味便宜。</div>
+  <div class="tip">💡 通知會分辨兩種寫法，因為處理方式不一樣：<br>
+  ・「<strong>同一位客人</strong>」→ 同一個人連下大單，比較需要留意<br>
+  ・「<strong>同一個網路（可能是同一群人）</strong>」→ 多半是辦公室團訂，通常沒事</div>
+  <div class="tip">💡 覺得太吵想關掉 → 跟 Riley 說一聲（一分鐘的事）。<strong>關掉之後訂單卡片上的 ⚠️ 標記還是會有</strong>，只是不會再傳 LINE 打擾你。</div>
+
+  <h3>🚫 第三道：棄單註記（你自己按）</h3>
+  <p>做好了、人卻沒來領——這是<strong>真的有成本的損失</strong>（材料、瓦斯、工都花掉了）。系統幫你把它記下來。</p>
+  <div class="step">
+    <p><span class="n">1</span>店務台 → <span class="btn">✅ 已完成</span> 找到那張單 → 按 <span class="btn red">🚫 標記棄單</span></p>
+    <p><span class="n">2</span>系統會問<strong>「要怎麼告知客人」</strong>，三選一：</p>
+  </div>
+  <table>
+    <tr><th>選項</th><th>說明</th></tr>
+    <tr><td>📩 <strong>系統自動通知他</strong></td><td>會扣 1 則訊息額度。語氣客氣、不責備，並附上申訴管道</td></tr>
+    <tr><td>📋 <strong>複製訊息，我自己貼</strong></td><td>不扣額度。訊息會複製好，你到聊天室貼上就好</td></tr>
+    <tr><td>🤐 <strong>先不通知</strong></td><td>只做記錄與暫停，什麼都不發</td></tr>
+  </table>
+  <p><strong>按下去之後系統做三件事：</strong></p>
+  <div class="step">
+    <p><span class="n">1</span>這張單<strong>不計入營業額</strong>，改列到日報的「棄單損失」</p>
+    <p><span class="n">2</span>這位客人的<strong>線上訂餐暫停 30 天</strong>（時間到自動恢復）</p>
+    <p><span class="n">3</span><strong>現場購買完全不受影響</strong>——他還是可以走進店裡買</p>
+  </div>
+  <div class="warn">⚠️ <strong>「取消」和「棄單」是兩顆不一樣的按鈕，不要混用：</strong><br>
+  ・<strong>取消</strong> ＝ 你知情（缺料、客人打來說不要了）→ <u>沒有損失，也不該怪客人</u><br>
+  ・<strong>棄單</strong> ＝ 做好了、客人無故沒來 → <u>有實際損失，而且要防再犯</u><br>
+  混在一起的話，日報會分不清「沒做」和「做了賠掉」，也會冤枉臨時取消的客人。</div>
+  <div class="tip">💡 <strong>按錯了怎麼辦</strong>：那張單會變成 <span class="btn">↩️ 取消棄單註記</span>，按下去就還原，客人的暫停也一起解除。<br>
+  客人事後跑來說「我今天才有空來拿」也一樣，按還原就好。</div>
+  <div class="tip">💡 <strong>日報會多一列</strong>：有棄單的那天，日報會出現「棄單數」和「棄單損失 -$XXX」。<br>
+  <strong>沒有棄單的日子不會顯示</strong>，不用擔心每天看到一個難看的數字。</div>
+
+  <div class="pagebreak"></div>
+
+  <h2>八、常見情況怎麼處理</h2>
 
   <div class="qa">
     <div class="q">Q1. 太忙了，暫時不想收單怎麼辦？</div>
@@ -180,7 +237,7 @@
     <div class="a">照這個順序看：<br>
     ・<strong>等 3 分鐘</strong>——如果是通知漏掉，系統會自己補一張橘色「🔁 補發通知」給你（見第六章）。<br>
     ・<strong>打開店務台</strong>——訂單一定在裡面。<u>收不到通知 ≠ 沒有單</u>，這兩件事是分開的。<br>
-    ・<strong>還是沒有</strong>——確認你的 LINE 有綁定（傳「老闆綁定 加上你的密語」給官方帳號，見第八章）。<br>
+    ・<strong>還是沒有</strong>——確認你的 LINE 有綁定（傳「老闆綁定 加上你的密語」給官方帳號，見第九章）。<br>
     ※ 訂單資料<strong>從來不會因為通知失敗而消失</strong>，它一進資料庫就存好了。</div>
   </div>
   <div class="qa">
@@ -207,7 +264,7 @@
     ※ 反過來，<strong>直接在 LINE 卡片按分鐘接單</strong>的話，卡片會自己變成「✅ 已接單 · 製作中」。</div>
   </div>
 
-  <h2>八、老闆綁定／解除綁定（收不收新單通知）</h2>
+  <h2>九、老闆綁定／解除綁定（收不收新單通知）</h2>
   <p>「綁定」＝讓你這支手機收到「🔔 新訂單」通知。做法是傳訊息給老滷仙官方帳號：</p>
   <div class="step">
     <p><span class="n">1</span><strong>要收通知（綁定）</strong>：傳 <span class="btn">老闆綁定 你的密語</span> 給官方帳號（例如「老闆綁定 abc123」）。看到「✅ 綁定成功」就會開始收新單通知。<br><span style="font-size:13px;color:var(--soft)">※ 密語找 Riley 拿；可以多支手機都綁（老闆＋幫手都收得到）。</span></p>
@@ -221,7 +278,7 @@
   <div class="foot">
     有任何問題，直接找 Riley 🙌<br>
     老滷仙 · 道地滷味 · 八德廣福店<br>
-    <span style="font-size:12px;">手冊版本 2026-07-29（新增：LINE 專屬入口、🔁 補發通知）</span>
+    <span style="font-size:12px;">手冊版本 2026-07-30（新增：防灌單／高額提醒／棄單註記）</span>
   </div>
 
 </div>
