@@ -3439,7 +3439,11 @@ function taipeiTodayStr() {
 /* 應急模式期間，頁面最上面掛一條說明。
    為什麼一定要讓客人看到：這條路徑【不會】把訂單訊息傳進 LINE 聊天室，
    客人也就不會收到那句「已收到訂單」的回覆。
-   不講清楚的話，他會以為沒送出去而重複下單。 */
+   不講清楚的話，他會以為沒送出去而重複下單。
+
+   ⚠️ 文案刻意【不寫「應急模式」「系統異常」】（2026-07-30 Riley 裁示）——
+   那是我們的內部狀態，客人不需要知道，講了只會讓他覺得這家店不穩。
+   他真正需要知道的只有兩件事：記下取餐編號、進度自己查。 */
 function updateEmergencyBanner() {
   const id = 'emergencyBar';
   const old = document.getElementById(id);
@@ -3459,8 +3463,8 @@ function updateEmergencyBanner() {
   bar.innerHTML =
     '<div style="display:flex;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap;">'
     + '<div style="text-align:left;">'
-    +   '⚡ <b>應急訂餐模式</b>　LINE 系統異常中，此頁可直接下單<br>'
-    +   '<span style="font-size:12px;opacity:.85">送出後請記下取餐編號</span>'
+    +   '🍢 <b>送出訂單後請記下取餐編號</b><br>'
+    +   '<span style="font-size:12px;opacity:.85">本頁不會發送 LINE 通知，請自行查詢進度</span>'
     + '</div>'
     + '<button onclick="openCoverQuery()" style="flex:none;background:#ffd9a8;color:#4a1d08;'
     +   'border:none;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:900;cursor:pointer;">'
