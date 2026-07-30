@@ -3446,6 +3446,32 @@ let EMERGENCY_MODE = false;    // 兩個條件都成立才是 true
 /* 上一次送單失敗時領到的取餐編號。重試時沿用它，讓後端認得出「這是同一張單」，
    不會變成兩張。送單成功之後清掉，下一張才領新號。 */
 let _retryOrderNo = null;
+
+/* 應急通行碼「進頁面就驗一次」（2026-07-31 Riley 實測抓到）
+
+   問題：老闆按了「換新碼」之後，拿著舊網址的人【還是打得開頁面】——
+   因為那是靜態網頁，誰都開得起來；真正的把關在送出那一刻。
+   結果就是：客人點完一整份餐、填完姓名電話，按下送出才被擋。
+   而老闆也會以為「換碼根本沒用」。
+
+   修法：一進頁面就拿這把碼去問一次伺服器，無效就直接把畫面關掉、
+   告訴他向店家要新連結。「換碼＝舊連結立刻失效」才名副其實。 */
+let _emgCodeChecked = false;
+async function verifyEmergencyCodeOnce() {
+  if (!EMERGENCY_MODE || _emgCodeChecked) return;
+  _emgCodeChecked = true;   // 只驗一次（syncShopConfig 每 10 秒跑一次，不能每次都打）
+  try {
+    await precheckOrder();   // 碼有效就靜靜通過，什麼都不做
+  } catch (e) {
+    if (e && (e._code === 'no_line_id')) {
+      EMERGENCY_MODE = false;
+      updateEmergencyBanner();
+      alert('⚠️ 這個訂餐連結已經失效了\n\n請向店家索取新的連結，或直接致電 0939-955-888 訂購 🙏');
+    }
+    // 其他錯誤（網路不穩、被封鎖…）不在這裡處理——送出時本來就會再擋一次，
+    // 一進頁面就跳一堆警告只會嚇跑客人
+  }
+}
 let EMERGENCY_CODE = '';       // 網址上帶的通行碼（真偽由伺服器判斷，前端只負責轉交）
 
 function taipeiTodayStr() {
@@ -3508,6 +3534,7 @@ async function syncShopConfig() {
     //    只有開關開著不夠——不然任何人打開首頁都變成應急客人，等於入口整個敞開
     EMERGENCY_MODE = (cfg.emergency_on === '1') && !!EMERGENCY_CODE;
     updateEmergencyBanner();
+    verifyEmergencyCodeOnce();   // 帶碼進來的，一進頁面就先驗這把碼還有沒有效
     SHOP_CLOSED_UPCOMING = dates.filter(d => d >= today).sort();
     // 🕔 接單時段：格式 HH:MM-HH:MM（24:00＝收到半夜）；沒設定＝整天可點
     // ⏱ 等待時間：雲端有值就換上（老闆在看單台改，10 秒內全客同步）
