@@ -13,16 +13,26 @@
 insert into public.app_config (name, value) values ('pause_now', '')
   on conflict (name) do nothing;
 
+-- ⚠️⚠️ 這個白名單【有兩份 SQL 都在定義】（本檔 ＋ setup-emergency.sql）
+--    兩邊都是先 drop 再 create → 【後跑的那份會蓋掉前一份】。
+--    2026-07-31 審查抓到：本檔原本漏了 emergency_on，
+--    只要有人為了別的原因重跑這份，應急模式就會【靜默失效】——
+--    資料還在、不報錯、開關就是讀不到（跟 07-30 晚上踩的同一個坑，換個觸發方式）。
+--
+--    👉 規則：改任何一邊，兩邊都要改。新增設定格時，兩份名單都要加名字。
 drop policy if exists "config_public_read" on public.app_config;
 create policy "config_public_read" on public.app_config
   for select to anon, authenticated
-  using (name in ('notice','closed_dates','closed_now','pause_now','open_hours','wait_minutes'));
+  using (name in ('notice','closed_dates','closed_now','pause_now',
+                  'open_hours','wait_minutes','emergency_on'));
 
 drop policy if exists "config_boss_write" on public.app_config;
 create policy "config_boss_write" on public.app_config
   for update to authenticated
-  using (name in ('notice','closed_dates','closed_now','pause_now','open_hours','wait_minutes'))
-  with check (name in ('notice','closed_dates','closed_now','pause_now','open_hours','wait_minutes'));
+  using (name in ('notice','closed_dates','closed_now','pause_now',
+                  'open_hours','wait_minutes','emergency_on'))
+  with check (name in ('notice','closed_dates','closed_now','pause_now',
+                       'open_hours','wait_minutes','emergency_on'));
 
 -- ────────────────────────────────────────────
 -- ② 價格竄改防護（最重要）＝伺服器完整重算、覆寫前端金額

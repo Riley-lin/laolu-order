@@ -6,7 +6,7 @@
 //   ① 身分驗章：客人說「我是誰」不算數，拿 LINE 的 ID Token 去跟 LINE 對章
 //   ② 黑名單：有棄單紀錄還在封鎖期內的，客氣地擋下
 //   ③ 限流：同一人 或 同一 IP，10 分鐘 5 張就擋（2 分鐘內爆 5 張還會通知老闆）
-//   ④ 高額連續下單：30 分鐘內 2 張且每張都 > $500 → 標記＋通知老闆（提醒，不擋）
+//   ④ 高額連續下單：10 分鐘內 2 張且每張都 > $500 → 標記＋通知老闆（提醒，不擋）
 //   ⑤ 形狀檢查 → 用 service_role 寫入（金額仍由資料庫觸發器重算覆寫）
 //
 // 搭配 RLS：orders 的「anon 直接 insert」政策已移除 → 客人只能走這道正門。
@@ -56,6 +56,12 @@ const HIGH_VALUE_COUNT = 2      // 10 分鐘內第 2 張就算「連續高額」
 //   老闆嫌吵就改 false——改成 false 之後，看單台的 ⚠️ 標記照樣會有，
 //   只是不會主動推播打擾他。
 const HIGH_VALUE_PUSH = true
+
+/* ⏱ 對外呼叫 LINE 的逾時（2026-07-31 審查後補）
+   為什麼一定要有：LINE 故障時不一定是「馬上回錯誤」，也可能是【連線掛在那裡不回話】。
+   沒有逾時的話，這支函式會一路等到平台把它砍掉，客人畫面就是一直轉圈——
+   而 07-28 才剛被 LINE 故障咬過一次。寧可 5 秒後判定失敗，也不要讓客人卡死。 */
+const LINE_TIMEOUT_MS = 5000
 
 // 擋下時給客人看的話（Riley 定稿，一字不改）
 const MSG_RATE_LIMITED =
@@ -130,7 +136,7 @@ async function verifyAccessToken(accessToken: string): Promise<{ userId: string 
   try {
     // ① 這張票是發給我們 channel 的嗎
     const vr = await fetch('https://api.line.me/oauth2/v2.1/verify?access_token='
-      + encodeURIComponent(accessToken))
+      + encodeURIComponent(accessToken), { signal: AbortSignal.timeout(LINE_TIMEOUT_MS) })
     const vtext = await vr.text()
     if (!vr.ok) {
       console.error('access token 驗證失敗：', vr.status, vtext)
@@ -144,6 +150,7 @@ async function verifyAccessToken(accessToken: string): Promise<{ userId: string 
     // ② 拿這張票去問 LINE「你是誰」
     const pr = await fetch('https://api.line.me/v2/profile', {
       headers: { 'Authorization': 'Bearer ' + accessToken },
+      signal: AbortSignal.timeout(LINE_TIMEOUT_MS),
     })
     const ptext = await pr.text()
     if (!pr.ok) {
@@ -171,6 +178,7 @@ async function verifyIdToken(idToken: string): Promise<{ userId: string | null, 
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: form,
+      signal: AbortSignal.timeout(LINE_TIMEOUT_MS),
     })
     const text = await res.text()
     if (!res.ok) {
@@ -210,6 +218,7 @@ async function alertBoss(text: string) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ACCESS_TOKEN}` },
         body: JSON.stringify({ to: a.line_user_id, messages: [{ type: 'text', text }] }),
+        signal: AbortSignal.timeout(LINE_TIMEOUT_MS),
       })
     }
   } catch (e) {
@@ -231,6 +240,53 @@ const minutesAgo = (m: number) => new Date(Date.now() - m * 60000).toISOString()
      開關 emergency_on 在 app_config（前端讀得到——客人端要知道現在是不是應急模式）
      通行碼 emergency_code 在 app_secrets（前端讀不到，只有這裡比對）
    放同一個地方的話，通行碼等於印在門上。 */
+/* 🚪 伺服器端店況檢查（2026-07-31 補：紅隊指出打烊／暫停只擋在前端）
+
+   為什麼這不只是資安問題，而是【真的會發生的營運問題】：
+   客人的點餐頁開著沒關（邊看菜單邊跟朋友討論），這期間老闆按了「暫停接單」，
+   客人手上那頁還是舊狀態 → 按下送出，訂單照樣進來。
+   不需要任何人惡意攻擊，只要頁面沒刷新就會發生。
+
+   前端的檢查留著（要即時反應在畫面上），這裡是最後一道。
+   回傳 null＝可以下單；回傳字串＝擋下的理由（直接給客人看）。 */
+async function checkShopOpen(): Promise<string | null> {
+  try {
+    const { data } = await db.from('app_config').select('name, value')
+      .in('name', ['closed_now', 'closed_dates', 'pause_now', 'open_hours'])
+    const cfg: Record<string, string> = {}
+    for (const r of data ?? []) cfg[r.name] = r.value ?? ''
+
+    // 台北時間的今天（雲端時鐘是 UTC，一定要明講時區，不然半夜會算成昨天）
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date())
+
+    // 臨時公休／未來公休日：值＝今天日期才算數（隔天自動失效，不用記得回來關）
+    const dates = (cfg.closed_dates || '').split(/[,，\s]+/).filter(Boolean)
+    if (cfg.closed_now === today || dates.includes(today)) {
+      return '今日公休，感謝支持，明天見 🙏'
+    }
+    if (cfg.pause_now === today) {
+      return '老闆忙不過來啦，暫停接單中，請稍後再試 🙏'
+    }
+
+    // 接單時段 HH:MM-HH:MM（24:00＝收到半夜）
+    const m = /^(\d{2}:\d{2})-(\d{2}:\d{2})$/.exec((cfg.open_hours || '').trim())
+    if (m) {
+      const now = new Date().toLocaleTimeString('en-GB',
+        { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false })
+      const [from, to] = [m[1], m[2] === '24:00' ? '23:59' : m[2]]
+      const inRange = from <= to
+        ? (now >= from && now <= to)
+        : (now >= from || now <= to)      // 跨午夜的時段（例如 17:00-02:00）
+      if (!inRange) return '目前不在接單時間（' + from + '–' + m[2] + '），請稍後再來 🙏'
+    }
+    return null
+  } catch (e) {
+    // 讀不到設定就放行——可用性優先，不能因為查不到店況就讓客人下不了單
+    console.error('店況檢查失敗（放行）：', e)
+    return null
+  }
+}
+
 async function checkEmergency(code: string): Promise<boolean> {
   if (!code) return false
   try {
@@ -347,9 +403,45 @@ Deno.serve(async (req) => {
     }, 403)
   }
 
-  // 預檢到這裡就結束——身分是真的、沒有被封鎖，可以放心去發 LINE 訊息了。
-  // （限流刻意不在預檢做：預檢不記帳，若在這裡擋，正常客人會被自己上一秒的預檢誤傷）
+  // ③.5 店況：打烊／暫停／非接單時段（2026-07-31 補上伺服器端這一道）
+  //     預檢也要查——這樣客人在「發 LINE 訊息之前」就知道現在不收單，
+  //     不會白白在老闆聊天室留下一則對不到訂單的訊息。
+  const closedReason = await checkShopOpen()
+  if (closedReason) {
+    return json({ error: 'shop_closed', message: closedReason }, 403)
+  }
+
+  // 預檢到這裡就結束——身分是真的、沒有被封鎖、店也開著，可以放心去發 LINE 訊息了。
+  // （限流刻意不在預檢做：預檢不占位，若在這裡擋，正常客人會被自己上一秒的預檢誤傷）
   if (precheck) return json({ ok: true, precheck: true }, 200)
+
+  /* ③.7 🔴 防重複下單（2026-07-31 審查後補，這是「最可能出包第一名」）
+
+     真實情境（不需要任何人惡意）：
+       訂單已經寫進資料庫了 → 回應在網路途中掉了（手機從 WiFi 切到 4G 就會）
+       → 客人看到「傳送失敗，請再按一次」→ 他照做
+       → 老闆收到兩張不同號碼、內容一模一樣的單 → 備兩份料、跟客人吵
+
+     修法是「冪等」：客人重試時，前端【沿用同一個取餐編號】，
+     後端發現這個編號今天已經存在，就直接回報成功，不再寫第二張。
+     ——重試變成安全的動作，這才是根治。
+
+     為什麼放在限流之前：重試不該再吃一次額度。 */
+  const firstNo = (records as any[])[0]?.order_no
+  if (firstNo) {
+    const ymd = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date())
+    const taipeiMidnight = new Date(ymd + 'T00:00:00+08:00').toISOString()
+    const { data: dup } = await db.from('orders')
+      .select('order_no').eq('order_no', firstNo)
+      .gte('created_at', taipeiMidnight).limit(1)
+    if (dup?.length) {
+      console.warn('偵測到重複送單，直接回報原訂單：', firstNo)
+      return json({
+        ok: true, duplicate: true,
+        order_nos: (records as any[]).map((r: any) => r.order_no),
+      }, 200)
+    }
+  }
 
   // ④ 限流：人 ＋ IP 雙軌
   //    兩條軌道各司其職：
@@ -357,6 +449,36 @@ Deno.serve(async (req) => {
   //      認 IP → 有人寫程式用一堆假身分灌單時，還有這道
   //    只要任一條超標就擋。
   //    ⚠️ 應急單沒有身分，那一軌自動跳過，只剩 IP（見上面黑名單處的說明）
+  //
+  //    🔴 2026-07-31 紅隊審查後改成「先占位再檢查」，修掉兩個真漏洞：
+  //
+  //    漏洞一：一次請求可以夾帶最多 10 筆 records（分開結帳＝一人一張單，
+  //      編號加 B、C…），但舊版只記【一筆】流量帳
+  //      → 宣稱的「10 分鐘 5 張」實際上是「10 分鐘 50 張」。
+  //      修法：下幾張就記幾筆。
+  //
+  //    漏洞二：舊版是「先查數量、通過了才寫入」，中間有空隙——
+  //      同時打進來的請求都讀到舊數字，於是全部放行。
+  //      修法：先把自己這幾筆寫進去（占位），再連自己一起數。
+  //      這樣併發的請求會互相看見，擠不進同一個空隙。
+  //
+  //    被擋下時會把剛占的位子刪掉——不刪的話，客人一次點太多被擋之後，
+  //    接下來 10 分鐘連正常張數都下不了，那是懲罰真客人。
+  const orderCount = (records as any[]).length
+  /* 前端送來的 total 不可信（devtools 隨便改）。訂單本身的金額由資料庫觸發器重算覆寫，
+     所以【訂單不會算錯】；但限流表與高額警示是拿這個值來判斷的，
+     被改成 0 就能躲過高額警示、改成天文數字就能製造假警報。
+     這裡做兩層防呆：非數字當 0、單張上限 99999（真實滷味單不可能超過）。 */
+  const safeTotal = (v: any) => Math.max(0, Math.min(99999, Math.round(Number(v) || 0)))
+  const nowTotal = (records as any[]).reduce((s, r) => s + safeTotal(r?.total), 0)
+  const { data: myRows } = await db.from('order_throttle')
+    .insert((records as any[]).map(() => ({ ip, line_user_id: userId, total: nowTotal })))
+    .select('id')
+  const myIds: number[] = (myRows ?? []).map((r: any) => r.id)
+  const dropMyRows = async () => {
+    if (myIds.length) await db.from('order_throttle').delete().in('id', myIds)
+  }
+
   const since = minutesAgo(RATE_WINDOW_MIN)
   const [byUser, byIp] = await Promise.all([
     userId
@@ -366,10 +488,12 @@ Deno.serve(async (req) => {
     db.from('order_throttle').select('*', { count: 'exact', head: true })
       .eq('ip', ip).gte('at', since),
   ])
+  // 自己那幾筆已經在裡面了，所以門檻用 > 不是 >=
   const userCount = byUser.count ?? 0
   const ipCount = byIp.count ?? 0
 
-  if (userCount >= RATE_MAX || ipCount >= RATE_MAX) {
+  if (userCount > RATE_MAX || ipCount > RATE_MAX) {
+    await dropMyRows()
     // 爆量偵測：這些單是不是「2 分鐘內」灌出來的？
     //   10 分鐘 5 張 ＝ 可能是幫朋友分批訂（正常人）
     //   2 分鐘 5 張  ＝ 不像人手動點得出來 → 通知老闆留意
@@ -398,18 +522,23 @@ Deno.serve(async (req) => {
   //      認人  → 換網路也躲不掉
   //      認 IP → 用不同 LINE 帳號輪流下單也躲不掉
   //    這裡是「提醒」不是「擋」，所以寧可多提醒一點。
-  const orderTotal = (records as any[]).reduce((s, r) => s + (Number(r?.total) || 0), 0)
+  const orderTotal = nowTotal
   let isHighValue = false
   if (orderTotal > HIGH_VALUE_AMOUNT) {
     const hvSince = minutesAgo(HIGH_VALUE_WINDOW_MIN)
+    // ⚠️ 要把「自己剛剛占位的那幾筆」排除掉，否則一張大單會自己跟自己湊成「連續兩張」
+    //    （2026-07-31 改成先占位之後才會有這個問題，順手一起處理）
+    const notMine = myIds.length ? '(' + myIds.join(',') + ')' : '(0)'
     const [prevUser, prevIp] = await Promise.all([
       userId
         ? db.from('order_throttle').select('total, at')
             .eq('line_user_id', userId).gte('at', hvSince).gt('total', HIGH_VALUE_AMOUNT)
+            .not('id', 'in', notMine)
             .order('at', { ascending: false })
         : Promise.resolve({ data: [] as any[] }),
       db.from('order_throttle').select('total, at')
         .eq('ip', ip).gte('at', hvSince).gt('total', HIGH_VALUE_AMOUNT)
+        .not('id', 'in', notMine)
         .order('at', { ascending: false }),
     ])
     // 哪一條先湊滿就用哪一條的資料報給老闆（同一人優先，訊息比較好懂）
@@ -429,13 +558,14 @@ Deno.serve(async (req) => {
   }
   if (isHighValue) for (const r of records as any[]) r.high_value = true
 
-  // ⑥ 記一筆流量帳（限流與高額判斷都靠這張表回頭查）
-  await db.from('order_throttle').insert({ ip, line_user_id: userId, total: orderTotal })
+  // ⑥ 流量帳在上面「先占位」時就記好了，這裡不用再記一次
+  //    （2026-07-31 前是記在這裡，那正是競態與「一次 10 張只算 1 張」的成因）
 
   // ⑦ 寫入訂單（繞過 RLS；價格防護觸發器仍會在 INSERT 前重算覆寫金額）
   const { data, error } = await db.from('orders').insert(records).select('order_no')
   if (error) {
     console.error('orders insert error：', error)
+    await dropMyRows()   // 訂單沒寫成，占的位子也要還回去，別讓客人白白被計次
     return json({ error: 'insert_failed', message: '訂單寫入失敗（可能網路不穩），請再送一次 🙏' }, 500)
   }
 
