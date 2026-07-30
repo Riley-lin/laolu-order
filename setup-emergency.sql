@@ -33,8 +33,11 @@ values ('emergency_on', '')          -- ''＝關閉、'1'＝啟用
 on conflict (name) do nothing;
 
 -- 第一組通行碼（之後老闆在店務台可以一鍵換）
+-- ⚠️ 不用 gen_random_bytes（那是 pgcrypto 擴充，Supabase 裝在 extensions schema，
+--    而下面的函式把 search_path 釘死在 public → 執行時會找不到它）。
+--    gen_random_uuid() 是 PostgreSQL 內建的，不依賴任何擴充，最保險。
 insert into public.app_secrets (name, value)
-values ('emergency_code', encode(gen_random_bytes(6), 'hex'))
+values ('emergency_code', substr(replace(gen_random_uuid()::text, '-', ''), 1, 12))
 on conflict (name) do nothing;
 
 -- 🔴 把 emergency_on 加進 RLS 讀取白名單（2026-07-30 補：漏了這段，客人端讀不到開關）
@@ -112,7 +115,11 @@ as $$
 declare
   v_new text;
 begin
-  v_new := encode(gen_random_bytes(6), 'hex');   -- 12 個十六進位字元，好念也夠亂
+  -- 🐛 2026-07-31 修：原本用 gen_random_bytes()，那是 pgcrypto 擴充的函式，
+  --    Supabase 把它裝在 extensions schema——但本函式 set search_path = public，
+  --    所以「建立得起來、按下去才爆」（Riley 實測抓到：function does not exist）。
+  --    改用內建的 gen_random_uuid()，不依賴任何擴充。
+  v_new := substr(replace(gen_random_uuid()::text, '-', ''), 1, 12);   -- 12 個十六進位字元
   insert into public.app_secrets (name, value)
   values ('emergency_code', v_new)
   on conflict (name) do update set value = excluded.value;
