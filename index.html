@@ -3448,16 +3448,28 @@ function updateEmergencyBanner() {
     return;
   }
   if (old) return;
-  // 橫幅是固定在最上面的，要把整頁往下推，不然會蓋住第一排內容
-  document.body.style.paddingTop = '56px';
   const bar = document.createElement('div');
   bar.id = id;
   bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#7a2d12;'
     + 'color:#ffe8c2;font-size:13px;line-height:1.6;padding:8px 14px;text-align:center;'
     + 'box-shadow:0 2px 8px rgba(0,0,0,.35);';
-  bar.innerHTML = '⚡ <b>應急訂餐模式</b>　LINE 系統異常中，此頁可直接下單<br>'
-    + '<span style="font-size:12px;opacity:.85">送出後請記下取餐編號，用下方「查詢我的訂單」查看進度</span>';
+  // 查詢入口必須放在這裡：應急客人沒有 LINE 圖文選單那顆「訂單查詢」，
+  // 而封面上的查詢鈕在一進來就跳過去菜單了 → 他等於找不到任何地方查進度。
+  // 送出後看不到進度的客人，第一個反應就是再下一次單。
+  bar.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap;">'
+    + '<div style="text-align:left;">'
+    +   '⚡ <b>應急訂餐模式</b>　LINE 系統異常中，此頁可直接下單<br>'
+    +   '<span style="font-size:12px;opacity:.85">送出後請記下取餐編號</span>'
+    + '</div>'
+    + '<button onclick="openCoverQuery()" style="flex:none;background:#ffd9a8;color:#4a1d08;'
+    +   'border:none;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:900;cursor:pointer;">'
+    +   '🔍 查詢我的訂單</button>'
+    + '</div>';
   document.body.appendChild(bar);
+  // 橫幅固定在最上面，要把整頁往下推，不然會蓋住第一排內容。
+  // 高度用「量出來的」不是寫死的——手機窄螢幕會換行變兩行，寫死就會蓋到東西。
+  document.body.style.paddingTop = (bar.offsetHeight + 4) + 'px';
 }
 
 async function syncShopConfig() {
